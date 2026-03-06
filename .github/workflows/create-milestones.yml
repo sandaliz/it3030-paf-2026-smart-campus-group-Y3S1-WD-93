@@ -1,0 +1,82 @@
+name: Create Project Milestones
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-milestones:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Create Week 1 Milestone
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createMilestone({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Week 1 - Foundation & Setup',
+              description: 'Foundation and setup phase: project scaffolding, models, repositories, and base configuration.',
+              due_on: '2026-03-12T23:59:59Z'
+            });
+
+      - name: Create Week 2 Milestone
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createMilestone({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Week 2 - Core Implementation',
+              description: 'Core implementation phase: services, controllers, and REST API endpoints.',
+              due_on: '2026-03-19T23:59:59Z'
+            });
+
+      - name: Create Week 3 Milestone
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createMilestone({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Week 3 - Feature Development',
+              description: 'Feature development phase: business logic, frontend components, and module integration.',
+              due_on: '2026-03-26T23:59:59Z'
+            });
+
+      - name: Create Week 4 Milestone
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createMilestone({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Week 4 - Integration & Testing',
+              description: 'Integration and testing phase: end-to-end integration, unit and integration tests.',
+              due_on: '2026-04-02T23:59:59Z'
+            });
+
+      - name: Create Week 5 Milestone
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createMilestone({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Week 5 - Refinement & Bug Fixes',
+              description: 'Refinement and bug fixes phase: code review, performance improvements, and issue resolution.',
+              due_on: '2026-04-09T23:59:59Z'
+            });
+
+      - name: Create Week 6 Milestone
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createMilestone({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Week 6 - Final Touches & Submission',
+              description: 'Final touches and submission phase: documentation, cleanup, and project submission.',
+              due_on: '2026-04-16T23:59:59Z'
+            });
