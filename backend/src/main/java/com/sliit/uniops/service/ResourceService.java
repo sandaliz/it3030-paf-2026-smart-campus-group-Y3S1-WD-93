@@ -5,8 +5,12 @@ import com.sliit.uniops.repository.ResourceRepository;
 import com.sliit.uniops.exception.ResourceNotFoundException;
 import com.sliit.uniops.exception.DuplicateResourceException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,6 +42,11 @@ public class ResourceService {
     // Read all
     public List<Resource> getAllResources() {
         return resourceRepository.findAll();
+    }
+    
+    // Get all resources with pagination
+    public Page<Resource> getAllResources(Pageable pageable) {
+        return resourceRepository.findAll(pageable);
     }
     
     // Read by ID
@@ -118,5 +127,50 @@ public List<Resource> searchResources(Resource.ResourceType type, Integer minCap
     } else {
         return resourceRepository.findAll();
     }
+}
+
+// Check resource availability for a specific date
+public List<Resource.AvailabilityWindow> getResourceAvailability(String resourceId, LocalDate date) {
+    Resource resource = getResourceById(resourceId);
+    
+    // If resource is out of service, return empty list
+    if (resource.getStatus() != Resource.ResourceStatus.ACTIVE) {
+        return List.of();
+    }
+    
+    // If availability windows are null or empty, return empty list
+    if (resource.getAvailabilityWindows() == null || resource.getAvailabilityWindows().isEmpty()) {
+        return List.of();
+    }
+    
+    // Get day of week
+    String dayOfWeek = date.getDayOfWeek().toString();
+    
+    // Find availability window for this day
+    return resource.getAvailabilityWindows().stream()
+            .filter(window -> window.getDayOfWeek().toString().equals(dayOfWeek) && window.isAvailable())
+            .collect(Collectors.toList());
+}
+
+// Check if resource is available at specific time
+public boolean isResourceAvailable(String resourceId, LocalDate date, LocalTime startTime, LocalTime endTime) {
+    List<Resource.AvailabilityWindow> availableSlots = getResourceAvailability(resourceId, date);
+    
+    // If no availability slots, return false
+    if (availableSlots.isEmpty()) {
+        return false;
+    }
+    
+    // Find if there's an available slot that covers the requested time range
+    return availableSlots.stream()
+            .anyMatch(window -> {
+                try {
+                    LocalTime windowStart = LocalTime.parse(window.getStartTime());
+                    LocalTime windowEnd = LocalTime.parse(window.getEndTime());
+                    return !windowStart.isAfter(startTime) && !windowEnd.isBefore(endTime);
+                } catch (Exception e) {
+                    return false;
+                }
+            });
 }
 }

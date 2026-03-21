@@ -1,6 +1,8 @@
 package com.sliit.uniops.repository;
 
 import com.sliit.uniops.model.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -37,4 +39,7 @@ public interface ResourceRepository extends MongoRepository<Resource, String> {
     
     // Find by type AND status (this was missing!)
     List<Resource> findByTypeAndStatus(Resource.ResourceType type, Resource.ResourceStatus status);
+    
+    // Pagination support
+    Page<Resource> findAll(Pageable pageable);
 }
