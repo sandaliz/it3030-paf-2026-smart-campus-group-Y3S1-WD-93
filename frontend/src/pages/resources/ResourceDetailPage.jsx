@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { resourceService } from '../../services/resourceService';
 import ResourceCard from '../../components/cards/ResourceCard';
+import { DetailSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
 
 const ResourceDetailPage = () => {
   const { id } = useParams();
@@ -100,11 +101,7 @@ const ResourceDetailPage = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <span className="loading loading-spinner loading-lg"></span>
-      </div>
-    );
+    return <DetailSkeleton />;
   }
 
   if (error || !resource) {

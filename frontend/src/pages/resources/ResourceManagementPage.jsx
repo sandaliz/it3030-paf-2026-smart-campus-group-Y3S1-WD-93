@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { resourceService } from '../../services/resourceService';
 import ResourceForm from '../../components/forms/ResourceForm';
+import { TableRowSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
 
 const ResourceManagementPage = () => {
   const [resources, setResources] = useState([]);
@@ -181,11 +182,7 @@ const ResourceManagementPage = () => {
   };
 
   if (loading && resources.length === 0) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <span className="loading loading-spinner loading-lg"></span>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
@@ -328,69 +325,76 @@ const ResourceManagementPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {resources.map((resource) => (
-                  <tr key={resource.id}>
-                    <td>
-                      <label>
-                        <input
-                          type="checkbox"
-                          className="checkbox checkbox-sm"
-                          checked={selectedResources.includes(resource.id)}
-                          onChange={() => handleSelectResource(resource.id)}
-                        />
-                      </label>
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">{getResourceIcon(resource.type)}</span>
-                        <div>
-                          <div className="font-semibold">{resource.name}</div>
-                          {resource.description && (
-                            <div className="text-sm text-base-content/70 line-clamp-1">
-                              {resource.description}
-                            </div>
-                          )}
+                {loading && resources.length === 0 ? (
+                  // Show 5 skeleton rows while loading
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TableRowSkeleton key={index} />
+                  ))
+                ) : (
+                  resources.map((resource) => (
+                    <tr key={resource.id}>
+                      <td>
+                        <label>
+                          <input
+                            type="checkbox"
+                            className="checkbox checkbox-sm"
+                            checked={selectedResources.includes(resource.id)}
+                            onChange={() => handleSelectResource(resource.id)}
+                          />
+                        </label>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">{getResourceIcon(resource.type)}</span>
+                          <div className="flex-1">
+                            <div className="font-semibold">{resource.name}</div>
+                            {resource.description && (
+                              <div className="text-sm text-base-content/70 line-clamp-1">
+                                {resource.description}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="capitalize">
-                        {resource.type.replace('_', ' ').toLowerCase()}
-                      </span>
-                    </td>
-                    <td>{resource.location}</td>
-                    <td>{resource.capacity}</td>
-                    <td>
-                      <div className={`badge ${getStatusBadgeColor(resource.status)} badge-sm`}>
-                        {resource.status.replace('_', ' ')}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="flex gap-2">
-                        <button
-                          className="btn btn-ghost btn-xs"
-                          onClick={() => handleEditResource(resource)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className={`btn btn-ghost btn-xs ${
-                            resource.status === 'ACTIVE' ? 'btn-warning' : 'btn-success'
-                          }`}
-                          onClick={() => handleStatusToggle(resource.id, resource.status)}
-                        >
-                          {resource.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-                        </button>
-                        <button
-                          className="btn btn-ghost btn-xs btn-error"
-                          onClick={() => handleDeleteResource(resource.id)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td>
+                        <span className="capitalize">
+                          {resource.type.replace('_', ' ').toLowerCase()}
+                        </span>
+                      </td>
+                      <td>{resource.location}</td>
+                      <td>{resource.capacity}</td>
+                      <td>
+                        <div className={`badge ${getStatusBadgeColor(resource.status)} badge-sm`}>
+                          {resource.status.replace('_', ' ')}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex gap-2">
+                          <button
+                            className="btn btn-ghost btn-xs"
+                            onClick={() => handleEditResource(resource)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className={`btn btn-ghost btn-xs ${
+                              resource.status === 'ACTIVE' ? 'btn-warning' : 'btn-success'
+                            }`}
+                            onClick={() => handleStatusToggle(resource.id, resource.status)}
+                          >
+                            {resource.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button
+                            className="btn btn-ghost btn-xs btn-error"
+                            onClick={() => handleDeleteResource(resource.id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
 import { resourceService } from './services/resourceService'
 import ResourceDetailPage from './pages/resources/ResourceDetailPage'
 import ResourceManagementPage from './pages/resources/ResourceManagementPage'
+import { CardSkeleton, PageLoader } from './components/ui/LoadingSkeleton'
 
 // Temporary Resource List Page
 const ResourceListPage = () => {
@@ -28,11 +29,7 @@ const ResourceListPage = () => {
   }, [])
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <span className="loading loading-spinner loading-lg"></span>
-      </div>
-    )
+    return <PageLoader />;
   }
 
   return (
@@ -49,26 +46,33 @@ const ResourceListPage = () => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {resources.map((resource) => (
-          <div key={resource.id} className="card bg-base-100 shadow-lg">
-            <div className="card-body">
-              <h2 className="card-title">{resource.name}</h2>
-              <p className="text-base-content/70 capitalize">{resource.type.replace('_', ' ').toLowerCase()}</p>
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span>{resource.location}</span>
-              </div>
-              <div className="card-actions justify-end">
-                <Link to={`/resources/${resource.id}`} className="btn btn-primary btn-sm">
-                  View Details
-                </Link>
+        {resources.length === 0 && loading ? (
+          // Show 6 skeleton cards while loading
+          Array.from({ length: 6 }).map((_, index) => (
+            <CardSkeleton key={index} />
+          ))
+        ) : (
+          resources.map((resource) => (
+            <div key={resource.id} className="card bg-base-100 shadow-lg">
+              <div className="card-body">
+                <h2 className="card-title">{resource.name}</h2>
+                <p className="text-base-content/70 capitalize">{resource.type.replace('_', ' ').toLowerCase()}</p>
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span>{resource.location}</span>
+                </div>
+                <div className="card-actions justify-end">
+                  <Link to={`/resources/${resource.id}`} className="btn btn-primary btn-sm">
+                    View Details
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   )
