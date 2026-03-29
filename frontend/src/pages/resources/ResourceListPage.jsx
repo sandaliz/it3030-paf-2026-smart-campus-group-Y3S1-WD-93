@@ -70,30 +70,59 @@ const ResourceListPage = () => {
 
   useEffect(() => {
     const fetchResources = async () => {
+      console.log('Fetching resources with searchTerm:', searchTerm);
+      console.log('Filters:', filters);
       try {
         let data;
         
-        // Build search params based on what's filled
-        const searchParams = {};
+        // Simple approach: Get all resources and filter locally for better control
+        const allResources = await resourceService.getAllResources();
+        console.log('All resources fetched:', allResources.length);
         
-        // Only add name if search term exists
-        if (searchTerm.trim() !== '') {
-          searchParams.name = searchTerm;
-        }
+        // Filter resources locally
+        data = allResources.filter(resource => {
+          // Name search (case-insensitive)
+          if (searchTerm.trim() !== '') {
+            const searchLower = searchTerm.toLowerCase();
+            const nameMatch = resource.name && resource.name.toLowerCase().includes(searchLower);
+            const locationMatch = resource.location && resource.location.toLowerCase().includes(searchLower);
+            const amenitiesMatch = resource.amenities && typeof resource.amenities === 'string' && resource.amenities.toLowerCase().includes(searchLower);
+            
+            if (!nameMatch && !locationMatch && !amenitiesMatch) {
+              return false;
+            }
+          }
+          
+          // Type filter
+          if (filters.type && resource.type !== filters.type) {
+            return false;
+          }
+          
+          // Status filter
+          if (filters.status && resource.status !== filters.status) {
+            return false;
+          }
+          
+          // Location filter
+          if (filters.location && !resource.location.toLowerCase().includes(filters.location.toLowerCase())) {
+            return false;
+          }
+          
+          // Min capacity filter
+          if (filters.minCapacity && resource.capacity < parseInt(filters.minCapacity)) {
+            return false;
+          }
+          
+          // Amenities filter
+          if (filters.amenities && resource.amenities && typeof resource.amenities === 'string' && 
+              !resource.amenities.toLowerCase().includes(filters.amenities.toLowerCase())) {
+            return false;
+          }
+          
+          return true;
+        });
         
-        // Only add filters if they have values
-        if (filters.type) searchParams.type = filters.type;
-        if (filters.status) searchParams.status = filters.status;
-        if (filters.location) searchParams.location = filters.location;
-        
-        // Use search API if we have any search params
-        if (Object.keys(searchParams).length > 0) {
-          data = await resourceService.searchResources(searchParams);
-        } else {
-          // Get all resources
-          data = await resourceService.getAllResources();
-        }
-        
+        console.log('Filtered resources:', data.length);
         setResources(data);
         setError(null);
       } catch (err) {
@@ -118,7 +147,7 @@ const ResourceListPage = () => {
       {/* Search and Filters */}
       <div className="card bg-base-100 shadow-lg mb-6">
         <div className="card-body">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Search Bar */}
             <div className="form-control md:col-span-2">
               <label className="label">
@@ -169,6 +198,48 @@ const ResourceListPage = () => {
                 <option value="UNDER_MAINTENANCE">Under Maintenance</option>
               </select>
             </div>
+
+            {/* Location Filter */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Location</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Filter by location..."
+                className="input input-bordered"
+                value={filters.location}
+                onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
+              />
+            </div>
+
+            {/* Min Capacity Filter */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Min Capacity</span>
+              </label>
+              <input
+                type="number"
+                placeholder="Min capacity..."
+                className="input input-bordered"
+                value={filters.minCapacity}
+                onChange={(e) => setFilters(prev => ({ ...prev, minCapacity: e.target.value }))}
+              />
+            </div>
+
+            {/* Amenities Filter */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Amenities</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Filter by amenities..."
+                className="input input-bordered"
+                value={filters.amenities}
+                onChange={(e) => setFilters(prev => ({ ...prev, amenities: e.target.value }))}
+              />
+            </div>
           </div>
 
           <div className="flex justify-end mt-4">
@@ -176,7 +247,13 @@ const ResourceListPage = () => {
               className="btn btn-outline btn-sm"
               onClick={() => {
                 setSearchTerm('');
-                setFilters({ type: '', status: '', location: '' });
+                setFilters({ 
+                  type: '', 
+                  status: '', 
+                  location: '', 
+                  minCapacity: '', 
+                  amenities: '' 
+                });
               }}
             >
               Clear All
