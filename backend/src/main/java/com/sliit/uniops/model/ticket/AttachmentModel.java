@@ -13,16 +13,16 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @AllArgsConstructor
 public class AttachmentModel {
     @Id
-    private Long id;
-    private Long ticketId;
+    private String id;
+    private String ticketId;
     private String fileName;
     private String fileType;
-    private long fileSize;
+    private String base64Content;
     private String fileUrl;
 
     @CreatedDate
     private LocalDateTime uploadedAt;
-    private Long uploadedBy;
+    private String uploadedBy;
     
      
 

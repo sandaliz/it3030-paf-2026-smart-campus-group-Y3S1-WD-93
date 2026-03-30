@@ -16,7 +16,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class TicketModel {
     @Id
     
-    private Long id;
+    private String id;
     private String title;
     private String description;
     private String category;
@@ -31,8 +31,7 @@ public class TicketModel {
     private List<String> attachmentIds = new ArrayList<>();
     private String resolutionNotes;
     private String rejectionReason;
-    private String preferredContactMethod;
-    private String contactDetails;
+  
 
     @CreatedDate
     private LocalDateTime createdAt;
@@ -40,7 +39,7 @@ public class TicketModel {
     private LocalDateTime updatedAt;
     private LocalDateTime resolvedAt;
     private LocalDateTime closedAt;
-    private LocalDateTime firstResponsAt;
+    private LocalDateTime firstResponseAt;
     private boolean isDeleted = false;
 
      // Helper methods
