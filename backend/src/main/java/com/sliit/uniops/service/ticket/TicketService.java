@@ -213,12 +213,21 @@ dto.setAttachmentUrls(ticket.getAttachmentIds());
 dto.setResolutionNotes(ticket.getResolutionNotes());
 dto.setRejectionReason(ticket.getRejectionReason());
 dto.setCreatedAt(ticket.getCreatedAt());
-dto.setUpdatedAt(ticket.getUpdatedAt());
-dto.setResolvedAt(ticket.getResolvedAt());
-dto.setClosedAt(ticket.getClosedAt());
-dto.setCommentCount(commentCount);
 
-return dto;
-}
+        return dto;
+    }
+
+    // ✅ VALIDATION METHODS
+    private boolean isValidCategory(String category) {
+        return category != null && VALID_CATEGORIES.contains(category);
+    }
+
+    private boolean isValidPriority(String priority) {
+        return priority != null && VALID_PRIORITIES.contains(priority);
+    }
+
+    private boolean isValidStatus(String status) {
+        return status != null && VALID_STATUSES.contains(status);
+    }
 
 }
