@@ -1,3 +1,5 @@
+package com.sliit.uniops.dto.response.ticket;
+
 import java.time.LocalDateTime;
 import java.util.Map;
 import lombok.*;

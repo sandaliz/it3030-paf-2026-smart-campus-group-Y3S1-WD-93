@@ -1,3 +1,5 @@
+package com.sliit.uniops.dto.request.ticket;
+
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;

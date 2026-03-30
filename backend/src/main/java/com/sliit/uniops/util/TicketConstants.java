@@ -1,3 +1,5 @@
+package com.sliit.uniops.util;
+
 public class TicketConstants {
 // Status Constants
     public static final String STATUS_OPEN = "OPEN";

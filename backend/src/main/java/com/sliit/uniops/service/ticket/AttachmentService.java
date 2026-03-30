@@ -1,3 +1,5 @@
+package com.sliit.uniops.service.ticket;
+
 import com.sliit.uniops.model.ticket.AttachmentModel;
 import com.sliit.uniops.repository.ticket.AttachmentRepository;
 

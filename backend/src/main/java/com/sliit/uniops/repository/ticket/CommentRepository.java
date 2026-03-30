@@ -1,3 +1,5 @@
+package com.sliit.uniops.repository.ticket;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.domain.Page;

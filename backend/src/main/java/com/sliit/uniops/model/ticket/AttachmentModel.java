@@ -1,3 +1,5 @@
+package com.sliit.uniops.model.ticket;
+
 import java.time.LocalDateTime;
 import lombok.*;
 

@@ -1,3 +1,5 @@
+package com.sliit.uniops.model.ticket;
+
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;

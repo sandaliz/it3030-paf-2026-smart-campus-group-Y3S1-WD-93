@@ -1,3 +1,5 @@
+package com.sliit.uniops.dto.request.ticket;
+
 import lombok.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;

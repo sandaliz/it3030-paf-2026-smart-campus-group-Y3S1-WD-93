@@ -1,3 +1,5 @@
+package com.sliit.uniops.repository.ticket;
+
 import java.util.List;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
