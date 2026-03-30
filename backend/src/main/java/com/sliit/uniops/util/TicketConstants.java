@@ -1,5 +1,7 @@
 package com.sliit.uniops.util;
 
+import java.util.Set;
+
 public class TicketConstants {
     // Status Constants
     public static final String STATUS_OPEN = "OPEN";
@@ -8,12 +10,17 @@ public class TicketConstants {
     public static final String STATUS_CLOSED = "CLOSED";
     public static final String STATUS_REJECTED = "REJECTED";
     
+  
+
+
     // Priority Constants
     public static final String PRIORITY_LOW = "LOW";
     public static final String PRIORITY_MEDIUM = "MEDIUM";
     public static final String PRIORITY_HIGH = "HIGH";
     public static final String PRIORITY_URGENT = "URGENT";
     
+   
+
     // Category Constants
     public static final String CATEGORY_ELECTRICAL = "ELECTRICAL";
     public static final String CATEGORY_PLUMBING = "PLUMBING";
@@ -39,4 +46,63 @@ public class TicketConstants {
         CATEGORY_ELECTRICAL, CATEGORY_PLUMBING, CATEGORY_IT, CATEGORY_HVAC,
         CATEGORY_FURNITURE, CATEGORY_CLEANING, CATEGORY_SECURITY, CATEGORY_OTHER
     );
+
+// ===== STATUS TRANSITION VALIDATION =====
+    public static boolean canTransitionTo(String currentStatus, String newStatus) {
+        if (currentStatus == null || newStatus == null) return false;
+        
+        switch (currentStatus) {
+            case STATUS_OPEN:
+                return STATUS_IN_PROGRESS.equals(newStatus) || STATUS_REJECTED.equals(newStatus);
+            case STATUS_IN_PROGRESS:
+                return STATUS_RESOLVED.equals(newStatus);
+            case STATUS_RESOLVED:
+                return STATUS_CLOSED.equals(newStatus);
+            case STATUS_REJECTED:
+                return false;
+            case STATUS_CLOSED:
+                return false;
+            default:
+                return false;
+        }
+    }
+    
+    // ===== GET DISPLAY NAMES =====
+    public static String getStatusDisplayName(String status) {
+        return switch (status) {
+            case STATUS_OPEN -> "Open";
+            case STATUS_IN_PROGRESS -> "In Progress";
+            case STATUS_RESOLVED -> "Resolved";
+            case STATUS_CLOSED -> "Closed";
+            case STATUS_REJECTED -> "Rejected";
+            default -> status;
+        };
+    }
+    
+    public static String getPriorityDisplayName(String priority) {
+        return switch (priority) {
+            case PRIORITY_LOW -> "Low";
+            case PRIORITY_MEDIUM -> "Medium";
+            case PRIORITY_HIGH -> "High";
+            case PRIORITY_URGENT -> "Urgent";
+            default -> priority;
+        };
+    }
+    
+    public static String getCategoryDisplayName(String category) {
+        return switch (category) {
+            case CATEGORY_ELECTRICAL -> "Electrical";
+            case CATEGORY_PLUMBING -> "Plumbing";
+            case CATEGORY_IT -> "IT Equipment";
+            case CATEGORY_HVAC -> "HVAC";
+            case CATEGORY_FURNITURE -> "Furniture";
+            case CATEGORY_CLEANING -> "Cleaning";
+            case CATEGORY_SECURITY -> "Security";
+            case CATEGORY_OTHER -> "Other";
+            default -> category;
+        };
+    }
 }
+
+
+
