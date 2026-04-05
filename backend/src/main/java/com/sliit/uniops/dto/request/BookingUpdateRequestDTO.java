@@ -4,22 +4,16 @@ import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
-public class BookingRequestDTO {
+public class BookingUpdateRequestDTO {
     
-    @NotBlank(message = "Resource ID is required")
     private String resourceId;
     
-    @NotNull(message = "Date is required")
     @FutureOrPresent(message = "Date cannot be in the past")
     private LocalDate date;
     
-    @NotNull(message = "Start time is required")
     private LocalTime startTime;
-    
-    @NotNull(message = "End time is required")
     private LocalTime endTime;
     
-    @NotBlank(message = "Purpose is required")
     @Size(max = 500, message = "Purpose cannot exceed 500 characters")
     private String purpose;
     
@@ -27,18 +21,11 @@ public class BookingRequestDTO {
     @Max(value = 1000, message = "Expected attendees cannot exceed 1000")
     private Integer expectedAttendees;
     
-    // Custom validation: end time must be after start time
+    // Custom validation for time range (only if both times are provided)
     @AssertTrue(message = "End time must be after start time")
     public boolean isEndTimeAfterStartTime() {
         if (startTime == null || endTime == null) return true;
         return endTime.isAfter(startTime);
-    }
-    
-    // Custom validation: minimum booking duration (30 minutes)
-    @AssertTrue(message = "Booking duration must be at least 30 minutes")
-    public boolean isValidDuration() {
-        if (startTime == null || endTime == null) return true;
-        return java.time.Duration.between(startTime, endTime).toMinutes() >= 30;
     }
     
     // Getters and Setters
@@ -59,4 +46,10 @@ public class BookingRequestDTO {
     
     public Integer getExpectedAttendees() { return expectedAttendees; }
     public void setExpectedAttendees(Integer expectedAttendees) { this.expectedAttendees = expectedAttendees; }
+    
+    // Helper method to check if any field is provided for update
+    public boolean hasUpdates() {
+        return resourceId != null || date != null || startTime != null || 
+               endTime != null || purpose != null || expectedAttendees != null;
+    }
 }
