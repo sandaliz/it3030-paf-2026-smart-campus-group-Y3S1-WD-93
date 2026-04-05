@@ -37,4 +37,9 @@ public interface BookingRepository extends MongoRepository<Booking, String> {
     
     // Count bookings by status (for dashboard)
     long countByStatus(String status);
+
+    // Additional query methods for filtering
+List<Booking> findByStatusAndResourceIdAndUserId(String status, String resourceId, String userId);
+List<Booking> findByUserIdAndStatus(String userId, String status);
+List<Booking> findByResourceIdAndUserId(String resourceId, String userId);
 }
