@@ -8,14 +8,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
-/* Booking model representing a resource booking in the system.*/
 @Document(collection = "bookings")
 @CompoundIndex(name = "resource_time_idx", 
                 def = "{'resourceId': 1, 'date': 1, 'startTime': 1, 'endTime': 1}")
-
-// This index ensures that we can efficiently query for overlapping bookings for the same resource.
 public class Booking {
-     @Id
+    
+    @Id
     private String id;
     
     @Indexed

@@ -31,3 +31,14 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Testing Authentication ###
+src/main/java/com/sliit/uniops/config/DataInitializer.java
+src/main/java/com/sliit/uniops/controller/AuthController.java
+src/main/java/com/sliit/uniops/model/User.java
+src/main/java/com/sliit/uniops/repository/UserRepository.java
+src/main/java/com/sliit/uniops/security/SecurityConfig.java
+src/main/java/com/sliit/uniops/security/AuthFilter.java
+src/main/java/com/sliit/uniops/security/TokenUtils.java
+src/main/java/com/sliit/uniops/security/UserPrincipal.java
+src/main/java/com/sliit/uniops/service/AuthService.java

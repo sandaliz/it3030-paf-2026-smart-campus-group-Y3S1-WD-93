@@ -1,6 +1,7 @@
 package com.sliit.uniops.controller;
 
 import com.sliit.uniops.model.Booking;
+import com.sliit.uniops.model.Resource;
 import com.sliit.uniops.service.BookingService;
 import com.sliit.uniops.dto.request.BookingRequestDTO;
 import com.sliit.uniops.dto.request.BookingUpdateRequestDTO;
@@ -104,18 +105,7 @@ public class BookingController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
-    
-    // GET: Check availability for a resource
-    @GetMapping("/check-availability")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
-    public ResponseEntity<Boolean> checkAvailability(
-            @RequestParam String resourceId,
-            @RequestParam String date,
-            @RequestParam String startTime,
-            @RequestParam String endTime) {
-        boolean isAvailable = bookingService.checkAvailability(resourceId, date, startTime, endTime);
-        return ResponseEntity.ok(isAvailable);
-    }
+
     
     // ========== UPDATE OPERATIONS ==========
     
@@ -244,4 +234,57 @@ public class BookingController {
         int deletedCount = bookingService.deleteAllCancelledBookings();
         return ResponseEntity.ok(deletedCount);
     }
+
+    // ===== NEW: Check availability for a specific time slot =====
+    @GetMapping("/check-availability")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<Boolean> checkAvailability(
+            @RequestParam String resourceId,
+            @RequestParam String date,
+            @RequestParam String startTime,
+            @RequestParam String endTime) {
+        boolean isAvailable = bookingService.checkAvailability(resourceId, date, startTime, endTime);
+        return ResponseEntity.ok(isAvailable);
+    }
+    
+    // ===== NEW: Get available time slots for a resource =====
+    @GetMapping("/available-slots")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<List<String>> getAvailableTimeSlots(
+            @RequestParam String resourceId,
+            @RequestParam String date) {
+        List<String> availableSlots = bookingService.getAvailableTimeSlots(resourceId, date);
+        return ResponseEntity.ok(availableSlots);
+    }
+    
+    // ===== NEW: Get all bookings for a specific resource on a date =====
+    @GetMapping("/resource/{resourceId}")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<List<BookingResponseDTO>> getResourceBookings(
+            @PathVariable String resourceId,
+            @RequestParam String date) {
+        List<Booking> bookings = bookingService.getResourceBookings(resourceId, date);
+        List<BookingResponseDTO> response = bookings.stream()
+                .map(BookingResponseDTO::fromBooking)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+    
+    // ===== NEW: Get available resources based on criteria =====
+    @GetMapping("/available-resources")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<List<Resource>> getAvailableResources(
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) Integer minCapacity,
+            @RequestParam String date,
+            @RequestParam String startTime,
+            @RequestParam String endTime) {
+        List<Resource> availableResources = bookingService.getAvailableResources(
+            type, minCapacity, date, startTime, endTime);
+        return ResponseEntity.ok(availableResources);
+    }
+    
+   
+      
+    
 }
