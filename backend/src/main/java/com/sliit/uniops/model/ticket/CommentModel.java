@@ -23,7 +23,7 @@ public class CommentModel {
     
     private String content;
     
-    private boolean isInternal;
+    private boolean isInternal;   
     
     @CreatedDate
     private LocalDateTime createdAt;

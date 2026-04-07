@@ -3,16 +3,20 @@ package com.sliit.uniops.dto.response.ticket;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.sliit.uniops.util.enums.TicketCategory;
+import com.sliit.uniops.util.enums.TicketPriority;
+import com.sliit.uniops.util.enums.TicketStatus;
+
 import lombok.*;
 
 @Data
 public class TicketResponseDTO {
-    private String id;
+     private String id;
     private String title;
     private String description;
-    private String category;
-    private String priority;
-    private String status;
+    private TicketCategory category;
+    private TicketPriority priority;
+    private TicketStatus status;
     private String location;
     private String resourceId;
     private String createdBy;
@@ -22,13 +26,13 @@ public class TicketResponseDTO {
     private List<String> attachmentUrls;
     private String resolutionNotes;
     private String rejectionReason;
-    private String preferredContactMethod;
-    private String contactDetails;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime resolvedAt;
     private LocalDateTime closedAt;
+    private LocalDateTime firstResponseAt;
     private long commentCount;
+    private TicketStatus[] nextStatuses;
 }
 
 
