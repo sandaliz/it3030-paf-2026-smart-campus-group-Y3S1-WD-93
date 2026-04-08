@@ -91,16 +91,37 @@ export const resourceService = {
 
   // Create new resource
   createResource: async (resourceData) => {
+    // If resourceData is FormData, send it directly
+    if (resourceData instanceof FormData) {
+      const response = await api.post('/api/resources', resourceData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    }
+    // Regular JSON data
     const response = await api.post('/api/resources', resourceData);
     return response.data;
   },
 
   // Update resource
   updateResource: async (id, resourceData) => {
+    // If resourceData is FormData, send it directly
+    if (resourceData instanceof FormData) {
+      const response = await api.put(`/api/resources/${id}`, resourceData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    }
+    // Regular JSON data
     const response = await api.put(`/api/resources/${id}`, resourceData);
     return response.data;
   },
 
+  
   // Delete resource
   deleteResource: async (id) => {
     await api.delete(`/api/resources/${id}`);

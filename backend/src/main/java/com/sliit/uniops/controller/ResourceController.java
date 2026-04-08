@@ -116,16 +116,16 @@ public class ResourceController {
         return ResponseEntity.ok(dtos);
     }
     
-    // POST create new resource
-    @PostMapping
+    // POST create new resource (JSON only)
+    @PostMapping(consumes = "application/json")
     public ResponseEntity<ResourceResponseDTO> createResource(@Valid @RequestBody ResourceRequestDTO resourceRequestDTO) {
         Resource resource = convertToEntity(resourceRequestDTO);
         Resource createdResource = resourceService.createResource(resource);
         return new ResponseEntity<>(ResourceResponseDTO.fromEntity(createdResource), HttpStatus.CREATED);
     }
     
-    // PUT update resource
-    @PutMapping("/{id}")
+    // PUT update resource (JSON only)
+    @PutMapping(value = "/{id}", consumes = "application/json")
     public ResponseEntity<ResourceResponseDTO> updateResource(
             @PathVariable String id, 
             @Valid @RequestBody ResourceRequestDTO resourceRequestDTO) {
@@ -186,6 +186,7 @@ public class ResourceController {
         return ResponseEntity.ok(ResourceResponseDTO.fromEntity(updatedResource));
     }
     
+        
     // POST bulk create resources (Admin only)
     @PostMapping("/bulk")
     public ResponseEntity<List<ResourceResponseDTO>> bulkCreateResources(

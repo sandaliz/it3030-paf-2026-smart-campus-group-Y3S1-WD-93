@@ -11,7 +11,8 @@ const ResourceDetailPage = () => {
   const [error, setError] = useState(null);
   const [availability, setAvailability] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [similarResources, setSimilarResources] = useState([]);
+  
+    const [similarResources, setSimilarResources] = useState([]);
 
   useEffect(() => {
     fetchResourceDetails();

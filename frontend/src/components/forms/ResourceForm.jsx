@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { resourceService } from '../../services/resourceService';
 
 const ResourceForm = ({ resource, onSubmit, onCancel }) => {
@@ -140,17 +140,27 @@ const ResourceForm = ({ resource, onSubmit, onCancel }) => {
 
     setLoading(true);
     try {
+      const resourceData = {
+        name: formData.name,
+        type: formData.type,
+        capacity: formData.capacity,
+        location: formData.location,
+        status: formData.status,
+        description: formData.description,
+        amenities: formData.amenities,
+        availabilityWindows: formData.availabilityWindows
+      };
+      
       if (resource) {
-        await resourceService.updateResource(resource.id, formData);
+        await resourceService.updateResource(resource.id, resourceData);
       } else {
-        await resourceService.createResource(formData);
+        await resourceService.createResource(resourceData);
       }
+
       onSubmit();
     } catch (err) {
       console.error('Error saving resource:', err);
-      setErrors({ 
-        submit: err.response?.data?.message || 'Failed to save resource. Please try again.' 
-      });
+      setErrors(prev => ({ ...prev, submit: err.message || 'Failed to save resource' }));
     } finally {
       setLoading(false);
     }
@@ -264,6 +274,7 @@ const ResourceForm = ({ resource, onSubmit, onCancel }) => {
         </label>
       </div>
 
+      
       {/* Amenities */}
       <div className="form-control">
         <label className="label">

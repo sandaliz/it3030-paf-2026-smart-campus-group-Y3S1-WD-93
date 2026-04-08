@@ -8,10 +8,15 @@ const ResourceListPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  // State for filters
   const [filters, setFilters] = useState({
     type: '',
     status: '',
-    location: ''
+    location: '',
+    minCapacity: '',
+    amenities: ''
   });
 
   // Get card styling based on resource type
@@ -147,118 +152,137 @@ const ResourceListPage = () => {
       {/* Search and Filters */}
       <div className="card bg-base-100 shadow-lg mb-6">
         <div className="card-body">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex flex-col lg:flex-row gap-4 mb-6">
             {/* Search Bar */}
-            <div className="form-control md:col-span-2">
+            <div className="form-control flex-1">
               <label className="label">
                 <span className="label-text">Search Resources</span>
               </label>
-              <input
-                type="text"
-                placeholder="Search by name..."
-                className="input input-bordered"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            {/* Type Filter */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Type</span>
-              </label>
-              <select 
-                className="select select-bordered"
-                value={filters.type}
-                onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
-              >
-                <option value="">All Types</option>
-                <option value="LECTURE_HALL">Lecture Hall</option>
-                <option value="LAB">Lab</option>
-                <option value="MEETING_ROOM">Meeting Room</option>
-                <option value="EQUIPMENT">Equipment</option>
-                <option value="OFFICE">Office</option>
-                <option value="AUDITORIUM">Auditorium</option>
-              </select>
-            </div>
-
-            {/* Status Filter */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Status</span>
-              </label>
-              <select 
-                className="select select-bordered"
-                value={filters.status}
-                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-              >
-                <option value="">All Status</option>
-                <option value="ACTIVE">Active</option>
-                <option value="OUT_OF_SERVICE">Out of Service</option>
-                <option value="UNDER_MAINTENANCE">Under Maintenance</option>
-              </select>
-            </div>
-
-            {/* Location Filter */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Location</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Filter by location..."
-                className="input input-bordered"
-                value={filters.location}
-                onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
-              />
-            </div>
-
-            {/* Min Capacity Filter */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Min Capacity</span>
-              </label>
-              <input
-                type="number"
-                placeholder="Min capacity..."
-                className="input input-bordered"
-                value={filters.minCapacity}
-                onChange={(e) => setFilters(prev => ({ ...prev, minCapacity: e.target.value }))}
-              />
-            </div>
-
-            {/* Amenities Filter */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Amenities</span>
-              </label>
-              <input
-                type="text"
-                placeholder="Filter by amenities..."
-                className="input input-bordered"
-                value={filters.amenities}
-                onChange={(e) => setFilters(prev => ({ ...prev, amenities: e.target.value }))}
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Search by name..."
+                  className="input input-bordered flex-1"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                
+                {/* Type Filter - always visible */}
+                <select 
+                  className="select select-bordered w-40"
+                  value={filters.type}
+                  onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
+                >
+                  <option value="">All Types</option>
+                  <option value="LECTURE_HALL">Lecture Hall</option>
+                  <option value="LAB">Lab</option>
+                  <option value="MEETING_ROOM">Meeting Room</option>
+                  <option value="EQUIPMENT">Equipment</option>
+                  <option value="OFFICE">Office</option>
+                  <option value="AUDITORIUM">Auditorium</option>
+                </select>
+                
+                {/* Advanced Filters Button */}
+                <button 
+                  className="btn btn-outline"
+                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                >
+                  {showAdvancedFilters ? 'Hide' : 'Advanced'} Filters
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="flex justify-end mt-4">
-            <button 
-              className="btn btn-outline btn-sm"
-              onClick={() => {
-                setSearchTerm('');
-                setFilters({ 
-                  type: '', 
-                  status: '', 
-                  location: '', 
-                  minCapacity: '', 
-                  amenities: '' 
-                });
-              }}
-            >
-              Clear All
-            </button>
-          </div>
+          {/* Advanced Filters - Collapsible */}
+          {showAdvancedFilters && (
+            <div className="card bg-base-200/50 p-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Status Filter */}
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">Status</span>
+                  </label>
+                  <select 
+                    className="select select-bordered"
+                    value={filters.status}
+                    onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                  >
+                    <option value="">All Status</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="OUT_OF_SERVICE">Out of Service</option>
+                    <option value="UNDER_MAINTENANCE">Under Maintenance</option>
+                  </select>
+                </div>
+
+                {/* Location Filter */}
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">Location</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Filter by location..."
+                    className="input input-bordered"
+                    value={filters.location}
+                    onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
+                  />
+                </div>
+
+                {/* Min Capacity Filter */}
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">Min Capacity</span>
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Min capacity..."
+                    className="input input-bordered"
+                    value={filters.minCapacity}
+                    onChange={(e) => setFilters(prev => ({ ...prev, minCapacity: e.target.value }))}
+                  />
+                </div>
+
+                {/* Amenities Filter */}
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">Amenities</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Filter by amenities..."
+                    className="input input-bordered"
+                    value={filters.amenities}
+                    onChange={(e) => setFilters(prev => ({ ...prev, amenities: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {/* Apply and Clear buttons */}
+              <div className="flex gap-2 mt-4">
+                <button 
+                  className="btn btn-primary"
+                  onClick={() => setShowAdvancedFilters(false)}
+                >
+                  Apply Filters
+                </button>
+                <button 
+                  className="btn btn-outline"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setFilters({
+                      type: '',
+                      status: '',
+                      location: '',
+                      minCapacity: '',
+                      amenities: ''
+                    });
+                  }}
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       

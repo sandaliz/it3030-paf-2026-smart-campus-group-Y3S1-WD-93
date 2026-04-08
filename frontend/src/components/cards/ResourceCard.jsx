@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 const ResourceCard = ({ resource }) => {
+  
   // Get status badge color based on resource status
   const getStatusBadgeColor = (status) => {
     switch (status) {
