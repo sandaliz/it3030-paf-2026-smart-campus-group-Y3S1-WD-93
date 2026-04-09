@@ -1,48 +1,48 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+
+// Pages
+import LoginPage from './pages/LoginPage';
+import AuthCallback from './pages/AuthCallback';
+import Home from './pages/Home';
 
 function App() {
   const [theme, setTheme] = useState(() => {
-    const savedTheme = window.localStorage.getItem('theme')
-    return savedTheme === 'night' ? 'night' : 'nord'
-  })
+    const savedTheme = window.localStorage.getItem('theme');
+    return savedTheme === 'night' ? 'night' : 'nord';
+  });
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    window.localStorage.setItem('theme', theme)
-  }, [theme])
-
-  const toggleTheme = () => {
-    setTheme((currentTheme) => (currentTheme === 'nord' ? 'night' : 'nord'))
-  }
+    document.documentElement.setAttribute('data-theme', theme);
+    window.localStorage.setItem('theme', theme);
+  }, [theme]);
 
   return (
-    <main className="min-h-screen bg-base-200 p-6 flex items-center justify-center">
-      <div className="card w-full max-w-md bg-base-100 shadow-xl">
-        <div className="card-body items-center text-center gap-4">
-          <h1 className="card-title text-3xl">Theme Toggle Test</h1>
-          <p>
-            Current theme:{' '}
-            <span className="badge badge-primary badge-lg">{theme}</span>
-          </p>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
 
-          <button type="button" className="btn btn-primary" onClick={toggleTheme}>
-            Switch to {theme === 'nord' ? 'night' : 'nord'}
-          </button>
+          {/* Protected Routes */}
+          <Route 
+            path="/" 
+            element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            } 
+          />
 
-          <div className="divider">DaisyUI Preview</div>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <button type="button" className="btn btn-secondary btn-sm">
-              Secondary
-            </button>
-            <button type="button" className="btn btn-accent btn-sm">
-              Accent
-            </button>
-            <span className="badge badge-outline">Badge</span>
-          </div>
-        </div>
-      </div>
-    </main>
-  )
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
+  );
 }
 
-export default App
+export default App;
