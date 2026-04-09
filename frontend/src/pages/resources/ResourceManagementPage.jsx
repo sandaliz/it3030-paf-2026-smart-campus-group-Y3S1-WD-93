@@ -3,11 +3,17 @@ import { Link } from 'react-router-dom';
 import { resourceService } from '../../services/resourceService';
 import ResourceForm from '../../components/forms/ResourceForm';
 import { TableRowSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
+import { useAuth } from '../../context/AuthContext';
 
 const ResourceManagementPage = () => {
+  const { user, hasRole, hasAnyRole } = useAuth();
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Check if user can perform add/edit operations
+  const canAddEditResources = hasAnyRole(['TECHNICIAN', 'LECTURER', 'ADMIN']);
+  const canDeleteResources = hasRole('ADMIN');
   const [showForm, setShowForm] = useState(false);
   const [editingResource, setEditingResource] = useState(null);
   const [selectedResources, setSelectedResources] = useState([]);
@@ -202,12 +208,14 @@ const ResourceManagementPage = () => {
               Delete Selected ({selectedResources.length})
             </button>
           )}
-          <button 
-            className="btn btn-primary"
-            onClick={handleCreateResource}
-          >
-            Add New Resource
-          </button>
+          {canAddEditResources && (
+            <button 
+              className="btn btn-primary"
+              onClick={handleCreateResource}
+            >
+              Add New Resource
+            </button>
+          )}
         </div>
       </div>
 
@@ -370,26 +378,22 @@ const ResourceManagementPage = () => {
                       </td>
                       <td>
                         <div className="flex gap-2">
-                          <button
-                            className="btn btn-ghost btn-xs"
-                            onClick={() => handleEditResource(resource)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className={`btn btn-ghost btn-xs ${
-                              resource.status === 'ACTIVE' ? 'btn-warning' : 'btn-success'
-                            }`}
-                            onClick={() => handleStatusToggle(resource.id, resource.status)}
-                          >
-                            {resource.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-                          </button>
-                          <button
-                            className="btn btn-ghost btn-xs btn-error"
-                            onClick={() => handleDeleteResource(resource.id)}
-                          >
-                            Delete
-                          </button>
+                          {canAddEditResources && (
+                            <button
+                              className="btn btn-ghost btn-xs"
+                              onClick={() => handleEditResource(resource)}
+                            >
+                              Edit
+                            </button>
+                          )}
+                          {canDeleteResources && (
+                            <button
+                              className="btn btn-ghost btn-xs btn-error"
+                              onClick={() => handleDeleteResource(resource.id)}
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
