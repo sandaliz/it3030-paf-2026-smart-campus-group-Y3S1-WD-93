@@ -2,13 +2,52 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { resourceService } from '../../services/resourceService';
 import { CardSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
+import { useAuth } from '../../context/AuthContext';
 
 const ResourceListPage = () => {
+  const { user, hasRole, hasAnyRole } = useAuth();
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  // Check if user can book resources
+  const canBookResources = hasAnyRole(['STUDENT', 'LECTURER', 'STAFF', 'ADMIN']);
+  
+  // Check if resource is currently available
+  const isResourceAvailable = (resource) => {
+    if (resource.status !== 'ACTIVE') {
+      return false;
+    }
+    
+    if (!resource.availabilityWindows || resource.availabilityWindows.length === 0) {
+      return true; // If no availability windows set, assume always available
+    }
+    
+    const now = new Date();
+    const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+    const currentTime = now.toTimeString('en-US', { hour12: false }).slice(0, 5); // HH:MM format
+    
+    return resource.availabilityWindows.some(window => {
+      return window.dayOfWeek === currentDay && 
+             window.available === true &&
+             currentTime >= window.startTime && 
+             currentTime <= window.endTime;
+    });
+  };
+  
+  // Handle booking
+  const handleBookResource = (resource) => {
+    if (!isResourceAvailable(resource)) {
+      alert('This resource is not available at the current time. Please check the availability schedule.');
+      return;
+    }
+    
+    // For now, just navigate to resource details with booking intent
+    // In a full implementation, this would open a booking modal/form
+    window.location.href = `/resources/${resource.id}?booking=true`;
+  };
 
   // State for filters
   const [filters, setFilters] = useState({
@@ -327,13 +366,21 @@ const ResourceListPage = () => {
                   </div>
                 </div>
                 
-                <div className="card-actions justify-end">
+                <div className="card-actions justify-end gap-2">
                   <Link 
                     to={`/resources/${resource.id}`} 
-                    className="btn btn-sm"
+                    className="btn btn-sm btn-outline"
                   >
                     View Details
                   </Link>
+                  {canBookResources && resource.status === 'ACTIVE' && (
+                    <button 
+                      onClick={() => handleBookResource(resource)}
+                      className="btn btn-sm btn-primary"
+                    >
+                      Book Now
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
