@@ -14,6 +14,8 @@ import Home from './pages/Home';
 import ResourceDetailPage from './pages/resources/ResourceDetailPage'
 import ResourceManagementPage from './pages/resources/ResourceManagementPage'
 import ResourceListPage from './pages/resources/ResourceListPage'
+import BookingPage from './pages/bookings/BookingPage'
+import BookingManagementPage from './pages/bookings/BookingManagementPage'
 
 function App() {
   const [theme, setTheme] = useState(() => {
@@ -72,6 +74,22 @@ function App() {
                 element={
                   <ProtectedRoute requiredRoles={['ADMIN']}>
                     <ResourceManagementPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/bookings" 
+                element={
+                  <ProtectedRoute>
+                    <BookingPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/bookings" 
+                element={
+                  <ProtectedRoute requiredRoles={['ADMIN']}>
+                    <BookingManagementPage />
                   </ProtectedRoute>
                 } 
               />
