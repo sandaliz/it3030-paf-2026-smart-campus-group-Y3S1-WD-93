@@ -13,8 +13,8 @@ import com.sliit.uniops.service.ticket.NotificationService;
 
 import lombok.RequiredArgsConstructor;
 
-@RestController
-@RequestMapping("/api/notifications")
+@RestController("ticketNotificationController")
+@RequestMapping("/api/tickets/notifications")
 @RequiredArgsConstructor
 public class NotificationController {
      private final NotificationService notificationService;

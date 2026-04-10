@@ -56,14 +56,14 @@ public class AttachmentService {
             String base64Content = Base64.getEncoder().encodeToString(fileBytes);
             
             // Create attachment
-            AttachmentModel attachment = new AttachmentModel(
-                ticketId,
-                file.getContentType(),
-                file.getSize(),
-                base64Content,
-                userId,
-                userName
-            );
+            AttachmentModel attachment = new AttachmentModel();
+            attachment.setTicketId(ticketId);
+            attachment.setFileType(file.getContentType());
+            attachment.setFileSize(file.getSize());
+            attachment.setBase64Content(base64Content);
+            attachment.setUploadedBy(userId);
+            attachment.setUploadedByName(userName);
+            attachment.setFileName(file.getOriginalFilename());
             
             AttachmentModel savedAttachment = attachmentRepository.save(attachment);
             
@@ -123,15 +123,14 @@ public class AttachmentService {
         }
         
         // Create attachment
-        AttachmentModel attachment = new AttachmentModel(
-            ticketId,
-            request.getFileName(),
-            request.getFileType(),
-            request.getFileSize(),
-            base64Content,
-            userId,
-            userName
-        );
+        AttachmentModel attachment = new AttachmentModel();
+        attachment.setTicketId(ticketId);
+        attachment.setFileName(request.getFileName());
+        attachment.setFileType(request.getFileType());
+        attachment.setFileSize(request.getFileSize());
+        attachment.setBase64Content(base64Content);
+        attachment.setUploadedBy(userId);
+        attachment.setUploadedByName(userName);
         
         AttachmentModel savedAttachment = attachmentRepository.save(attachment);
         
@@ -186,14 +185,14 @@ public class AttachmentService {
     }
     
     public AttachmentResponseDTO getAttachment(String attachmentId) {
-        Attachment attachment = attachmentRepository.findById(attachmentId)
+        AttachmentModel attachment = attachmentRepository.findById(attachmentId)
             .orElseThrow(() -> new RuntimeException("Attachment not found with ID: " + attachmentId));
         
         return convertToResponseDTO(attachment);
     }
     
     public String getBase64Content(String attachmentId) {
-        Attachment attachment = attachmentRepository.findById(attachmentId)
+        AttachmentModel attachment = attachmentRepository.findById(attachmentId)
             .orElseThrow(() -> new RuntimeException("Attachment not found with ID: " + attachmentId));
         
         // Add data URL prefix for browser display
@@ -236,23 +235,19 @@ public class AttachmentService {
         }
     }
     
-    private AttachmentResponseDTO convertToResponseDTO(Attachment attachment) {
-        AttachmentResponseDTO dto = new AttachmentResponseDTO();
-        dto.setId(attachment.getId());
-        dto.setTicketId(attachment.getTicketId());
-        dto.setFileName(attachment.getFileName());
-        dto.setOriginalFileName(attachment.getOriginalFileName());
-        dto.setFileType(attachment.getFileType());
-        dto.setFileSize(attachment.getFileSize());
-        dto.setUploadedBy(attachment.getUploadedBy());
-        dto.setUploadedByName(attachment.getUploadedByName());
-        dto.setUploadedAt(attachment.getUploadedAt());
-        
-        // Return Base64 with data URL prefix for easy display
-        if (attachment.getBase64Content() != null && !attachment.isDeleted()) {
-            dto.setBase64Content("data:" + attachment.getFileType() + ";base64," + attachment.getBase64Content());
-        }
-        
-        return dto;
+    private AttachmentResponseDTO convertToResponseDTO(AttachmentModel attachment) {
+        return AttachmentResponseDTO.builder()
+            .id(attachment.getId())
+            .ticketId(attachment.getTicketId())
+            .fileName(attachment.getFileName())
+            .fileType(attachment.getFileType())
+            .fileSize(attachment.getFileSize())
+            .uploadedBy(attachment.getUploadedBy())
+            .uploadedByName(attachment.getUploadedByName())
+            .uploadedAt(attachment.getUploadedAt())
+            .base64Content(attachment.getBase64Content() != null && !attachment.isDeleted() 
+                ? "data:" + attachment.getFileType() + ";base64," + attachment.getBase64Content() 
+                : null)
+            .build();
     }
 }

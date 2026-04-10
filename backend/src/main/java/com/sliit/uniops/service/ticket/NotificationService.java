@@ -13,7 +13,7 @@ import com.sliit.uniops.model.ticket.CommentModel;
 import com.sliit.uniops.model.ticket.NotificationModel;
 import com.sliit.uniops.repository.ticket.NotificationRepository;
 
-@Service
+@Service("ticketNotificationService")
 @RequiredArgsConstructor
 @Slf4j
 public class NotificationService {

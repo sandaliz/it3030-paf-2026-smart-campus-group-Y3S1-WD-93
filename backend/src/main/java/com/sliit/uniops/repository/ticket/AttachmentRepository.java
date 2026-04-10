@@ -4,7 +4,6 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
-import com.nimbusds.openid.connect.sdk.assurance.evidences.attachment.Attachment;
 import com.sliit.uniops.model.ticket.AttachmentModel;
 
 import java.util.List;
@@ -13,7 +12,7 @@ import java.util.List;
 public interface AttachmentRepository extends MongoRepository<AttachmentModel, String> {
 
      @Query("{'ticketId': ?0, 'isDeleted': false}")
-    List<Attachment> findByTicketIdAndIsDeletedFalse(String ticketId);
+    List<AttachmentModel> findByTicketIdAndIsDeletedFalse(String ticketId);
     
     long countByTicketId(String ticketId);
     

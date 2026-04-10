@@ -20,7 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import static com.sliit.uniops.util.TicketConstants.*;
+import com.sliit.uniops.util.enums.TicketCategory;
+import com.sliit.uniops.util.enums.TicketPriority;
+import com.sliit.uniops.util.enums.TicketStatus;
 
 @Service
 @RequiredArgsConstructor
@@ -53,9 +55,9 @@ public class TicketService {
         TicketModel ticket = new TicketModel();
         ticket.setTitle(request.getTitle());
         ticket.setDescription(request.getDescription());
-        ticket.setCategory(request.getCategory());
-        ticket.setPriority(request.getPriority());
-        ticket.setStatus(STATUS_OPEN);
+        ticket.setCategory(TicketCategory.valueOf(request.getCategory()));
+        ticket.setPriority(TicketPriority.valueOf(request.getPriority()));
+        ticket.setStatus(TicketStatus.OPEN);
         ticket.setLocation(request.getLocation());
         ticket.setResourceId(request.getResourceId());
         ticket.setCreatedBy(userId);
@@ -75,7 +77,7 @@ public class TicketService {
 
                 request.getAttachments().forEach(file -> {
                     try {
-                        String id = attachmentService.uploadAttachment(file,ticketId, userId);
+                        String id = attachmentService.uploadAttachment(file, ticketId, userId, "User").getId();
                         attachmentIds.add(id);
                     } catch (Exception e) {
                         throw new RuntimeException("File upload failed");
@@ -133,34 +135,36 @@ public class TicketService {
             throw new IllegalArgumentException("Invalid status");
         }
 
-        if (!canTransitionTo(ticket.getStatus(), newStatus)) {
+        TicketStatus newStatusEnum = TicketStatus.valueOf(newStatus);
+        
+        if (!ticket.getStatus().canTransitionTo(newStatusEnum)) {
             throw new InvalidTicketStatusException("Invalid status transition");
         }
 
-        String oldStatus = ticket.getStatus();
-        ticket.setStatus(newStatus);
+        TicketStatus oldStatusEnum = ticket.getStatus();
+        ticket.setStatus(newStatusEnum);
         ticket.setUpdatedAt(LocalDateTime.now());
 
-        if (STATUS_IN_PROGRESS.equals(newStatus) && ticket.getFirstResponseAt() == null) {
+        if (TicketStatus.IN_PROGRESS.equals(newStatusEnum) && ticket.getFirstResponseAt() == null) {
             ticket.setFirstResponseAt(LocalDateTime.now());
         }
 
-        if (STATUS_RESOLVED.equals(newStatus)) {
+        if (TicketStatus.RESOLVED.equals(newStatusEnum)) {
             ticket.setResolvedAt(LocalDateTime.now());
             ticket.setResolutionNotes(reason);
         }
 
-        if (STATUS_REJECTED.equals(newStatus)) {
+        if (TicketStatus.REJECTED.equals(newStatusEnum)) {
             ticket.setRejectionReason(reason);
         }
 
-        if (STATUS_CLOSED.equals(newStatus)) {
+        if (TicketStatus.CLOSED.equals(newStatusEnum)) {
             ticket.setClosedAt(LocalDateTime.now());
         }
 
         TicketModel updated = ticketRepository.save(ticket);
 
-        notificationService.notifyTicketStatusChanged(updated, oldStatus, newStatus);
+        notificationService.notifyTicketStatusChanged(updated, oldStatusEnum.name(), newStatus);
 
         return mapToResponseDTO(updated);
     }
@@ -175,8 +179,8 @@ public class TicketService {
         ticket.setAssignedTo(technicianId);
         ticket.setUpdatedAt(LocalDateTime.now());
 
-        if (STATUS_OPEN.equals(ticket.getStatus())) {
-            ticket.setStatus(STATUS_IN_PROGRESS);
+        if (TicketStatus.OPEN.equals(ticket.getStatus())) {
+            ticket.setStatus(TicketStatus.IN_PROGRESS);
         }
 
         TicketModel updated = ticketRepository.save(ticket);
@@ -217,17 +221,32 @@ dto.setCreatedAt(ticket.getCreatedAt());
         return dto;
     }
 
-    // ✅ VALIDATION METHODS
+    // VALIDATION METHODS
     private boolean isValidCategory(String category) {
-        return category != null && VALID_CATEGORIES.contains(category);
+        try {
+            TicketCategory.valueOf(category);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private boolean isValidPriority(String priority) {
-        return priority != null && VALID_PRIORITIES.contains(priority);
+        try {
+            TicketPriority.valueOf(priority);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private boolean isValidStatus(String status) {
-        return status != null && VALID_STATUSES.contains(status);
+        try {
+            TicketStatus.valueOf(status);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
 }
