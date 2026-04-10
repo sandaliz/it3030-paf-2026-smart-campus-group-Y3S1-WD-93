@@ -16,7 +16,7 @@ import com.sliit.uniops.repository.ticket.NotificationRepository;
 @Service("ticketNotificationService")
 @RequiredArgsConstructor
 @Slf4j
-public class NotificationService {
+public class TicketNotificationService {
 
     private final NotificationRepository notificationRepository;
 
@@ -32,7 +32,7 @@ public class NotificationService {
     }
 
     // ✅ Status Changed
-    public void notifyTicketStatusChanged(TicketModel ticket, String oldStatus, String newStatus) {
+    public void notifyTicketStatusChanged(TicketModel ticket, String oldStatus, String newStatus, String userId) {
 
         String message = String.format(
                 "Ticket #%s status changed from %s to %s | Title: %s",
@@ -79,7 +79,7 @@ public class NotificationService {
     }
 
     // ✅ STORE NOTIFICATION 
-    private void storeNotification(String userId, String type, String message, String ticketId) {
+    public void storeNotification(String userId, String type, String message, String ticketId) {
 
         NotificationModel notification = new NotificationModel();
 
@@ -122,5 +122,42 @@ public class NotificationService {
             notification.setRead(true);
             notificationRepository.save(notification);
         });
+    }
+
+    // ✅ User confirmed ticket resolution
+    public void notifyTicketConfirmedByUser(TicketModel ticket, String userId, String feedback) {
+        log.info("Notifying ticket confirmed by user: {}", ticket.getId());
+        
+        // Notify admin
+        NotificationModel adminNotification = new NotificationModel();
+        adminNotification.setUserId("admin");
+        adminNotification.setTitle("Ticket Resolution Confirmed by User");
+        adminNotification.setMessage(String.format(
+            "User has confirmed resolution for ticket '%s'. Feedback: %s", 
+            ticket.getTitle(), 
+            feedback != null ? feedback : "No feedback provided"
+        ));
+        adminNotification.setType("TICKET_CONFIRMED");
+        adminNotification.setTicketId(ticket.getId());
+        adminNotification.setRead(false);
+        adminNotification.setCreatedAt(LocalDateTime.now());
+        notificationRepository.save(adminNotification);
+
+        // Notify assigned technician
+        if (ticket.getAssignedTo() != null && !ticket.getAssignedTo().isEmpty()) {
+            NotificationModel technicianNotification = new NotificationModel();
+            technicianNotification.setUserId(ticket.getAssignedTo());
+            technicianNotification.setTitle("Ticket Resolution Confirmed by User");
+            technicianNotification.setMessage(String.format(
+                "User has confirmed resolution for your assigned ticket '%s'. Feedback: %s", 
+                ticket.getTitle(), 
+                feedback != null ? feedback : "No feedback provided"
+            ));
+            technicianNotification.setType("TICKET_CONFIRMED");
+            technicianNotification.setTicketId(ticket.getId());
+            technicianNotification.setRead(false);
+            technicianNotification.setCreatedAt(LocalDateTime.now());
+            notificationRepository.save(technicianNotification);
+        }
     }
 }

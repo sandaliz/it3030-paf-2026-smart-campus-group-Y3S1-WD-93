@@ -5,6 +5,7 @@ public enum TicketStatus {
     OPEN("Open"),
     IN_PROGRESS("In Progress"),
     RESOLVED("Resolved"),
+    PENDING_CONFIRMATION("Pending Confirmation"),
     CLOSED("Closed"),
     REJECTED("Rejected");
     
@@ -23,9 +24,11 @@ public enum TicketStatus {
             case OPEN:
                 return newStatus == IN_PROGRESS || newStatus == REJECTED;
             case IN_PROGRESS:
-                return newStatus == RESOLVED;
+                return newStatus == RESOLVED || newStatus == REJECTED;
             case RESOLVED:
-                return newStatus == CLOSED;
+                return newStatus == PENDING_CONFIRMATION || newStatus == CLOSED;
+            case PENDING_CONFIRMATION:
+                return newStatus == CLOSED || newStatus == IN_PROGRESS; // Allow reopening if needed
             case REJECTED:
                 return false;
             case CLOSED:
@@ -41,9 +44,11 @@ public enum TicketStatus {
             case OPEN:
                 return new TicketStatus[]{IN_PROGRESS, REJECTED};
             case IN_PROGRESS:
-                return new TicketStatus[]{RESOLVED};
+                return new TicketStatus[]{RESOLVED, REJECTED};
             case RESOLVED:
-                return new TicketStatus[]{CLOSED};
+                return new TicketStatus[]{PENDING_CONFIRMATION, CLOSED};
+            case PENDING_CONFIRMATION:
+                return new TicketStatus[]{CLOSED, IN_PROGRESS}; // Allow reopening or final closure
             default:
                 return new TicketStatus[]{};
         }

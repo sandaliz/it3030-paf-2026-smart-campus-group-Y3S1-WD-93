@@ -41,6 +41,7 @@ public class TicketModel {
     private List<String> attachmentIds = new ArrayList<>();
     private String resolutionNotes;
     private String rejectionReason;
+    private String userFeedback;
   
 
     @CreatedDate

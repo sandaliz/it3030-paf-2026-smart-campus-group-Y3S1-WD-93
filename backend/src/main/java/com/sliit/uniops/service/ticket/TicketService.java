@@ -12,11 +12,12 @@ import com.sliit.uniops.dto.request.ticket.TicketRequestDTO;
 import com.sliit.uniops.dto.response.ticket.TicketResponseDTO;
 import com.sliit.uniops.exception.ticket.InvalidTicketStatusException;
 import com.sliit.uniops.exception.ticket.TicketNotFoundException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.sliit.uniops.service.ticket.TicketNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,11 +33,11 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final CommentRepository commentRepository;
     private final AttachmentService attachmentService;
-    private final NotificationService notificationService;
+    private final TicketNotificationService notificationService;
 
     // ✅ CREATE TICKET
     @Transactional
-    public TicketResponseDTO createTicket(TicketRequestDTO request, String userId) {
+    public TicketResponseDTO createTicket(TicketRequestDTO request, String userId, String userName) {
 
         log.info("Creating ticket for user: {}", userId);
 
@@ -69,31 +70,33 @@ public class TicketService {
         TicketModel savedTicket = ticketRepository.save(ticket);
 
         // ✅ Handle attachments
-        String ticketId = savedTicket.getId(); // ✅ now effectively final
+        String ticketId = savedTicket.getId();
 
         if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
             try {
                 List<String> attachmentIds = new ArrayList<>();
 
-                request.getAttachments().forEach(file -> {
+                for (var file : request.getAttachments()) {
                     try {
-                        String id = attachmentService.uploadAttachment(file, ticketId, userId, "User").getId();
+                        String id = attachmentService.uploadAttachment(file, ticketId, userId, userName).getId();
                         attachmentIds.add(id);
                     } catch (Exception e) {
-                        throw new RuntimeException("File upload failed");
+                        log.error("Individual file upload failed", e);
+                        throw new RuntimeException("File upload failed: " + e.getMessage());
                     }
-                });
+                }
 
                 savedTicket.setAttachmentIds(attachmentIds);
                 savedTicket = ticketRepository.save(savedTicket);
 
             } catch (Exception e) {
                 log.error("Attachment upload failed", e);
+                // Continue without attachments - don't fail ticket creation
             }
         }
 
         // ✅ Send notification
-        notificationService.notifyTicketCreated(savedTicket, userId);
+        notificationService.notifyTicketCreated(savedTicket, userName);
 
         return mapToResponseDTO(savedTicket);
     }
@@ -126,7 +129,7 @@ public class TicketService {
 
     // ✅ UPDATE STATUS
     @Transactional
-    public TicketResponseDTO updateTicketStatus(String ticketId, String newStatus, String reason) {
+    public TicketResponseDTO updateTicketStatus(String ticketId, String newStatus, String reason, String userId, String userRole) {
 
         TicketModel ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
@@ -138,7 +141,9 @@ public class TicketService {
         TicketStatus newStatusEnum = TicketStatus.valueOf(newStatus);
         
         if (!ticket.getStatus().canTransitionTo(newStatusEnum)) {
-            throw new InvalidTicketStatusException("Invalid status transition");
+            throw new InvalidTicketStatusException(
+                String.format("Cannot transition from %s to %s", 
+                    ticket.getStatus().name(), newStatus));
         }
 
         TicketStatus oldStatusEnum = ticket.getStatus();
@@ -164,14 +169,14 @@ public class TicketService {
 
         TicketModel updated = ticketRepository.save(ticket);
 
-        notificationService.notifyTicketStatusChanged(updated, oldStatusEnum.name(), newStatus);
+        notificationService.notifyTicketStatusChanged(updated, oldStatusEnum.name(), newStatus, userId);
 
         return mapToResponseDTO(updated);
     }
 
     // ✅ ASSIGN TECHNICIAN
     @Transactional
-    public TicketResponseDTO assignTechnician(String ticketId, String technicianId) {
+    public TicketResponseDTO assignTechnician(String ticketId, String technicianId, String assignedBy) {
 
         TicketModel ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
@@ -184,9 +189,84 @@ public class TicketService {
         }
 
         TicketModel updated = ticketRepository.save(ticket);
+        
+        notificationService.notifyTicketAssigned(updated, technicianId, assignedBy);
 
         return mapToResponseDTO(updated);
     }
+
+    // ✅ USER CONFIRMATION - Updated for PENDING_CONFIRMATION status
+@Transactional
+public TicketResponseDTO confirmTicketResolution(String ticketId, String userId, String feedback) {
+    log.info("User {} confirming ticket resolution: {}", userId, ticketId);
+    
+    TicketModel ticket = ticketRepository.findById(ticketId)
+            .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
+    
+    // Verify user is the ticket creator
+    if (!ticket.getCreatedBy().equals(userId)) {
+        throw new AccessDeniedException("Only ticket creator can confirm resolution");
+    }
+    
+    // Verify ticket is in RESOLVED or PENDING_CONFIRMATION status
+    if (!TicketStatus.RESOLVED.equals(ticket.getStatus()) && 
+        !TicketStatus.PENDING_CONFIRMATION.equals(ticket.getStatus())) {
+        throw new InvalidTicketStatusException("Ticket must be resolved before confirmation");
+    }
+    
+    // Move to CLOSED status
+    ticket.setStatus(TicketStatus.CLOSED);
+    ticket.setClosedAt(LocalDateTime.now());
+    ticket.setUpdatedAt(LocalDateTime.now());
+    
+    // Store feedback if provided
+    if (feedback != null && !feedback.isEmpty()) {
+        ticket.setResolutionNotes(feedback);
+    }
+    
+    TicketModel updated = ticketRepository.save(ticket);
+    
+    // Send notification to admin and technician
+    notificationService.notifyTicketConfirmedByUser(updated, userId, feedback);
+    
+    return mapToResponseDTO(updated);
+}
+
+// ✅ Additional method for moving to PENDING_CONFIRMATION
+@Transactional
+public TicketResponseDTO moveToPendingConfirmation(String ticketId, String userId, String userRole) {
+    log.info("Moving ticket {} to PENDING_CONFIRMATION by user: {}", ticketId, userId);
+    
+    TicketModel ticket = ticketRepository.findById(ticketId)
+            .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
+    
+    // Only admins or assigned technician can do this
+    boolean isAuthorized = userRole.equals("ADMIN") || 
+                          (ticket.getAssignedTo() != null && ticket.getAssignedTo().equals(userId));
+    
+    if (!isAuthorized) {
+        throw new AccessDeniedException("Only admins or assigned technician can move ticket to pending confirmation");
+    }
+    
+    // Verify current status is RESOLVED
+    if (!TicketStatus.RESOLVED.equals(ticket.getStatus())) {
+        throw new InvalidTicketStatusException("Ticket must be resolved before moving to pending confirmation");
+    }
+    
+    ticket.setStatus(TicketStatus.PENDING_CONFIRMATION);
+    ticket.setUpdatedAt(LocalDateTime.now());
+    
+    TicketModel updated = ticketRepository.save(ticket);
+    
+    // Notify user that confirmation is needed
+    String message = String.format(
+        "Ticket #%s has been resolved and is pending your confirmation. Please review and confirm if the issue is fixed.",
+        ticket.getId()
+    );
+    notificationService.storeNotification(ticket.getCreatedBy(), "PENDING_CONFIRMATION", message, ticket.getId());
+    
+    return mapToResponseDTO(updated);
+}
 
     // ✅ SEARCH
     public List<TicketResponseDTO> searchTickets(String keyword) {
@@ -196,57 +276,59 @@ public class TicketService {
                 .collect(Collectors.toList());
     }
 
+    // ✅ VALIDATION METHODS
+    private boolean isValidStatus(String status) {
+        return isValidEnum(status, TicketStatus.class);
+    }
+    
+    private boolean isValidCategory(String category) {
+        return isValidEnum(category, TicketCategory.class);
+    }
+    
+    private boolean isValidPriority(String priority) {
+        return isValidEnum(priority, TicketPriority.class);
+    }
+
+    // ✅ ENUM VALIDATION HELPER
+    private boolean isValidEnum(String value, Class<? extends Enum<?>> enumClass) {
+        if (value == null) return false;
+        try {
+            for (Object enumConstant : enumClass.getEnumConstants()) {
+                if (enumConstant.toString().equals(value)) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     // ✅ MAPPER
     private TicketResponseDTO mapToResponseDTO(TicketModel ticket) {
-
-        long commentCount = commentRepository.countByTicketId(ticket.getId());
+        long commentCount = commentRepository.countByTicketIdAndIsDeletedFalse(ticket.getId());
 
         TicketResponseDTO dto = new TicketResponseDTO();
-
-dto.setId(ticket.getId());
-dto.setTitle(ticket.getTitle());
-dto.setDescription(ticket.getDescription());
-dto.setCategory(ticket.getCategory());
-dto.setPriority(ticket.getPriority());
-dto.setStatus(ticket.getStatus());
-dto.setLocation(ticket.getLocation());
-dto.setResourceId(ticket.getResourceId());
-dto.setCreatedBy(ticket.getCreatedBy());
-dto.setAssignedTo(ticket.getAssignedTo());
-dto.setAttachmentUrls(ticket.getAttachmentIds());
-dto.setResolutionNotes(ticket.getResolutionNotes());
-dto.setRejectionReason(ticket.getRejectionReason());
-dto.setCreatedAt(ticket.getCreatedAt());
-
+        dto.setId(ticket.getId());
+        dto.setTitle(ticket.getTitle());
+        dto.setDescription(ticket.getDescription());
+        dto.setCategory(ticket.getCategory());
+        dto.setPriority(ticket.getPriority());
+        dto.setStatus(ticket.getStatus());
+        dto.setLocation(ticket.getLocation());
+        dto.setResourceId(ticket.getResourceId());
+        dto.setCreatedBy(ticket.getCreatedBy());
+        dto.setAssignedTo(ticket.getAssignedTo());
+        dto.setAttachmentUrls(ticket.getAttachmentIds());
+        dto.setResolutionNotes(ticket.getResolutionNotes());
+        dto.setRejectionReason(ticket.getRejectionReason());
+        dto.setCreatedAt(ticket.getCreatedAt());
+        dto.setUpdatedAt(ticket.getUpdatedAt());
+        dto.setResolvedAt(ticket.getResolvedAt());
+        dto.setClosedAt(ticket.getClosedAt());
+        dto.setFirstResponseAt(ticket.getFirstResponseAt());
+        dto.setCommentCount(commentCount);
+        
         return dto;
     }
-
-    // VALIDATION METHODS
-    private boolean isValidCategory(String category) {
-        try {
-            TicketCategory.valueOf(category);
-            return true;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
-    private boolean isValidPriority(String priority) {
-        try {
-            TicketPriority.valueOf(priority);
-            return true;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
-    private boolean isValidStatus(String status) {
-        try {
-            TicketStatus.valueOf(status);
-            return true;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
 }
