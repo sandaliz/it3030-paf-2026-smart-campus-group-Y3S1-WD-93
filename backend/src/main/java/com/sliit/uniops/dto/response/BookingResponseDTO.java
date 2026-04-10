@@ -10,7 +10,7 @@ public class BookingResponseDTO {
     private String userId;
     private String resourceId;
     private String resourceName;
-    private String resourceType;
+    private String resourceType;  // Changed to String
     private LocalDate date;
     private LocalTime startTime;
     private LocalTime endTime;
@@ -27,11 +27,13 @@ public class BookingResponseDTO {
         dto.setUserId(booking.getUserId());
         dto.setResourceId(booking.getResourceId());
         dto.setResourceName(booking.getResourceName());
+        dto.setResourceType(booking.getResourceType());
         dto.setDate(booking.getDate());
         dto.setStartTime(booking.getStartTime());
         dto.setEndTime(booking.getEndTime());
         dto.setPurpose(booking.getPurpose());
         dto.setExpectedAttendees(booking.getExpectedAttendees());
+        dto.setStatus(booking.getStatus() != null ? booking.getStatus().name() : null);
         dto.setRejectionReason(booking.getRejectionReason());
         dto.setCreatedAt(booking.getCreatedAt());
         dto.setUpdatedAt(booking.getUpdatedAt());

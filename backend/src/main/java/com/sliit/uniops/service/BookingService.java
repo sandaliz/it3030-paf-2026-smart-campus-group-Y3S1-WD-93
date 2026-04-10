@@ -35,15 +35,26 @@ public class BookingService {
     
     // Create a new booking request with conflict checking
     public Booking createBooking(BookingRequestDTO request, String userId) {
+        System.out.println("=== CREATE BOOKING START ===");
+        System.out.println("User ID: " + userId);
+        System.out.println("Resource ID: " + request.getResourceId());
+        
         // 1. Validate resource exists and is active
         Resource resource = resourceRepository.findById(request.getResourceId())
-            .orElseThrow(() -> new ResourceNotFoundException("Resource not found with ID: " + request.getResourceId()));
+            .orElseThrow(() -> {
+                System.err.println("Resource not found: " + request.getResourceId());
+                return new ResourceNotFoundException("Resource not found with ID: " + request.getResourceId());
+            });
+        
+        System.out.println("Resource found: " + resource.getName());
+        System.out.println("Resource status: " + resource.getStatus());
         
         if (!Resource.ResourceStatus.ACTIVE.equals(resource.getStatus())) {
             throw new ResourceUnavailableException("Resource is not available for booking. Status: " + resource.getStatus());
         }
         
         // 2. Check for overlapping bookings (CORE FEATURE)
+        System.out.println("Checking for conflicts...");
         List<Booking> conflicts = bookingRepository.findConflictingBookings(
             request.getResourceId(),
             request.getDate(),
@@ -52,6 +63,7 @@ public class BookingService {
         );
         
         if (!conflicts.isEmpty()) {
+            System.out.println("Found " + conflicts.size() + " conflicts");
             throw new BookingConflictException(
                 String.format("Time slot %s to %s on %s is already booked for resource '%s'",
                     request.getStartTime(), request.getEndTime(), 
@@ -64,28 +76,35 @@ public class BookingService {
         booking.setUserId(userId);
         booking.setResourceId(request.getResourceId());
         booking.setResourceName(resource.getName());
-        booking.setResourceType(resource.getType());
+        
+        // FIXED: Convert enum to String using .name()
+        booking.setResourceType(resource.getType().name());
+        
         booking.setDate(request.getDate());
         booking.setStartTime(request.getStartTime());
         booking.setEndTime(request.getEndTime());
         booking.setPurpose(request.getPurpose());
         booking.setExpectedAttendees(request.getExpectedAttendees());
         booking.setStatus(Booking.BookingStatus.PENDING);
-        booking.setTimestamps();
+        booking.setCreatedAt(LocalDateTime.now());
+        booking.setUpdatedAt(LocalDateTime.now());
         
-        System.out.println("DEBUG: Saving booking - " + booking.toString());
-        System.out.println("DEBUG: MongoDB URI: " + System.getenv().getOrDefault("MONGO_URI", "Not set"));
+        System.out.println("Booking object created: " + booking);
+        System.out.println("Saving to MongoDB...");
+        
+        // 4. Save to database
         try {
             Booking savedBooking = bookingRepository.save(booking);
-            System.out.println("DEBUG: Saved booking with ID - " + savedBooking.getId());
-            System.out.println("DEBUG: Booking status after save: " + savedBooking.getStatus());
+            System.out.println("✅ Booking saved successfully!");
+            System.out.println("Saved booking ID: " + savedBooking.getId());
+            System.out.println("Saved booking status: " + savedBooking.getStatus());
             return savedBooking;
         } catch (Exception e) {
-            System.out.println("ERROR: Failed to save booking - " + e.getMessage());
+            System.err.println("ERROR: Failed to save booking - " + e.getMessage());
             e.printStackTrace();
-            throw e;}
+            throw new RuntimeException("Failed to save booking: " + e.getMessage(), e);
         }
-    
+    }
     // Create multiple bookings (bulk insert)
     public List<Booking> createMultipleBookings(List<BookingRequestDTO> requests, String userId) {
         return requests.stream()
@@ -237,7 +256,7 @@ public Booking updateBooking(String bookingId, BookingUpdateRequestDTO updateReq
             .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
         booking.setResourceId(updateRequest.getResourceId());
         booking.setResourceName(newResource.getName());
-        booking.setResourceType(newResource.getType());
+        booking.setResourceType(newResource.getType().name());
     }
     
     if (updateRequest.getDate() != null) {
