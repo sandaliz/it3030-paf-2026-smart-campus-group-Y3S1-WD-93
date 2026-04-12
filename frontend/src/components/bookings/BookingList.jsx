@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { bookingService } from '../../services/bookingService';
+import { googleCalendarService } from '../../services/googleCalendarService';
+import GoogleCalendarConnect from '../calendar/GoogleCalendarConnect';
 
 const BookingList = ({ userRole = 'USER' }) => {
   const [bookings, setBookings] = useState([]);
@@ -11,6 +13,17 @@ const BookingList = ({ userRole = 'USER' }) => {
     startDate: '',
     endDate: ''
   });
+  const [showCalendarSection, setShowCalendarSection] = useState(false);
+
+  useEffect(() => {
+    // Check if calendar was just connected
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('calendar') === 'connected') {
+      setTimeout(() => {
+        setShowCalendarSection(true);
+      }, 1000);
+    }
+  }, []);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -125,14 +138,25 @@ const BookingList = ({ userRole = 'USER' }) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">
           {userRole === 'ADMIN' ? 'All Bookings' : 'My Bookings'}
         </h2>
         <div className="text-sm text-gray-600">
           {bookings.length} booking{bookings.length !== 1 ? 's' : ''}
         </div>
+      </div>
+
+      {/* Google Calendar Section */}
+      <div className="mb-6">
+        <GoogleCalendarConnect 
+          onConnect={(connected) => {
+            if (connected) {
+              // Refresh bookings after calendar connection
+              loadBookings();
+            }
+          }}
+        />
       </div>
 
       {/* Error Display */}

@@ -173,4 +173,14 @@ public boolean isResourceAvailable(String resourceId, LocalDate date, LocalTime 
                 }
             });
 }
+
+/**
+ * Get resource location by resource ID
+ * @param resourceId The resource ID
+ * @return Resource location
+ */
+public String getResourceLocation(String resourceId) {
+    Resource resource = getResourceById(resourceId);
+    return resource.getLocation() != null ? resource.getLocation() : "Location not specified";
+}
 }

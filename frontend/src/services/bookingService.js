@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 // Create axios instance
 const api = axios.create({
@@ -35,8 +35,18 @@ api.interceptors.response.use(
 export const bookingService = {
   // Create a new booking
   createBooking: async (bookingData) => {
-    const response = await api.post('/api/bookings', bookingData);
-    return response.data;
+    try {
+      console.log('Creating booking with data:', bookingData);
+      const response = await api.post('/api/bookings', bookingData);
+      console.log('Booking creation response:', response);
+      return response.data;
+    } catch (error) {
+      console.error('Booking creation error:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      console.error('Error headers:', error.response?.headers);
+      throw error;
+    }
   },
 
   // Get user's bookings
