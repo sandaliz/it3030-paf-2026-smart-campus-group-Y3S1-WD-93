@@ -59,8 +59,8 @@ export const AuthProvider = ({ children }) => {
         console.log('DEBUG: getDashboardPath called, user:', user);
         
         if (!user || !user.roles || user.roles.length === 0) {
-            console.log('DEBUG: No user or roles, returning student dashboard');
-            return '/student/dashboard';
+            console.log('DEBUG: No user or roles, returning login page');
+            return '/login';
         }
         
         const roles = user.roles.map(r => r.replace('ROLE_', ''));
@@ -96,8 +96,8 @@ export const AuthProvider = ({ children }) => {
             return '/staff/dashboard';
         }
         
-        console.log('DEBUG: No matching roles found, returning student dashboard');
-        return '/student/dashboard';
+        console.log('DEBUG: No matching roles found, returning resources page as fallback');
+        return '/resources';
     };
 
     const hasRole = (role) => {

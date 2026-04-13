@@ -566,7 +566,7 @@ const ResourceManagementPage = () => {
                       />
                     </label>
                   </th>
-                  <th>Resource</th>
+                  <th className="w-140">Resource</th>
                   <th>Type</th>
                   <th>Location</th>
                   <th>Capacity</th>
