@@ -35,6 +35,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/", "/api/ping", "/actuator/health", "/oauth2/**", "/auth/**").permitAll()
                         .requestMatchers("/api/resources/**").permitAll() // Allow resources API for now
+                        // ✅ ADD THESE FOR TESTING (REMOVE LATER)
+                        .requestMatchers("/api/tickets/**").permitAll()
+                        .requestMatchers("/api/comments/**").permitAll()
+                        .requestMatchers("/api/test/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))

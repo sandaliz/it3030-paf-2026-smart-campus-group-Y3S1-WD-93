@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { resourceService } from '../../services/resourceService';
 import { CardSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
+import { FaTools } from 'react-icons/fa';
 
 const ResourceListPage = () => {
   const { user, hasRole, hasAnyRole } = useAuth();

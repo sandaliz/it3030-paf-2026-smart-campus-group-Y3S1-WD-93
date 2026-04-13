@@ -40,13 +40,89 @@ const Header = () => {
                         >
                             Resources
                         </Link>
-                        {user && user.roles && user.roles.includes('ADMIN') && (
-                            <Link 
-                                to="/admin/resources" 
-                                className={`text-lg font-medium hover:text-primary transition-colors ${isActive('/admin/resources') ? 'text-primary' : 'text-base-content/70'}`}
-                            >
-                                Admin
-                            </Link>
+                        
+                        <Link 
+                            to="/tickets" 
+                            className={`text-lg font-medium hover:text-primary transition-colors ${isActive('/tickets') ? 'text-primary' : 'text-base-content/70'}`}
+                        >
+                            Incidents
+                        </Link>
+                        
+                        {user?.roles?.includes('ADMIN') ? (
+                            <>
+                                <div className="dropdown dropdown-end">
+                                    <div tabIndex={0} role="button" className="btn btn-ghost btn-outline">
+                                        Admin Dashboard
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7 7" />
+                                        </svg>
+                                    </div>
+                                    <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 p-2 shadow bg-base-100 rounded-box w-52">
+                                        <li>
+                                            <Link to="/admin/dashboard" className="menu-item">
+                                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 10l2-2m-2 2l-2-2" />
+                                                </svg>
+                                                Dashboard Overview
+                                            </Link>
+                                        </li>
+                                        <li>
+                                            <Link to="/admin/resources" className="menu-item">
+                                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21l-7-7-7m14 0H5a2 2 0 00-2-2v14a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2z" />
+                                                </svg>
+                                                Resource Management
+                                            </Link>
+                                        </li>
+                                        <li>
+                                            <Link to="/tickets" className="menu-item">
+                                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2-2v14a2 2 0 002 2h14a2 2 0 002 2V7a2 2 0 00-2-2z" />
+                                                </svg>
+                                                Ticket List
+                                            </Link>
+                                        </li>
+                                        <li>
+                                            <Link to="/admin/analytics" className="menu-item">
+                                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H7a2 2 0 00-2-2v14a2 2 0 002 2h14a2 2 0 002 2z" />
+                                                </svg>
+                                                Ticket Analytics
+                                            </Link>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </>
+                        ) : user?.roles?.includes('TECHNICIAN') ? (
+                            <>
+                                <Link 
+                                    to="/technician/dashboard" 
+                                    className={`text-lg font-medium hover:text-primary transition-colors ${isActive('/technician/dashboard') ? 'text-primary' : 'text-base-content/70'}`}
+                                >
+                                    Technician Dashboard
+                                </Link>
+                                <Link 
+                                    to="/tickets" 
+                                    className={`text-lg font-medium hover:text-primary transition-colors ${isActive('/tickets') ? 'text-primary' : 'text-base-content/70'}`}
+                                >
+                                    My Tickets
+                                </Link>
+                            </>
+                        ) : (
+                            <>
+                                <Link 
+                                    to="/user/dashboard" 
+                                    className={`text-lg font-medium hover:text-primary transition-colors ${isActive('/user/dashboard') ? 'text-primary' : 'text-base-content/70'}`}
+                                >
+                                    User Dashboard
+                                </Link>
+                                <Link 
+                                    to="/user/tickets" 
+                                    className={`text-lg font-medium hover:text-primary transition-colors ${isActive('/user/tickets') ? 'text-primary' : 'text-base-content/70'}`}
+                                >
+                                    My Tickets
+                                </Link>
+                            </>
                         )}
                         
                         <div className="flex items-center gap-4 ml-8">
