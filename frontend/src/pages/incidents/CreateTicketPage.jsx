@@ -48,10 +48,10 @@ const CreateTicketPage = () => {
     
     if (name === 'resourceId') {
       // When user selects a resource, we store the ID
-      // The dropdown shows the name, but value is the ID
+      // The dropdown shows name, but value is the ID
       setFormData(prev => ({ ...prev, [name]: value }));
       
-      // Optional: Auto-fill location from selected resource
+      // Auto-fill location from selected resource
       const selectedResource = resources.find(r => r.id === value);
       if (selectedResource && selectedResource.location) {
         setFormData(prev => ({ 
@@ -59,6 +59,13 @@ const CreateTicketPage = () => {
           location: selectedResource.location 
         }));
       }
+    } else if (name === 'location') {
+      // When location is manually edited, clear the resource ID
+      setFormData(prev => ({ 
+        ...prev, 
+        [name]: value,
+        resourceId: '' // Clear resource ID when location is manually edited
+      }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -246,6 +253,13 @@ const CreateTicketPage = () => {
                 onChange={handleChange}
                 required
               />
+              {formData.resourceId && (
+                <label className="label">
+                  <span className="label-text-alt text-xs text-info">
+                    Auto-filled from selected resource
+                  </span>
+                </label>
+              )}
             </div>
 
             {/* Resource Selection - Shows Name, Sends ID */}

@@ -77,6 +77,10 @@ const AdminDashboard = () => {
       setShowAssignModal(false);
       setSelectedTicket(null);
       setSelectedTechnician('');
+
+      // Show success message with email notification
+      const technician = technicians.find(t => t.id === selectedTechnician);
+      alert(`Ticket #${selectedTicket.id} assigned to ${technician?.name || selectedTechnician} successfully!\n\nEmail notification has been sent to the technician.`);
       fetchTickets();
       fetchStats();
     } catch (error) {

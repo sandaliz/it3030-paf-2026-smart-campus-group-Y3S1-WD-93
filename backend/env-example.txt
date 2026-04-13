@@ -1,0 +1,47 @@
+# Email Configuration for Ticket Notifications
+# Replace these values with your actual email settings
+
+# Gmail SMTP Configuration (Example)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+EMAIL_USERNAME=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password
+
+# Alternative SMTP Configuration (if using other email provider)
+# SMTP_HOST=smtp.office365.com
+# SMTP_PORT=587
+# EMAIL_USERNAME=your-email@company.com
+# EMAIL_PASSWORD=your-password
+
+# Note: For Gmail, use an App Password instead of your regular password
+# 1. Go to Google Account settings
+# 2. Enable 2-Step Verification
+# 3. Generate App Password for this application
+# 4. Use the App Password here instead of your regular password
+
+# Database Configuration
+MONGO_URI=mongodb://localhost:27017/uniops
+
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# JWT Configuration
+JWT_SECRET=v9y$B&E)H@McQfTjWnZr4u7x!A%D*G-KaNdRgUkXp2s5v8y/B?E(H+MbQeShVmYq
+
+# CORS Configuration
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:3000
+
+# Frontend URL
+FRONTEND_URL=http://localhost:5173
+
+# File Upload Configuration
+UPLOAD_DIR=./uploads
+QR_CODE_DIR=./qr-codes
+
+# Role-based Assignments
+AUTH_ADMINS=admin@uniops.edu
+AUTH_STUDENTS=
+AUTH_LECTURERS=
+AUTH_STAFF=
+AUTH_TECHNICIANS=tech@uniops.edu
