@@ -32,6 +32,8 @@ public class TicketModel {
     private TicketStatus status;
     private String location;
     private String resourceId;
+    private String contactDetails;
+    private String preferredContactMethod;
 
     @Indexed
     private String createdBy;

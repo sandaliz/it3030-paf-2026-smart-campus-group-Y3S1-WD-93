@@ -10,6 +10,7 @@ import com.sliit.uniops.repository.ticket.TicketRepository;
 import com.sliit.uniops.repository.ticket.CommentRepository;
 import com.sliit.uniops.dto.request.ticket.TicketRequestDTO;
 import com.sliit.uniops.dto.response.ticket.TicketResponseDTO;
+import com.sliit.uniops.model.Resource;
 import com.sliit.uniops.exception.ticket.InvalidTicketStatusException;
 import com.sliit.uniops.exception.ticket.TicketNotFoundException;
 import org.springframework.security.access.AccessDeniedException;
@@ -17,6 +18,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.sliit.uniops.service.ResourceService;
 import com.sliit.uniops.service.ticket.TicketNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,25 +37,43 @@ public class TicketService {
     private final CommentRepository commentRepository;
     private final AttachmentService attachmentService;
     private final TicketNotificationService notificationService;
+    private final ResourceService resourceService;
 
-    // ✅ CREATE TICKET
+    // ✅ CREATE TICKET (FIXED)
     @Transactional
     public TicketResponseDTO createTicket(TicketRequestDTO request, String userId, String userName) {
 
         log.info("Creating ticket for user: {}", userId);
 
+        // Validate category
         if (!isValidCategory(request.getCategory())) {
             throw new IllegalArgumentException("Invalid category");
         }
 
+        // Validate priority
         if (!isValidPriority(request.getPriority())) {
             throw new IllegalArgumentException("Invalid priority");
         }
 
+        // Validate attachments count
         if (request.getAttachments() != null && request.getAttachments().size() > 3) {
             throw new IllegalArgumentException("Max 3 attachments allowed");
         }
+        
+        // Validate resource if provided
+        if (request.getResourceId() != null && !request.getResourceId().isEmpty()) {
+            try {
+                Resource resource = resourceService.getResourceById(request.getResourceId());
+                if (resource != null) {
+                    log.info("Ticket will be created for resource: {} ({})", resource.getName(), resource.getType());
+                }
+            } catch (Exception e) {
+                log.error("Resource not found: {}", request.getResourceId(), e);
+                throw new IllegalArgumentException("Invalid resource ID: " + request.getResourceId());
+            }
+        }
 
+        // Create ticket object (MOVED OUTSIDE try block)
         TicketModel ticket = new TicketModel();
         ticket.setTitle(request.getTitle());
         ticket.setDescription(request.getDescription());
@@ -60,8 +81,9 @@ public class TicketService {
         ticket.setPriority(TicketPriority.valueOf(request.getPriority()));
         ticket.setStatus(TicketStatus.OPEN);
         ticket.setLocation(request.getLocation());
-        ticket.setResourceId(request.getResourceId());
+        ticket.setResourceId(request.getResourceId()); // Can be null
         ticket.setCreatedBy(userId);
+        ticket.setCreatedByName(userName); // Make sure this field exists in TicketModel
         ticket.setAttachmentIds(new ArrayList<>());
         ticket.setCreatedAt(LocalDateTime.now());
         ticket.setUpdatedAt(LocalDateTime.now());
@@ -196,79 +218,79 @@ public class TicketService {
     }
 
     // ✅ USER CONFIRMATION - Updated for PENDING_CONFIRMATION status
-@Transactional
-public TicketResponseDTO confirmTicketResolution(String ticketId, String userId, String feedback) {
-    log.info("User {} confirming ticket resolution: {}", userId, ticketId);
-    
-    TicketModel ticket = ticketRepository.findById(ticketId)
-            .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
-    
-    // Verify user is the ticket creator
-    if (!ticket.getCreatedBy().equals(userId)) {
-        throw new AccessDeniedException("Only ticket creator can confirm resolution");
+    @Transactional
+    public TicketResponseDTO confirmTicketResolution(String ticketId, String userId, String feedback) {
+        log.info("User {} confirming ticket resolution: {}", userId, ticketId);
+        
+        TicketModel ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
+        
+        // Verify user is the ticket creator
+        if (!ticket.getCreatedBy().equals(userId)) {
+            throw new AccessDeniedException("Only ticket creator can confirm resolution");
+        }
+        
+        // Verify ticket is in RESOLVED or PENDING_CONFIRMATION status
+        if (!TicketStatus.RESOLVED.equals(ticket.getStatus()) && 
+            !TicketStatus.PENDING_CONFIRMATION.equals(ticket.getStatus())) {
+            throw new InvalidTicketStatusException("Ticket must be resolved before confirmation");
+        }
+        
+        // Move to CLOSED status
+        ticket.setStatus(TicketStatus.CLOSED);
+        ticket.setClosedAt(LocalDateTime.now());
+        ticket.setUpdatedAt(LocalDateTime.now());
+        
+        // Store feedback if provided
+        if (feedback != null && !feedback.isEmpty()) {
+            ticket.setUserFeedback(feedback); // Make sure this field exists
+        }
+        
+        TicketModel updated = ticketRepository.save(ticket);
+        
+        // Send notification to admin and technician
+        notificationService.notifyTicketConfirmedByUser(updated, userId, feedback);
+        
+        return mapToResponseDTO(updated);
     }
-    
-    // Verify ticket is in RESOLVED or PENDING_CONFIRMATION status
-    if (!TicketStatus.RESOLVED.equals(ticket.getStatus()) && 
-        !TicketStatus.PENDING_CONFIRMATION.equals(ticket.getStatus())) {
-        throw new InvalidTicketStatusException("Ticket must be resolved before confirmation");
-    }
-    
-    // Move to CLOSED status
-    ticket.setStatus(TicketStatus.CLOSED);
-    ticket.setClosedAt(LocalDateTime.now());
-    ticket.setUpdatedAt(LocalDateTime.now());
-    
-    // Store feedback if provided
-    if (feedback != null && !feedback.isEmpty()) {
-        ticket.setResolutionNotes(feedback);
-    }
-    
-    TicketModel updated = ticketRepository.save(ticket);
-    
-    // Send notification to admin and technician
-    notificationService.notifyTicketConfirmedByUser(updated, userId, feedback);
-    
-    return mapToResponseDTO(updated);
-}
 
-// ✅ Additional method for moving to PENDING_CONFIRMATION
-@Transactional
-public TicketResponseDTO moveToPendingConfirmation(String ticketId, String userId, String userRole) {
-    log.info("Moving ticket {} to PENDING_CONFIRMATION by user: {}", ticketId, userId);
-    
-    TicketModel ticket = ticketRepository.findById(ticketId)
-            .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
-    
-    // Only admins or assigned technician can do this
-    boolean isAuthorized = userRole.equals("ADMIN") || 
-                          (ticket.getAssignedTo() != null && ticket.getAssignedTo().equals(userId));
-    
-    if (!isAuthorized) {
-        throw new AccessDeniedException("Only admins or assigned technician can move ticket to pending confirmation");
+    // ✅ Additional method for moving to PENDING_CONFIRMATION
+    @Transactional
+    public TicketResponseDTO moveToPendingConfirmation(String ticketId, String userId, String userRole) {
+        log.info("Moving ticket {} to PENDING_CONFIRMATION by user: {}", ticketId, userId);
+        
+        TicketModel ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
+        
+        // Only admins or assigned technician can do this
+        boolean isAuthorized = userRole.equals("ADMIN") || 
+                              (ticket.getAssignedTo() != null && ticket.getAssignedTo().equals(userId));
+        
+        if (!isAuthorized) {
+            throw new AccessDeniedException("Only admins or assigned technician can move ticket to pending confirmation");
+        }
+        
+        // Verify current status is RESOLVED
+        if (!TicketStatus.RESOLVED.equals(ticket.getStatus())) {
+            throw new InvalidTicketStatusException("Ticket must be resolved before moving to pending confirmation");
+        }
+        
+        ticket.setStatus(TicketStatus.PENDING_CONFIRMATION);
+        ticket.setUpdatedAt(LocalDateTime.now());
+        
+        TicketModel updated = ticketRepository.save(ticket);
+        
+        // Notify user that confirmation is needed
+        String message = String.format(
+            "Ticket #%s has been resolved and is pending your confirmation. Please review and confirm if the issue is fixed.",
+            ticket.getId()
+        );
+        notificationService.storeNotification(ticket.getCreatedBy(), "PENDING_CONFIRMATION", message, ticket.getId());
+        
+        return mapToResponseDTO(updated);
     }
-    
-    // Verify current status is RESOLVED
-    if (!TicketStatus.RESOLVED.equals(ticket.getStatus())) {
-        throw new InvalidTicketStatusException("Ticket must be resolved before moving to pending confirmation");
-    }
-    
-    ticket.setStatus(TicketStatus.PENDING_CONFIRMATION);
-    ticket.setUpdatedAt(LocalDateTime.now());
-    
-    TicketModel updated = ticketRepository.save(ticket);
-    
-    // Notify user that confirmation is needed
-    String message = String.format(
-        "Ticket #%s has been resolved and is pending your confirmation. Please review and confirm if the issue is fixed.",
-        ticket.getId()
-    );
-    notificationService.storeNotification(ticket.getCreatedBy(), "PENDING_CONFIRMATION", message, ticket.getId());
-    
-    return mapToResponseDTO(updated);
-}
 
-    // ✅ SEARCH
+    // Search tickets by keyword
     public List<TicketResponseDTO> searchTickets(String keyword) {
         return ticketRepository.searchByKeyword(keyword)
                 .stream()
@@ -318,10 +340,13 @@ public TicketResponseDTO moveToPendingConfirmation(String ticketId, String userI
         dto.setLocation(ticket.getLocation());
         dto.setResourceId(ticket.getResourceId());
         dto.setCreatedBy(ticket.getCreatedBy());
+        dto.setCreatedByName(ticket.getCreatedByName()); // Add this field to DTO
         dto.setAssignedTo(ticket.getAssignedTo());
+        dto.setAssignedToName(ticket.getAssignedToName()); // Add this field to DTO
         dto.setAttachmentUrls(ticket.getAttachmentIds());
         dto.setResolutionNotes(ticket.getResolutionNotes());
         dto.setRejectionReason(ticket.getRejectionReason());
+        dto.setUserFeedback(ticket.getUserFeedback()); // Add this field to DTO
         dto.setCreatedAt(ticket.getCreatedAt());
         dto.setUpdatedAt(ticket.getUpdatedAt());
         dto.setResolvedAt(ticket.getResolvedAt());
