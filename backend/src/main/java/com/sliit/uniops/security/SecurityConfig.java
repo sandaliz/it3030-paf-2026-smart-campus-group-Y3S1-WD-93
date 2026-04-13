@@ -52,8 +52,14 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/", "/api/ping", "/actuator/health", "/api/**", "/oauth2/**", "/login/**").permitAll() // Allow all API endpoints and OAuth endpoints
-                        .anyRequest().permitAll()) // Allow all requests for now
+                        .requestMatchers("/", "/api/ping", "/actuator/health", "/api/auth/**", "/oauth2/**", "/login/**", "/api/debug/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/technician/**").hasRole("TECHNICIAN")
+                        .requestMatchers("/api/lecturer/**").hasRole("LECTURER")
+                        .requestMatchers("/api/resource/**").hasAnyRole("RESOURCE_MANAGER", "ADMIN")
+                        .requestMatchers("/api/booking/**").hasAnyRole("BOOKING_MANAGER", "ADMIN")
+                        .requestMatchers("/api/notifications/**").authenticated()
+                        .anyRequest().authenticated())
                 // Enable OAuth2 login with proper endpoints
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
