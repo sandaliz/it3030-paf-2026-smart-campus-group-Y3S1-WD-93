@@ -16,7 +16,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -135,8 +134,8 @@ public class BookingController {
             @AuthenticationPrincipal UserPrincipal currentUser) {
         Booking booking = bookingService.partialUpdateBooking(
             bookingId, 
-            updateRequest,
-            currentUser.getId(),
+            updateRequest, 
+            currentUser.getId(), 
             currentUser.isAdmin()
         );
         return ResponseEntity.ok(BookingResponseDTO.fromBooking(booking));
@@ -285,106 +284,7 @@ public class BookingController {
         return ResponseEntity.ok(availableResources);
     }
     
-    // ===== NEW: Get booking statistics (admin only) =====
-    @GetMapping("/admin/stats")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> getBookingStatistics() {
-        return ResponseEntity.ok(bookingService.getBookingStatistics());
-    }
+   
+      
     
-    // ===== NEW: Get bookings with pagination and advanced filtering (admin only) =====
-    @GetMapping("/admin/paginated")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> getPaginatedBookings(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String resourceId,
-            @RequestParam(required = false) String userId,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
-        
-        Map<String, Object> result = bookingService.getPaginatedBookings(
-            page, size, sortBy, sortDir, status, resourceId, userId, startDate, endDate);
-        return ResponseEntity.ok(result);
-    }
-    
-    // ===== NEW: Bulk update booking status (admin only) =====
-    @PatchMapping("/admin/bulk-status")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> bulkUpdateBookingStatus(
-            @RequestBody Map<String, Object> request,
-            @AuthenticationPrincipal UserPrincipal currentUser) {
-        
-        @SuppressWarnings("unchecked")
-        List<String> bookingIds = (List<String>) request.get("bookingIds");
-        String status = (String) request.get("status");
-        String reason = (String) request.get("reason");
-        
-        Map<String, Object> result = bookingService.bulkUpdateBookingStatus(
-            bookingIds, status, reason, currentUser.getId());
-        return ResponseEntity.ok(result);
-    }
-    
-    // ===== NEW: Get booking conflicts report (admin only) =====
-    @GetMapping("/admin/conflicts")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<Map<String, Object>>> getBookingConflicts(
-            @RequestParam String startDate,
-            @RequestParam String endDate) {
-        List<Map<String, Object>> conflicts = bookingService.getBookingConflicts(startDate, endDate);
-        return ResponseEntity.ok(conflicts);
-    }
-    
-    // ===== NEW: Export bookings to CSV (admin only) =====
-    @GetMapping("/admin/export")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<byte[]> exportBookings(
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) throws Exception {
-        
-        byte[] csvData = bookingService.exportBookingsToCsv(status, startDate, endDate);
-        
-        return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=bookings.csv")
-                .header("Content-Type", "text/csv")
-                .body(csvData);
-    }
-    
-    // ===== NEW: Get resource utilization report (admin only) =====
-    @GetMapping("/admin/utilization")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> getResourceUtilization(
-            @RequestParam String startDate,
-            @RequestParam String endDate) {
-        Map<String, Object> utilization = bookingService.getResourceUtilizationReport(startDate, endDate);
-        return ResponseEntity.ok(utilization);
-    }
-    
-    // ===== NEW: Get user booking history (admin only) =====
-    @GetMapping("/admin/user/{userId}/history")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> getUserBookingHistory(
-            @PathVariable String userId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        
-        Map<String, Object> history = bookingService.getUserBookingHistory(userId, page, size);
-        return ResponseEntity.ok(history);
-    }
-    
-    // ===== NEW: Recurring booking management (admin only) =====
-    @PostMapping("/admin/recurring")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, Object>> createRecurringBookings(
-            @RequestBody Map<String, Object> request,
-            @AuthenticationPrincipal UserPrincipal currentUser) {
-        
-        Map<String, Object> result = bookingService.createRecurringBookings(
-            request, currentUser.getId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(result);
-    }
 }

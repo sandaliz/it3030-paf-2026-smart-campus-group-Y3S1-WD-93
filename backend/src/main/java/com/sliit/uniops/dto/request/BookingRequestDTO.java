@@ -27,11 +27,18 @@ public class BookingRequestDTO {
     @Max(value = 1000, message = "Expected attendees cannot exceed 1000")
     private Integer expectedAttendees;
     
-    // Custom validation
+    // Custom validation: end time must be after start time
     @AssertTrue(message = "End time must be after start time")
     public boolean isEndTimeAfterStartTime() {
         if (startTime == null || endTime == null) return true;
         return endTime.isAfter(startTime);
+    }
+    
+    // Custom validation: minimum booking duration (30 minutes)
+    @AssertTrue(message = "Booking duration must be at least 30 minutes")
+    public boolean isValidDuration() {
+        if (startTime == null || endTime == null) return true;
+        return java.time.Duration.between(startTime, endTime).toMinutes() >= 30;
     }
     
     // Getters and Setters

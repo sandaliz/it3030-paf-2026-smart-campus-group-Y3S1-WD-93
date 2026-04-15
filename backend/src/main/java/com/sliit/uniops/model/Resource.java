@@ -1,78 +1,49 @@
 package com.sliit.uniops.model;
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.index.Indexed;
-import jakarta.validation.constraints.*;
-import java.time.LocalDateTime;
-import java.util.List;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 @Document(collection = "resources")
 public class Resource {
-    
     @Id
     private String id;
-    
-    @NotBlank(message = "Resource name is required")
-    @Indexed(unique = true)
     private String name;
-    
-    @NotNull(message = "Resource type is required")
-    private ResourceType type;
-    
-    @Min(value = 1, message = "Capacity must be at least 1")
-    private int capacity;
-    
-    @NotBlank(message = "Location is required")
+    private String type; // LECTURE_HALL, LAB, MEETING_ROOM, EQUIPMENT
+    private Integer capacity;
     private String location;
-    
-    private List<AvailabilityWindow> availabilityWindows;
-    
-    @NotNull(message = "Status is required")
-    private ResourceStatus status;
-    
+    private String status; // ACTIVE, OUT_OF_SERVICE
     private String description;
     
-    private List<String> amenities;
+    public Resource() {}
     
-    @PastOrPresent
-    private LocalDateTime createdAt;
-    
-    @PastOrPresent
-    private LocalDateTime updatedAt;
-    
-    // Enum for Resource Type
-    public enum ResourceType {
-        LECTURE_HALL, LAB, MEETING_ROOM, EQUIPMENT, OFFICE, AUDITORIUM
+    public Resource(String id, String name, String type, Integer capacity, String location, String status) {
+        this.id = id;
+        this.name = name;
+        this.type = type;
+        this.capacity = capacity;
+        this.location = location;
+        this.status = status;
     }
     
-    // Enum for Resource Status
-    public enum ResourceStatus {
-        ACTIVE, OUT_OF_SERVICE, UNDER_MAINTENANCE
-    }
+    // Getters and Setters
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
     
-    // Inner class for availability windows
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class AvailabilityWindow {
-        private String dayOfWeek; // MONDAY, TUESDAY, etc.
-        private String startTime; // "09:00"
-        private String endTime;   // "17:00"
-        private boolean available;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
     
-    // Set timestamps before persisting
-    public void setTimestamps() {
-        if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
-        }
-        this.updatedAt = LocalDateTime.now();
-    }
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
+    
+    public Integer getCapacity() { return capacity; }
+    public void setCapacity(Integer capacity) { this.capacity = capacity; }
+    
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
+    
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 }

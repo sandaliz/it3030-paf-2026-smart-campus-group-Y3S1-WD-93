@@ -5,75 +5,49 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class UserPrincipal implements UserDetails {
-    
     private String id;
     private String email;
-    private String password;
-    private Collection<? extends GrantedAuthority> authorities;
+    private String name;
+    private String role;
     
-    public UserPrincipal(String id, String email, String password, Collection<? extends GrantedAuthority> authorities) {
+    public UserPrincipal(String id, String email, String name, String role) {
         this.id = id;
         this.email = email;
-        this.password = password;
-        this.authorities = authorities;
+        this.name = name;
+        this.role = role;
     }
     
-    public static UserPrincipal create(String id, String email, String password, List<String> roles) {
-        List<GrantedAuthority> authorities = roles.stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-                .collect(Collectors.toList());
-        
-        return new UserPrincipal(id, email, password, authorities);
-    }
+    public String getId() { return id; }
+    public String getEmail() { return email; }
+    public String getName() { return name; }
+    public String getRole() { return role; }
     
-    public String getId() {
-        return id;
-    }
-    
-    public String getEmail() {
-        return email;
-    }
-    
-    @Override
-    public String getUsername() {
-        return email;
-    }
-    
-    @Override
-    public String getPassword() {
-        return password;
+    public boolean isAdmin() { 
+        return "ADMIN".equalsIgnoreCase(role); 
     }
     
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return authorities;
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role));
     }
     
     @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
+    public String getPassword() { return null; }
     
     @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
+    public String getUsername() { return email; }
     
     @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
+    public boolean isAccountNonExpired() { return true; }
     
     @Override
-    public boolean isEnabled() {
-        return true;
-    }
+    public boolean isAccountNonLocked() { return true; }
     
-    public boolean isAdmin() {
-        return authorities.stream()
-                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
-    }
+    @Override
+    public boolean isCredentialsNonExpired() { return true; }
+    
+    @Override
+    public boolean isEnabled() { return true; }
 }

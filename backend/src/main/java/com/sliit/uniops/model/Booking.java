@@ -23,7 +23,7 @@ public class Booking {
     private String resourceId;
     
     private String resourceName;
-    private String resourceType;  // Changed from Resource.ResourceType to String for easier storage
+    private String resourceType;
     
     @Indexed
     private LocalDate date;
@@ -34,36 +34,20 @@ public class Booking {
     private String purpose;
     private Integer expectedAttendees;
     
-    private BookingStatus status;
+    private String status;  // PENDING, APPROVED, REJECTED, CANCELLED
     private String rejectionReason;
     
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-
-    private String googleCalendarEventId;  // Store Google Calendar event ID
-    private boolean calendarSynced;
-    private LocalDateTime lastCalendarSync;
-    
-    // Enum for Booking Status
-    public enum BookingStatus {
-        PENDING, APPROVED, REJECTED, CANCELLED
-    }
     
     // Constructor
     public Booking() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        this.status = BookingStatus.PENDING;
+        this.status = "PENDING";
     }
     
-    // Set timestamps before persisting
-    public void setTimestamps() {
-        if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
-        }
-        this.updatedAt = LocalDateTime.now();
-    }
-// Getters and Setters
+    // Getters and Setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
     
@@ -94,8 +78,8 @@ public class Booking {
     public Integer getExpectedAttendees() { return expectedAttendees; }
     public void setExpectedAttendees(Integer expectedAttendees) { this.expectedAttendees = expectedAttendees; }
     
-    public BookingStatus getStatus() { return status; }
-    public void setStatus(BookingStatus status) { 
+    public String getStatus() { return status; }
+    public void setStatus(String status) { 
         this.status = status;
         this.updatedAt = LocalDateTime.now();
     }
@@ -108,35 +92,4 @@ public class Booking {
     
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-    
-    // Google Calendar related getters and setters
-    public String getGoogleCalendarEventId() { return googleCalendarEventId; }
-    public void setGoogleCalendarEventId(String googleCalendarEventId) { 
-        this.googleCalendarEventId = googleCalendarEventId; 
-    }
-    
-    public boolean isCalendarSynced() { return calendarSynced; }
-    public void setCalendarSynced(boolean calendarSynced) { 
-        this.calendarSynced = calendarSynced; 
-    }
-    
-    public LocalDateTime getLastCalendarSync() { return lastCalendarSync; }
-    public void setLastCalendarSync(LocalDateTime lastCalendarSync) { 
-        this.lastCalendarSync = lastCalendarSync; 
-    }
-    
-    @Override
-    public String toString() {
-        return "Booking{" +
-                "id='" + id + '\'' +
-                ", userId='" + userId + '\'' +
-                ", resourceId='" + resourceId + '\'' +
-                ", resourceName='" + resourceName + '\'' +
-                ", date=" + date +
-                ", startTime=" + startTime +
-                ", endTime=" + endTime +
-                ", purpose='" + purpose + '\'' +
-                ", status=" + status +
-                '}';
-    }
 }

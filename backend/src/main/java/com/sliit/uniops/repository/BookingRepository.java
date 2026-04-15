@@ -13,8 +13,8 @@ public interface BookingRepository extends MongoRepository<Booking, String> {
     // Find bookings by user
     List<Booking> findByUserId(String userId);
     
-    // Find bookings by status (for admin) - using enum
-    List<Booking> findByStatus(Booking.BookingStatus status);
+    // Find bookings by status (for admin)
+    List<Booking> findByStatus(String status);
     
     // Find bookings by resource
     List<Booking> findByResourceId(String resourceId);
@@ -30,19 +30,19 @@ public interface BookingRepository extends MongoRepository<Booking, String> {
                                           LocalTime startTime, LocalTime endTime);
     
     // Find pending bookings for a specific resource
-    List<Booking> findByResourceIdAndStatus(String resourceId, Booking.BookingStatus status);
+    List<Booking> findByResourceIdAndStatus(String resourceId, String status);
     
     // Find bookings by date range
     List<Booking> findByDateBetween(LocalDate startDate, LocalDate endDate);
     
-    // Count bookings by status (for dashboard) - using enum
-    long countByStatus(Booking.BookingStatus status);
+    // Count bookings by status (for dashboard)
+    long countByStatus(String status);
 
     // Additional query methods for filtering
-    List<Booking> findByStatusAndResourceIdAndUserId(Booking.BookingStatus status, String resourceId, String userId);
-    List<Booking> findByUserIdAndStatus(String userId, Booking.BookingStatus status);
-    List<Booking> findByResourceIdAndUserId(String resourceId, String userId);
+List<Booking> findByStatusAndResourceIdAndUserId(String status, String resourceId, String userId);
+List<Booking> findByUserIdAndStatus(String userId, String status);
+List<Booking> findByResourceIdAndUserId(String resourceId, String userId);
 
-    // Find bookings by resource and date
+// Find bookings by resource and date
     List<Booking> findByResourceIdAndDate(String resourceId, LocalDate date);
 }
