@@ -19,13 +19,31 @@ public class AttachmentModel {
     private String ticketId;
     private String fileName;
     private String fileType;
+
+    @org.springframework.data.mongodb.core.mapping.Field("base64Content")
     private String base64Content;
     private String fileUrl;
+    private long fileSize;
+    private String uploadedBy;
+    private String uploadedByName;
 
     @CreatedDate
     private LocalDateTime uploadedAt;
-    private String uploadedBy;
+    private boolean isDeleted;
+  
     
-     
-
+      // Constructor without id (for new attachments)
+    public AttachmentModel(String ticketId, String fileType, 
+                      long fileSize, String base64Content, String uploadedBy, String uploadedByName) {
+        this.ticketId = ticketId;
+        this.fileType = fileType;
+        this.fileSize = fileSize;
+        this.base64Content = base64Content;
+        this.uploadedBy = uploadedBy;
+        this.uploadedByName = uploadedByName;
+        this.uploadedAt = LocalDateTime.now();
+        this.isDeleted = false;
+        
+        
+    }
 }

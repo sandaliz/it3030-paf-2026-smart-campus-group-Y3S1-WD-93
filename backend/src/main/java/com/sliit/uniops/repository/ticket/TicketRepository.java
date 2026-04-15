@@ -9,6 +9,8 @@ import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import com.sliit.uniops.model.ticket.TicketModel;
+import com.sliit.uniops.util.enums.TicketStatus;
+
 import org.springframework.data.domain.Pageable;
 
 
@@ -23,21 +25,23 @@ public interface TicketRepository extends MongoRepository<TicketModel, String> {
     Page<TicketModel> findByAssignedTo(String technicianId, Pageable pageable);
 
     // Find by status
-    List<TicketModel> findByStatus(String status);
+      Page<TicketModel> findByStatus(TicketStatus status, Pageable pageable);
+    List<TicketModel> findByStatus(TicketStatus status);
 
-    // Find active tickets for technician
-    @Query("{'assignedTo': ?0, 'status': {$in: [?1, ?2]}}")
-    List<TicketModel> findActiveTicketsByTechnician(String technicianId, String status1, String status2);
+     // Find open tickets (for dashboard)
+    @Query("{'status': {$in: ['OPEN', 'IN_PROGRESS']}, 'isDeleted': false}")
+    List<TicketModel> findOpenTickets();
 
     // Count by status
-    long countByStatus(String status);
+    long countByStatus(TicketStatus status);
 
     // Find by date range
     List<TicketModel> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 
     // Search by title or description (text search)
     @Query("{'$or': [{'title': {$regex: ?0, $options: 'i'}}, " +
-           "{'description': {$regex: ?0, $options: 'i'}}]}")
+           "{'description': {$regex: ?0, $options: 'i'}}], 'isDeleted': false}")
+    
     List<TicketModel> searchByKeyword(String keyword);
 
     // Find by category and status
@@ -46,4 +50,7 @@ public interface TicketRepository extends MongoRepository<TicketModel, String> {
     // Count tickets by assignee
     long countByAssignedToAndStatusIn(String technicianId, List<String> statuses);
 
+   // Get statistics
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+    long countByStatusAndCreatedAtBetween(TicketStatus status, LocalDateTime start, LocalDateTime end);
 }

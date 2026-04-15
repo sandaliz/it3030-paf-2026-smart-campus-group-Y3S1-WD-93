@@ -12,6 +12,8 @@ public interface CommentRepository extends MongoRepository<CommentModel, String>
     List<CommentModel> findByTicketId(String ticketId);
     Page<CommentModel> findByTicketId(String ticketId, Pageable pageable);
 
+    List<CommentModel> findByTicketIdAndIsInternalFalse(String ticketId);
+
     List<CommentModel> findByAuthorId(String authorId);
 
     long countByTicketId(String ticketId);
