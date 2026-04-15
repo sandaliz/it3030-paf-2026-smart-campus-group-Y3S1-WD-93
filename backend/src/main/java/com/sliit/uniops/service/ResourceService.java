@@ -44,24 +44,30 @@ public class ResourceService {
         resourceRepository.deleteById(id);
     }
     
-    public List<Resource> searchResources(String status, String type, Integer minCapacity) {
+    public List<Resource> searchResources(String status, String type, Integer minCapacity, String location) {
         List<Resource> resources = resourceRepository.findAll();
         
         if (status != null && !status.isEmpty()) {
             resources = resources.stream()
-                .filter(r -> r.getStatus().toString().equals(status))
+                .filter(r -> r.getStatus().toString().equalsIgnoreCase(status))
                 .toList();
         }
         
         if (type != null && !type.isEmpty()) {
             resources = resources.stream()
-                .filter(r -> r.getType().toString().equals(type))
+                .filter(r -> r.getType().toString().equalsIgnoreCase(type))
                 .toList();
         }
         
         if (minCapacity != null) {
             resources = resources.stream()
                 .filter(r -> r.getCapacity() >= minCapacity)
+                .toList();
+        }
+        
+        if (location != null && !location.isEmpty()) {
+            resources = resources.stream()
+                .filter(r -> r.getLocation() != null && r.getLocation().toLowerCase().contains(location.toLowerCase()))
                 .toList();
         }
         

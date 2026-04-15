@@ -9,6 +9,7 @@ const ResourceManagementPage = () => {
   const { user, hasRole, hasAnyRole } = useAuth();
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
@@ -24,6 +25,7 @@ const ResourceManagementPage = () => {
     location: '',
     minCapacity: ''
   });
+  const [debouncedLocation, setDebouncedLocation] = useState('');
   const [pagination, setPagination] = useState({
     page: 0,
     size: 10,
@@ -33,17 +35,36 @@ const ResourceManagementPage = () => {
 
   useEffect(() => {
     fetchResources();
-  }, [filters, pagination.page]);
+  }, [filters.type, filters.status, filters.minCapacity, debouncedLocation, pagination.page]);
+
+  // Debounce location filter
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedLocation(filters.location);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [filters.location]);
 
   const fetchResources = async () => {
     try {
-      setLoading(true);
+      // Use searching state for filter operations, loading for initial load
+      const hasFilters = Object.values(filters).some(value => value !== '');
+      if (hasFilters) {
+        setSearching(true);
+      } else {
+        setLoading(true);
+      }
+      
       let data;
       
       // Use search if filters are applied, otherwise get paginated results
-      const hasFilters = Object.values(filters).some(value => value !== '');
       if (hasFilters) {
-        data = await resourceService.searchResources(filters);
+        const searchFilters = {
+          ...filters,
+          location: debouncedLocation
+        };
+        data = await resourceService.searchResources(searchFilters);
         // Convert to paginated format
         data = {
           content: data,
@@ -73,6 +94,7 @@ const ResourceManagementPage = () => {
       console.error('Error fetching resources:', err);
     } finally {
       setLoading(false);
+      setSearching(false);
     }
   };
 
@@ -132,6 +154,11 @@ const ResourceManagementPage = () => {
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
     setPagination(prev => ({ ...prev, page: 0 })); // Reset to first page
+  };
+
+  const handleClearFilters = () => {
+    setFilters({ type: '', status: '', location: '', minCapacity: '' });
+    setSearching(true);
   };
 
   const handleSelectResource = (resourceId) => {
@@ -315,7 +342,7 @@ const ResourceManagementPage = () => {
           <div className="flex justify-end mt-4">
             <button 
               className="btn btn-outline btn-sm"
-              onClick={() => setFilters({ type: '', status: '', location: '', minCapacity: '' })}
+              onClick={handleClearFilters}
             >
               Clear Filters
             </button>
@@ -344,7 +371,15 @@ const ResourceManagementPage = () => {
       )}
 
       {/* Resources Table */}
-      <div className="card bg-base-100 shadow-lg">
+      <div className="card bg-base-100 shadow-lg relative">
+        {searching && (
+          <div className="absolute inset-0 bg-base-100/80 z-10 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2">
+              <span className="loading loading-spinner loading-lg text-primary"></span>
+              <span className="text-sm text-base-content/70">Searching...</span>
+            </div>
+          </div>
+        )}
         <div className="card-body p-0">
           <div className="overflow-x-auto">
             <table className="table table-zebra">
@@ -374,6 +409,25 @@ const ResourceManagementPage = () => {
                   Array.from({ length: 5 }).map((_, index) => (
                     <TableRowSkeleton key={index} />
                   ))
+                ) : resources.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="text-center py-8">
+                      <div className="flex flex-col items-center gap-2">
+                        <svg className="w-12 h-12 text-base-content/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p className="text-base-content/60">No resources found</p>
+                        {Object.values(filters).some(value => value !== '') && (
+                          <button 
+                            className="btn btn-sm btn-outline"
+                            onClick={handleClearFilters}
+                          >
+                            Clear Filters
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
                 ) : (
                   resources.map((resource) => (
                     <tr key={resource.id}>

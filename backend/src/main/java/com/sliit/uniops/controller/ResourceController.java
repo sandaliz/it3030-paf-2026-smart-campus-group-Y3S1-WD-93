@@ -73,8 +73,9 @@ public class ResourceController {
     public ResponseEntity<List<Resource>> searchResources(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String type,
-            @RequestParam(required = false) Integer minCapacity) {
-        return ResponseEntity.ok(resourceService.searchResources(status, type, minCapacity));
+            @RequestParam(required = false) Integer minCapacity,
+            @RequestParam(required = false) String location) {
+        return ResponseEntity.ok(resourceService.searchResources(status, type, minCapacity, location));
     }
     
     // Get resource availability
