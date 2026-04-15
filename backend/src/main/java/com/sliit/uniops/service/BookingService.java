@@ -61,7 +61,7 @@ public class BookingService {
         booking.setUserId(userId);
         booking.setResourceId(request.getResourceId());
         booking.setResourceName(resource.getName());
-        booking.setResourceType(resource.getType());
+        booking.setResourceType(resource.getType().toString());
         booking.setDate(request.getDate());
         booking.setStartTime(request.getStartTime());
         booking.setEndTime(request.getEndTime());
@@ -235,7 +235,7 @@ public Booking updateBooking(String bookingId, BookingUpdateRequestDTO updateReq
             .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
         booking.setResourceId(updateRequest.getResourceId());
         booking.setResourceName(newResource.getName());
-        booking.setResourceType(newResource.getType());
+        booking.setResourceType(newResource.getType().toString());
     }
     
     if (updateRequest.getDate() != null) {

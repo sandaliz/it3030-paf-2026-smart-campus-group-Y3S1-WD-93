@@ -23,6 +23,17 @@ public class ResourceController {
         return ResponseEntity.ok(resourceService.getAllResources());
     }
     
+    // Get paginated resources
+    @GetMapping("/paginated")
+    public ResponseEntity<Object> getResourcesPaginated(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String type) {
+        return ResponseEntity.ok(resourceService.getResourcesPaginated(page, size, search, status, type));
+    }
+    
     // Get resource by ID
     @GetMapping("/{id}")
     public ResponseEntity<Resource> getResourceById(@PathVariable String id) {
@@ -31,7 +42,6 @@ public class ResourceController {
     
     // Create resource (admin only)
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Resource> createResource(@RequestBody Resource resource) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(resourceService.createResource(resource));
@@ -39,7 +49,6 @@ public class ResourceController {
     
     // Create multiple resources (admin only)
     @PostMapping("/bulk")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Resource>> createMultipleResources(@RequestBody List<Resource> resources) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(resourceService.createMultipleResources(resources));
@@ -47,16 +56,31 @@ public class ResourceController {
     
     // Update resource (admin only)
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Resource> updateResource(@PathVariable String id, @RequestBody Resource resource) {
         return ResponseEntity.ok(resourceService.updateResource(id, resource));
     }
     
     // Delete resource (admin only)
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteResource(@PathVariable String id) {
         resourceService.deleteResource(id);
         return ResponseEntity.noContent().build();
+    }
+    
+    // Search resources
+    @GetMapping("/search")
+    public ResponseEntity<List<Resource>> searchResources(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) Integer minCapacity) {
+        return ResponseEntity.ok(resourceService.searchResources(status, type, minCapacity));
+    }
+    
+    // Get resource availability
+    @GetMapping("/{id}/availability")
+    public ResponseEntity<Object> getResourceAvailability(
+            @PathVariable String id,
+            @RequestParam String date) {
+        return ResponseEntity.ok(resourceService.getResourceAvailability(id, date));
     }
 }

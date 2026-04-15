@@ -1,5 +1,6 @@
 package com.sliit.uniops.service;
 
+import com.sliit.uniops.model.Resource;
 //import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
@@ -116,7 +117,7 @@ public class GoogleCalendarService {
             
             // Update event details based on booking status
             if (booking.getStatus() != null) {
-                String statusName = booking.getStatus().name();
+                String statusName = booking.getStatus();
                 if ("APPROVED".equals(statusName)) {
                     event.setSummary("✓ " + booking.getPurpose());
                     event.setDescription(buildEventDescription(booking) + "\n\nStatus: APPROVED ✓");
@@ -183,7 +184,7 @@ public class GoogleCalendarService {
     public void syncAllBookingsToCalendar(String userId, List<Booking> bookings, String accessToken) {
         for (Booking booking : bookings) {
             if (booking.getStatus() != null) {
-                if ("APPROVED".equals(booking.getStatus().name()) && 
+                if ("APPROVED".equals(booking.getStatus()) && 
                     (booking.getGoogleCalendarEventId() == null || booking.getGoogleCalendarEventId().isEmpty())) {
                     addBookingToCalendar(userId, booking, accessToken);
                 } else if (booking.getGoogleCalendarEventId() != null && !booking.getGoogleCalendarEventId().isEmpty()) {
@@ -254,7 +255,8 @@ public class GoogleCalendarService {
     private String getResourceLocation(String resourceId) {
         if (resourceService != null) {
             try {
-                return resourceService.getResourceLocation(resourceId);
+                Resource resource = resourceService.getResourceById(resourceId);
+                return resource != null ? resource.getLocation() : "Location not specified";
             } catch (Exception e) {
                 return "Location not specified";
             }
