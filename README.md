@@ -17,13 +17,16 @@ A complete web system for university facility management including resource book
 - **Version Control**: Git, GitHub Actions
 
 ## Project Structure
+
+```
 project-root/
-├── backend/ # Spring Boot application
-├── frontend/ # React application
-├── .github/ # GitHub Actions workflows
-├── database/ # Database scripts
-├── docs/ # Documentation
+├── backend/                 # Spring Boot application
+├── frontend/               # React application
+├── .github/                # GitHub Actions workflows
+├── database/               # Database scripts
+├── docs/                   # Documentation
 └── README.md
+```
 
 
 ## Setup Instructions
@@ -37,6 +40,37 @@ project-root/
 ### Backend Setup
 1. Navigate to backend: `cd backend`
 2. Run: `./mvnw spring-boot:run`
+
+**Important: Java Version Compatibility**
+- The project requires **Java 17** to run properly
+- If your system has Java 25 as default, you may encounter Lombok compilation errors:
+  ```
+  WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+  [ERROR] Fatal error compiling: java.lang.ExceptionInInitializerError
+  ```
+
+**For macOS (Homebrew):**
+- Set JAVA_HOME to Java 17 before running:
+  ```bash
+  export JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.18/libexec/openjdk.jdk/Contents/Home
+  ./mvnw spring-boot:run
+  ```
+- **Permanent fix**: Add to your shell profile (~/.zshrc or ~/.bash_profile):
+  ```bash
+  export JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.18/libexec/openjdk.jdk/Contents/Home
+  export PATH=$JAVA_HOME/bin:$PATH
+  ```
+
+**For Windows:**
+- Install Java 17 from [Adoptium](https://adoptium.net/) or [Oracle](https://www.oracle.com/java/technologies/downloads/#java17)
+- Set JAVA_HOME environment variable to your Java 17 installation path (e.g., `C:\Program Files\Eclipse Adoptium\jdk-17.0.18.101-hotspot`)
+- Add Java 17 bin directory to PATH
+- Verify: `java -version` should show Java 17
+- If multiple Java versions are installed, set JAVA_HOME before running:
+  ```cmd
+  set JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-17.0.18.101-hotspot
+  .\mvnw.cmd spring-boot:run
+  ```
 
 ### Frontend Setup
 1. Navigate to frontend: `cd frontend`
