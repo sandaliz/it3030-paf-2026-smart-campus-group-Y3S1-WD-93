@@ -82,6 +82,18 @@ const ResourceForm = ({ resource, onSubmit, onCancel }) => {
       return;
     }
 
+    // Check for duplicate availability window (same day and time)
+    const isDuplicate = formData.availabilityWindows.some(window => 
+      window.dayOfWeek === availabilityWindow.dayOfWeek &&
+      window.startTime === availabilityWindow.startTime &&
+      window.endTime === availabilityWindow.endTime
+    );
+
+    if (isDuplicate) {
+      setErrors(prev => ({ ...prev, availability: 'This availability window already exists for this day and time' }));
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
       availabilityWindows: [...prev.availabilityWindows, { ...availabilityWindow }]
@@ -172,7 +184,7 @@ const ResourceForm = ({ resource, onSubmit, onCancel }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="form-control">
           <label className="label">
-            <span className="label-text">Resource Name *</span>
+            <span className="label-text">Name *</span>
           </label>
           <input
             type="text"
@@ -256,22 +268,23 @@ const ResourceForm = ({ resource, onSubmit, onCancel }) => {
       </div>
 
       {/* Description */}
-      <div className="form-control">
-        <label className="label">
+      <div className="mt-6">
+        <div className="mb-2">
           <span className="label-text">Description</span>
-        </label>
-        <textarea
-          name="description"
-          value={formData.description}
-          onChange={handleInputChange}
-          className="textarea textarea-bordered"
-          rows="3"
-          placeholder="Describe the resource, its features, and any special requirements..."
-          maxLength="500"
-        />
-        <label className="label">
-          <span className="label-text-alt">{formData.description.length}/500 characters</span>
-        </label>
+        </div>
+        <div className="mb-2">
+          <textarea
+            name="description"
+            value={formData.description}
+            onChange={handleInputChange}
+            className="textarea textarea-bordered h-24 resize-none w-full"
+            placeholder="Describe the resource, its features, and any special requirements..."
+            maxLength="500"
+          />
+        </div>
+        <div className="text-right">
+          <span className="text-xs text-base-content/60">{formData.description.length}/500 characters</span>
+        </div>
       </div>
 
       
