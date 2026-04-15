@@ -30,24 +30,33 @@ public class Resource {
     }
 
     public static class AvailabilityWindow {
+        private String dayOfWeek;
         private String startTime;
         private String endTime;
+        private boolean available;
         private String[] availableDays;
 
         public AvailabilityWindow() {}
 
-        public AvailabilityWindow(String startTime, String endTime, String[] availableDays) {
+        public AvailabilityWindow(String dayOfWeek, String startTime, String endTime, boolean available) {
+            this.dayOfWeek = dayOfWeek;
             this.startTime = startTime;
             this.endTime = endTime;
-            this.availableDays = availableDays;
+            this.available = available;
         }
 
         // Getters and Setters
+        public String getDayOfWeek() { return dayOfWeek; }
+        public void setDayOfWeek(String dayOfWeek) { this.dayOfWeek = dayOfWeek; }
+
         public String getStartTime() { return startTime; }
         public void setStartTime(String startTime) { this.startTime = startTime; }
 
         public String getEndTime() { return endTime; }
         public void setEndTime(String endTime) { this.endTime = endTime; }
+
+        public boolean isAvailable() { return available; }
+        public void setAvailable(boolean available) { this.available = available; }
 
         public String[] getAvailableDays() { return availableDays; }
         public void setAvailableDays(String[] availableDays) { this.availableDays = availableDays; }

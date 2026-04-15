@@ -14,6 +14,7 @@ const ResourceForm = ({ resource, onSubmit, onCancel }) => {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(null);
   const [amenityInput, setAmenityInput] = useState('');
   const [availabilityWindow, setAvailabilityWindow] = useState({
     dayOfWeek: 'MONDAY',
@@ -79,6 +80,18 @@ const ResourceForm = ({ resource, onSubmit, onCancel }) => {
     // Validate that end time is after start time
     if (availabilityWindow.startTime >= availabilityWindow.endTime) {
       setErrors(prev => ({ ...prev, availability: 'End time must be after start time' }));
+      return;
+    }
+
+    // Check for duplicate availability window (same day and time)
+    const isDuplicate = formData.availabilityWindows.some(window => 
+      window.dayOfWeek === availabilityWindow.dayOfWeek &&
+      window.startTime === availabilityWindow.startTime &&
+      window.endTime === availabilityWindow.endTime
+    );
+
+    if (isDuplicate) {
+      setErrors(prev => ({ ...prev, availability: 'This availability window already exists for this day and time' }));
       return;
     }
 
@@ -153,11 +166,17 @@ const ResourceForm = ({ resource, onSubmit, onCancel }) => {
       
       if (resource) {
         await resourceService.updateResource(resource.id, resourceData);
+        setSuccess('Resource updated successfully!');
+        setErrors({});
       } else {
         await resourceService.createResource(resourceData);
+        setSuccess('Resource created successfully!');
+        setErrors({});
       }
 
-      onSubmit();
+      setTimeout(() => {
+        onSubmit();
+      }, 1000);
     } catch (err) {
       console.error('Error saving resource:', err);
       setErrors(prev => ({ ...prev, submit: err.message || 'Failed to save resource' }));
@@ -172,7 +191,7 @@ const ResourceForm = ({ resource, onSubmit, onCancel }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="form-control">
           <label className="label">
-            <span className="label-text">Resource Name *</span>
+            <span className="label-text">Name *</span>
           </label>
           <input
             type="text"
@@ -256,22 +275,23 @@ const ResourceForm = ({ resource, onSubmit, onCancel }) => {
       </div>
 
       {/* Description */}
-      <div className="form-control">
-        <label className="label">
+      <div className="mt-6">
+        <div className="mb-2">
           <span className="label-text">Description</span>
-        </label>
-        <textarea
-          name="description"
-          value={formData.description}
-          onChange={handleInputChange}
-          className="textarea textarea-bordered"
-          rows="3"
-          placeholder="Describe the resource, its features, and any special requirements..."
-          maxLength="500"
-        />
-        <label className="label">
-          <span className="label-text-alt">{formData.description.length}/500 characters</span>
-        </label>
+        </div>
+        <div className="mb-2">
+          <textarea
+            name="description"
+            value={formData.description}
+            onChange={handleInputChange}
+            className="textarea textarea-bordered h-24 resize-none w-full"
+            placeholder="Describe the resource, its features, and any special requirements..."
+            maxLength="500"
+          />
+        </div>
+        <div className="text-right">
+          <span className="text-xs text-base-content/60">{formData.description.length}/500 characters</span>
+        </div>
       </div>
 
       
@@ -394,6 +414,16 @@ const ResourceForm = ({ resource, onSubmit, onCancel }) => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>{errors.submit}</span>
+        </div>
+      )}
+
+      {/* Success Message */}
+      {success && (
+        <div className="alert alert-success">
+          <svg className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{success}</span>
         </div>
       )}
 

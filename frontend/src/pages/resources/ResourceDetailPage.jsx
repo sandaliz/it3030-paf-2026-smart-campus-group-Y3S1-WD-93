@@ -101,6 +101,12 @@ const ResourceDetailPage = () => {
     return days[parseInt(day) - 1] || day;
   };
 
+  const getDayOfWeekFromDate = (dateString) => {
+    const date = new Date(dateString);
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[date.getDay()];
+  };
+
   if (loading) {
     return <DetailSkeleton />;
   }
@@ -207,64 +213,82 @@ const ResourceDetailPage = () => {
       {/* Availability Section */}
       <div className="card bg-base-100 shadow-xl mb-8">
         <div className="card-body">
-          <h2 className="card-title text-xl mb-4">Availability</h2>
+          <h2 className="card-title text-xl mb-4">Availability Schedule</h2>
           
-          {/* Date selector */}
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Select Date</span>
-            </label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="input input-bordered w-full max-w-xs"
-              min={new Date().toISOString().split('T')[0]}
-            />
-          </div>
-
-          {/* Availability display */}
-          {availability ? (
-            <div className="mt-4">
-              {availability.isAvailable ? (
-                <div className="space-y-2">
-                  <div className="alert alert-success">
-                    <svg className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>Resource is available on this date</span>
-                  </div>
-                  
-                  {availability.availability && availability.availability.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold mb-2">Available Time Slots:</h4>
-                      <div className="space-y-2">
-                        {availability.availability.map((window, index) => (
-                          <div key={index} className="flex items-center gap-2 p-2 bg-base-200 rounded">
-                            <span className="badge badge-success">Available</span>
-                            <span className="font-medium">{formatDayOfWeek(window.dayOfWeek)}</span>
-                            <span>{window.startTime} - {window.endTime}</span>
-                          </div>
-                        ))}
+          {/* Direct availability windows display */}
+          {resource.availabilityWindows && resource.availabilityWindows.length > 0 ? (
+            <div>
+              <p className="text-base-content/70 mb-4">This resource is available during the following time slots:</p>
+              <div className="space-y-2">
+                {resource.availabilityWindows
+                  .sort((a, b) => {
+                    const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+                    return days.indexOf(a.dayOfWeek) - days.indexOf(b.dayOfWeek);
+                  })
+                  .map((window, index) => (
+                    <div key={index} className={`flex items-center gap-3 p-4 rounded-lg border ${window.available ? 'bg-success/10 border-success/30' : 'bg-error/10 border-error/30'}`}>
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className={`badge ${window.available ? 'badge-success' : 'badge-error'} badge-lg`}>
+                          {window.available ? 'Open' : 'Closed'}
+                        </span>
+                        <span className="font-semibold text-lg">{formatDayOfWeek(window.dayOfWeek)}</span>
                       </div>
+                      {window.available && (
+                        <div className="flex items-center gap-2">
+                          <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span className="font-mono font-medium">{window.startTime} - {window.endTime}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+              
+              {/* Check specific date availability */}
+              <div className="mt-6 pt-6 border-t border-base-300 text-right">
+                <h4 className="font-semibold mb-2">Check Availability for Specific Date</h4>
+                <div className="flex gap-2 items-center justify-end">
+                  <div className="form-control">
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="input input-bordered input-sm"
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                  {selectedDate && (
+                    <div className="text-xs text-base-content/70 whitespace-nowrap">
+                      {getDayOfWeekFromDate(selectedDate)}
                     </div>
                   )}
+                  {availability ? (
+                    availability.isAvailable ? (
+                      <div className="alert alert-success py-1 px-3">
+                        <svg className="stroke-current shrink-0 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-xs">Available</span>
+                      </div>
+                    ) : (
+                      <div className="alert alert-warning py-1 px-3">
+                        <svg className="stroke-current shrink-0 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span className="text-xs">Not Available</span>
+                      </div>
+                    )
+                  ) : null}
                 </div>
-              ) : (
-                <div className="alert alert-warning">
-                  <svg className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <span>Resource is not available on this date</span>
-                </div>
-              )}
+              </div>
             </div>
           ) : (
             <div className="alert alert-info">
               <svg className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>Loading availability information...</span>
+              <span>No availability schedule set. This resource may be available anytime.</span>
             </div>
           )}
         </div>
