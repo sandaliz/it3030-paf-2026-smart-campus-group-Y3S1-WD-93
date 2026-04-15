@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,29 +16,87 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleResourceNotFound(ResourceNotFoundException ex) {
+    public ResponseEntity<Map<String, Object>> handleResourceNotFound(
+            ResourceNotFoundException ex, 
+            HttpServletRequest request) {
         Map<String, Object> error = new HashMap<>();
         error.put("timestamp", LocalDateTime.now());
         error.put("status", HttpStatus.NOT_FOUND.value());
         error.put("error", "Resource Not Found");
         error.put("message", ex.getMessage());
-        error.put("path", "/api/resources");
+        error.put("path", request.getRequestURI());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
     @ExceptionHandler(DuplicateResourceException.class)
-    public ResponseEntity<Map<String, Object>> handleDuplicateResource(DuplicateResourceException ex) {
+    public ResponseEntity<Map<String, Object>> handleDuplicateResource(
+            DuplicateResourceException ex, 
+            HttpServletRequest request) {
         Map<String, Object> error = new HashMap<>();
         error.put("timestamp", LocalDateTime.now());
         error.put("status", HttpStatus.CONFLICT.value());
         error.put("error", "Duplicate Resource");
         error.put("message", ex.getMessage());
-        error.put("path", "/api/resources");
+        error.put("path", request.getRequestURI());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
+    @ExceptionHandler(ResourceUnavailableException.class)
+    public ResponseEntity<Map<String, Object>> handleResourceUnavailable(
+            ResourceUnavailableException ex, 
+            HttpServletRequest request) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("timestamp", LocalDateTime.now());
+        error.put("status", HttpStatus.SERVICE_UNAVAILABLE.value());
+        error.put("error", "Resource Unavailable");
+        error.put("message", ex.getMessage());
+        error.put("path", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
+    }
+
+    @ExceptionHandler(BookingConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleBookingConflict(
+            BookingConflictException ex, 
+            HttpServletRequest request) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("timestamp", LocalDateTime.now());
+        error.put("status", HttpStatus.CONFLICT.value());
+        error.put("error", "CONFLICT");
+        error.put("message", ex.getMessage());
+        error.put("path", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+    
+    @ExceptionHandler(BookingNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleBookingNotFound(
+            BookingNotFoundException ex, 
+            HttpServletRequest request) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("timestamp", LocalDateTime.now());
+        error.put("status", HttpStatus.NOT_FOUND.value());
+        error.put("error", "NOT_FOUND");
+        error.put("message", ex.getMessage());
+        error.put("path", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(InvalidBookingStateException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidBookingState(
+            InvalidBookingStateException ex, 
+            HttpServletRequest request) {
+        Map<String, Object> error = new HashMap<>();
+        error.put("timestamp", LocalDateTime.now());
+        error.put("status", HttpStatus.UNPROCESSABLE_ENTITY.value());
+        error.put("error", "INVALID_STATE");
+        error.put("message", ex.getMessage());
+        error.put("path", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
+    public ResponseEntity<Map<String, Object>> handleValidationErrors(
+            MethodArgumentNotValidException ex, 
+            HttpServletRequest request) {
         Map<String, Object> error = new HashMap<>();
         error.put("timestamp", LocalDateTime.now());
         error.put("status", HttpStatus.BAD_REQUEST.value());
@@ -49,30 +108,36 @@ public class GlobalExceptionHandler {
         );
         error.put("message", "Validation failed");
         error.put("validationErrors", validationErrors);
-        error.put("path", "/api/resources");
+        error.put("path", request.getRequestURI());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+    public ResponseEntity<Map<String, Object>> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex, 
+            HttpServletRequest request) {
         Map<String, Object> error = new HashMap<>();
         error.put("timestamp", LocalDateTime.now());
         error.put("status", HttpStatus.BAD_REQUEST.value());
         error.put("error", "Invalid Parameter");
         error.put("message", String.format("Invalid value '%s' for parameter '%s'", 
             ex.getValue(), ex.getName()));
-        error.put("path", "/api/resources");
+        error.put("path", request.getRequestURI());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
+    public ResponseEntity<Map<String, Object>> handleGenericException(
+            Exception ex, 
+            HttpServletRequest request) {
         Map<String, Object> error = new HashMap<>();
         error.put("timestamp", LocalDateTime.now());
         error.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
         error.put("error", "Internal Server Error");
         error.put("message", "An unexpected error occurred");
-        error.put("path", "/api/resources");
+        error.put("path", request.getRequestURI());
+        // Log the actual exception for debugging
+        ex.printStackTrace();
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }
