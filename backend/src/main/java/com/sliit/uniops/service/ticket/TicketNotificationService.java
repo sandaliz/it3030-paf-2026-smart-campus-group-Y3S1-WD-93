@@ -11,14 +11,14 @@ import lombok.extern.slf4j.Slf4j;
 import com.sliit.uniops.model.ticket.TicketModel;
 import com.sliit.uniops.model.ticket.CommentModel;
 import com.sliit.uniops.model.ticket.NotificationModel;
-import com.sliit.uniops.repository.ticket.NotificationRepository;
+import com.sliit.uniops.repository.ticket.TicketNotificationRepository;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class NotificationService {
+public class TicketNotificationService {
 
-    private final NotificationRepository notificationRepository;
+    private final TicketNotificationRepository notificationRepository;
 
     // ✅ Ticket Created
     public void notifyTicketCreated(TicketModel ticket, String userName) {

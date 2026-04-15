@@ -27,7 +27,7 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final TicketRepository ticketRepository;
-    private final NotificationService notificationService;
+    private final TicketNotificationService notificationService;
 
     @Transactional
     public CommentResponseDTO addComment(String ticketId, CommentRequestDTO request, 

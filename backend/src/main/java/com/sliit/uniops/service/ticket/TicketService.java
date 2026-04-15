@@ -30,7 +30,7 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final CommentRepository commentRepository;
     private final AttachmentService attachmentService;
-    private final NotificationService notificationService;
+    private final TicketNotificationService notificationService;
 
     // ✅ CREATE TICKET
     @Transactional

@@ -6,7 +6,7 @@ import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
 @SpringBootApplication
-@EnableMongoRepositories(basePackages = "com.sliit.uniops.repository")
+@EnableMongoRepositories(basePackages = {"com.sliit.uniops.repository", "com.sliit.uniops.repository.ticket"})
 @EnableMongoAuditing
 public class UniOpsApplication {
     public static void main(String[] args) {

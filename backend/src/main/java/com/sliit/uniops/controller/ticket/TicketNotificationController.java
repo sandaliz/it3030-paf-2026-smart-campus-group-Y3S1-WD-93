@@ -9,15 +9,15 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import com.sliit.uniops.model.ticket.NotificationModel;
-import com.sliit.uniops.service.ticket.NotificationService;
+import com.sliit.uniops.service.ticket.TicketNotificationService;
 
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/notifications")
+@RequestMapping("/api/ticket/notifications")
 @RequiredArgsConstructor
-public class NotificationController {
-     private final NotificationService notificationService;
+public class TicketNotificationController {
+     private final TicketNotificationService notificationService;
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
