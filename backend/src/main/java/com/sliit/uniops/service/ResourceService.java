@@ -37,6 +37,9 @@ public class ResourceService {
         resource.setCapacity(resourceDetails.getCapacity());
         resource.setLocation(resourceDetails.getLocation());
         resource.setStatus(resourceDetails.getStatus());
+        resource.setDescription(resourceDetails.getDescription());
+        resource.setAmenities(resourceDetails.getAmenities());
+        resource.setAvailabilityWindows(resourceDetails.getAvailabilityWindows());
         return resourceRepository.save(resource);
     }
     
@@ -75,20 +78,38 @@ public class ResourceService {
     }
     
     public Object getResourceAvailability(String resourceId, String date) {
-        // For now, return a simple availability structure
-        // This can be enhanced to check actual bookings
         Resource resource = getResourceById(resourceId);
+        
+        // Get the day of week from the date
+        java.time.LocalDate localDate = java.time.LocalDate.parse(date);
+        java.time.DayOfWeek dayOfWeek = localDate.getDayOfWeek();
+        String dayName = dayOfWeek.toString(); // MONDAY, TUESDAY, etc.
+        
+        // Check if resource has availability windows for this day
+        boolean isAvailable = false;
+        java.util.List<java.util.Map<String, String>> availableTimeSlots = new java.util.ArrayList<>();
+        
+        if (resource.getAvailabilityWindows() != null) {
+            for (Resource.AvailabilityWindow window : resource.getAvailabilityWindows()) {
+                if (window.getDayOfWeek() != null && window.getDayOfWeek().equals(dayName) && window.isAvailable()) {
+                    isAvailable = true;
+                    java.util.Map<String, String> slot = new java.util.HashMap<>();
+                    slot.put("dayOfWeek", window.getDayOfWeek());
+                    slot.put("startTime", window.getStartTime());
+                    slot.put("endTime", window.getEndTime());
+                    availableTimeSlots.add(slot);
+                }
+            }
+        }
         
         // Create a simple map for the response
         java.util.Map<String, Object> availability = new java.util.HashMap<>();
         availability.put("resourceId", resource.getId());
         availability.put("resourceName", resource.getName());
         availability.put("date", date);
-        availability.put("availableSlots", List.of(
-            "09:00-10:00", "10:00-11:00", "11:00-12:00",
-            "13:00-14:00", "14:00-15:00", "15:00-16:00", "16:00-17:00"
-        ));
-        availability.put("bookedSlots", List.of()); // Would be populated from actual bookings
+        availability.put("isAvailable", isAvailable);
+        availability.put("availability", availableTimeSlots);
+        availability.put("dayOfWeek", dayName);
         
         return availability;
     }
