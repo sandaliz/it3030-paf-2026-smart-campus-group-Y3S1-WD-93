@@ -62,7 +62,7 @@ const NotificationPanel = () => {
     const markAsRead = async (id) => {
         try {
             await axios.patch(`http://localhost:8080/api/notifications/${id}/read`);
-            setNotifications(notifications.map(n => 
+            setNotifications(notifications.map(n =>
                 n.id === id ? { ...n, status: 'READ' } : n
             ));
             setUnreadCount(prev => Math.max(0, prev - 1));
