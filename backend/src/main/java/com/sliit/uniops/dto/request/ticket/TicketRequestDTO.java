@@ -18,14 +18,11 @@ public class TicketRequestDTO {
     private String description;
 
     @NotBlank(message = "Category is required")
-    @Pattern(regexp = "ELECTRICAL|PLUMBING|IT|HVAC|FURNITURE|CLEANING|SECURITY|OTHER", 
-             message = "Invalid category")
+    
 
     private String category;
 
     @NotBlank(message = "Priority is required")
-       @Pattern(regexp = "LOW|MEDIUM|HIGH|URGENT", 
-             message = "Priority must be LOW, MEDIUM, HIGH, or URGENT")
     private String priority;
 
     @NotBlank(message = "Preferred contact method is required")

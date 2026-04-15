@@ -26,12 +26,14 @@ public class TicketResponseDTO {
     private List<String> attachmentUrls;
     private String resolutionNotes;
     private String rejectionReason;
+    private String userFeedback;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime resolvedAt;
     private LocalDateTime closedAt;
     private LocalDateTime firstResponseAt;
     private long commentCount;
+    private long internalCommentCount;
     private TicketStatus[] nextStatuses;
 }
 

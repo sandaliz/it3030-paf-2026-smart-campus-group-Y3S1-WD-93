@@ -18,6 +18,7 @@ public class NotificationModel {
     private String type;
     
     private String message;
+    private String title;
     
     private String ticketId;
     

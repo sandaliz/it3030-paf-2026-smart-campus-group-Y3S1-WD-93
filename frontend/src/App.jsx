@@ -17,6 +17,14 @@ import ResourceManagementPage from './pages/resources/ResourceManagementPage'
 import ResourceListPage from './pages/resources/ResourceListPage'
 import BookingPage from './pages/bookings/BookingPage'
 import BookingManagementPage from './pages/bookings/BookingManagementPage'
+import TicketListPage from './pages/incidents/TicketListPage';
+import CreateTicketPage from './pages/incidents/CreateTicketPage';
+import TicketDetailPage from './pages/incidents/TicketDetailPage';
+//import UserDashboard from './pages/user/UserDashboard';
+import AdminDashboard from './pages/admin/AdminDashboard';
+//import TechnicianDashboard from './pages/technician/TechnicianDashboard';
+//import TicketAnalyticsPage from './pages/admin/TicketAnalyticsPage';
+//import UserTicketsPage from './pages/user/UserTicketsPage';
 
 function App() {
   const [theme, setTheme] = useState(() => {
@@ -95,6 +103,23 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
+             
+              {/* Ticket Routes - Module C */}
+              <Route path="/tickets" element={
+                <ProtectedRoute>
+                  <TicketListPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/tickets/create" element={
+                <ProtectedRoute>
+                  <CreateTicketPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/tickets/:id" element={
+                <ProtectedRoute>
+                  <TicketDetailPage />
+                </ProtectedRoute>
+              } />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />

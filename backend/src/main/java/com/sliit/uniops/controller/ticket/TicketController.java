@@ -31,9 +31,9 @@ public class TicketController {
             @AuthenticationPrincipal OidcUser user) {
 
         String userId = user.getSubject();
+        String userName = user.getFullName();
 
-
-        TicketResponseDTO ticket = ticketService.createTicket(request, userId);
+        TicketResponseDTO ticket = ticketService.createTicket(request, userId, userName);
         return ResponseEntity.status(HttpStatus.CREATED).body(ticket);
     }
 
@@ -82,7 +82,13 @@ public class TicketController {
             @AuthenticationPrincipal OidcUser user) {
 
 
-        TicketResponseDTO ticket = ticketService.updateTicketStatus(id, status, reason);
+        String userId = user.getSubject();
+        String userRole = user.getAuthorities().stream()
+                .map(auth -> auth.getAuthority())
+                .findFirst()
+                .orElse("USER");
+
+        TicketResponseDTO ticket = ticketService.updateTicketStatus(id, status, reason, userId, userRole);
         return ResponseEntity.ok(ticket);
     }
 
@@ -95,7 +101,20 @@ public class TicketController {
             @AuthenticationPrincipal OidcUser user) {
 
 
-        TicketResponseDTO ticket = ticketService.assignTechnician(id, technicianId);
+        String assignedBy = user.getSubject();
+
+        TicketResponseDTO ticket = ticketService.assignTechnician(id, technicianId, assignedBy);
+        return ResponseEntity.ok(ticket);
+    }
+
+    @PatchMapping("/{id}/confirm")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<TicketResponseDTO> confirmTicket(
+            @PathVariable String id,
+            @RequestParam(required = false) String feedback,
+            @AuthenticationPrincipal OidcUser user) {
+
+        TicketResponseDTO ticket = ticketService.confirmTicketResolution(id, user.getSubject(), feedback);
         return ResponseEntity.ok(ticket);
     }
 
