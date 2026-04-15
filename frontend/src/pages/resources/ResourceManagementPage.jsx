@@ -10,6 +10,7 @@ const ResourceManagementPage = () => {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
 
   // Check if user can perform add/edit operations
   const canAddEditResources = hasAnyRole(['TECHNICIAN', 'LECTURER', 'ADMIN']);
@@ -92,9 +93,13 @@ const ResourceManagementPage = () => {
 
     try {
       await resourceService.deleteResource(resourceId);
+      setSuccess('Resource deleted successfully');
+      setError(null);
       fetchResources();
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError('Failed to delete resource');
+      setSuccess(null);
       console.error('Error deleting resource:', err);
     }
   };
@@ -104,9 +109,13 @@ const ResourceManagementPage = () => {
     
     try {
       await resourceService.updateResourceStatus(resourceId, newStatus);
+      setSuccess(`Resource status updated to ${newStatus.replace('_', ' ')}`);
+      setError(null);
       fetchResources();
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError('Failed to update resource status');
+      setSuccess(null);
       console.error('Error updating status:', err);
     }
   };
@@ -114,7 +123,10 @@ const ResourceManagementPage = () => {
   const handleFormSubmit = async () => {
     setShowForm(false);
     setEditingResource(null);
+    setSuccess(editingResource ? 'Resource updated successfully' : 'Resource created successfully');
+    setError(null);
     fetchResources();
+    setTimeout(() => setSuccess(null), 3000);
   };
 
   const handleFilterChange = (key, value) => {
@@ -147,10 +159,14 @@ const ResourceManagementPage = () => {
 
     try {
       await Promise.all(selectedResources.map(id => resourceService.deleteResource(id)));
+      setSuccess(`${selectedResources.length} resources deleted successfully`);
+      setError(null);
       setSelectedResources([]);
       fetchResources();
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError('Failed to delete resources');
+      setSuccess(null);
       console.error('Error bulk deleting:', err);
     }
   };
@@ -200,9 +216,19 @@ const ResourceManagementPage = () => {
           <p className="text-base-content/70">Manage campus facilities and equipment</p>
         </div>
         <div className="flex gap-2">
+          <button 
+            className="btn btn-outline"
+            onClick={fetchResources}
+            disabled={loading}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
+          </button>
           {selectedResources.length > 0 && (
             <button 
-              className="btn btn-error btn-sm"
+              className="btn btn-error"
               onClick={handleBulkDelete}
             >
               Delete Selected ({selectedResources.length})
@@ -307,6 +333,16 @@ const ResourceManagementPage = () => {
         </div>
       )}
 
+      {/* Success Alert */}
+      {success && (
+        <div className="alert alert-success mb-6">
+          <svg className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{success}</span>
+        </div>
+      )}
+
       {/* Resources Table */}
       <div className="card bg-base-100 shadow-lg">
         <div className="card-body p-0">
@@ -380,7 +416,7 @@ const ResourceManagementPage = () => {
                         <div className="flex gap-2">
                           {canAddEditResources && (
                             <button
-                              className="btn btn-ghost btn-xs"
+                              className="btn btn-sm btn-outline"
                               onClick={() => handleEditResource(resource)}
                             >
                               Edit
@@ -388,7 +424,7 @@ const ResourceManagementPage = () => {
                           )}
                           {canDeleteResources && (
                             <button
-                              className="btn btn-ghost btn-xs btn-error"
+                              className="btn btn-sm btn-error"
                               onClick={() => handleDeleteResource(resource.id)}
                             >
                               Delete

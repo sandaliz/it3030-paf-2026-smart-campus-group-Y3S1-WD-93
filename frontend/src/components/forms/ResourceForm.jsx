@@ -14,6 +14,7 @@ const ResourceForm = ({ resource, onSubmit, onCancel }) => {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(null);
   const [amenityInput, setAmenityInput] = useState('');
   const [availabilityWindow, setAvailabilityWindow] = useState({
     dayOfWeek: 'MONDAY',
@@ -165,11 +166,17 @@ const ResourceForm = ({ resource, onSubmit, onCancel }) => {
       
       if (resource) {
         await resourceService.updateResource(resource.id, resourceData);
+        setSuccess('Resource updated successfully!');
+        setErrors({});
       } else {
         await resourceService.createResource(resourceData);
+        setSuccess('Resource created successfully!');
+        setErrors({});
       }
 
-      onSubmit();
+      setTimeout(() => {
+        onSubmit();
+      }, 1000);
     } catch (err) {
       console.error('Error saving resource:', err);
       setErrors(prev => ({ ...prev, submit: err.message || 'Failed to save resource' }));
@@ -407,6 +414,16 @@ const ResourceForm = ({ resource, onSubmit, onCancel }) => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>{errors.submit}</span>
+        </div>
+      )}
+
+      {/* Success Message */}
+      {success && (
+        <div className="alert alert-success">
+          <svg className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{success}</span>
         </div>
       )}
 
