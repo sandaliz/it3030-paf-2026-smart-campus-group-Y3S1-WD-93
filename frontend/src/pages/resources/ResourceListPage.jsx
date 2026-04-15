@@ -6,11 +6,23 @@ import { useAuth } from '../../context/AuthContext';
 
 const ResourceListPage = () => {
   const { user, hasRole, hasAnyRole } = useAuth();
+  const [allFilteredResources, setAllFilteredResources] = useState([]);
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [debouncedLocation, setDebouncedLocation] = useState('');
+  const [debouncedMinCapacity, setDebouncedMinCapacity] = useState('');
+  const [debouncedAmenities, setDebouncedAmenities] = useState('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [pagination, setPagination] = useState({
+    page: 0,
+    size: 12,
+    totalElements: 0,
+    totalPages: 0
+  });
 
   // Check if user can book resources
   const canBookResources = hasAnyRole(['STUDENT', 'LECTURER', 'STAFF', 'ADMIN']);
@@ -112,22 +124,67 @@ const ResourceListPage = () => {
     }
   };
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 1000); // 1000ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Debounce location filter
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedLocation(filters.location);
+    }, 1000); // 1000ms delay
+
+    return () => clearTimeout(timer);
+  }, [filters.location]);
+
+  // Debounce min capacity filter
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedMinCapacity(filters.minCapacity);
+    }, 1000); // 1000ms delay
+
+    return () => clearTimeout(timer);
+  }, [filters.minCapacity]);
+
+  // Debounce amenities filter
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedAmenities(filters.amenities);
+    }, 1000); // 1000ms delay
+
+    return () => clearTimeout(timer);
+  }, [filters.amenities]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, page: 0 }));
+  }, [debouncedSearchTerm, filters.type, filters.status, debouncedLocation, debouncedMinCapacity, debouncedAmenities]);
+
+  // Fetch and filter resources (only when filters change, not page change)
   useEffect(() => {
     const fetchResources = async () => {
-      console.log('Fetching resources with searchTerm:', searchTerm);
-      console.log('Filters:', filters);
+      // Use searching state for filter operations, loading for initial load
+      const hasFilters = debouncedSearchTerm.trim() !== '' || filters.type !== '' || filters.status !== '' || debouncedLocation !== '' || debouncedMinCapacity !== '' || debouncedAmenities !== '';
+      if (hasFilters) {
+        setSearching(true);
+      } else {
+        setLoading(true);
+      }
+      
       try {
-        let data;
-        
-        // Simple approach: Get all resources and filter locally for better control
+        // Get all resources from API
         const allResources = await resourceService.getAllResources();
-        console.log('All resources fetched:', allResources.length);
         
         // Filter resources locally
-        data = allResources.filter(resource => {
+        const filteredData = allResources.filter(resource => {
           // Name search (case-insensitive)
-          if (searchTerm.trim() !== '') {
-            const searchLower = searchTerm.toLowerCase();
+          if (debouncedSearchTerm.trim() !== '') {
+            const searchLower = debouncedSearchTerm.toLowerCase();
             const nameMatch = resource.name && resource.name.toLowerCase().includes(searchLower);
             const locationMatch = resource.location && resource.location.toLowerCase().includes(searchLower);
             const amenitiesMatch = resource.amenities && typeof resource.amenities === 'string' && resource.amenities.toLowerCase().includes(searchLower);
@@ -148,37 +205,51 @@ const ResourceListPage = () => {
           }
           
           // Location filter
-          if (filters.location && !resource.location.toLowerCase().includes(filters.location.toLowerCase())) {
+          if (debouncedLocation && !resource.location.toLowerCase().includes(debouncedLocation.toLowerCase())) {
             return false;
           }
           
           // Min capacity filter
-          if (filters.minCapacity && resource.capacity < parseInt(filters.minCapacity)) {
+          if (debouncedMinCapacity && resource.capacity < parseInt(debouncedMinCapacity)) {
             return false;
           }
           
           // Amenities filter
-          if (filters.amenities && resource.amenities && typeof resource.amenities === 'string' && 
-              !resource.amenities.toLowerCase().includes(filters.amenities.toLowerCase())) {
+          if (debouncedAmenities && resource.amenities && typeof resource.amenities === 'string' && 
+              !resource.amenities.toLowerCase().includes(debouncedAmenities.toLowerCase())) {
             return false;
           }
           
           return true;
         });
         
-        console.log('Filtered resources:', data.length);
-        setResources(data);
+        setAllFilteredResources(filteredData);
         setError(null);
       } catch (err) {
         setError('Failed to load resources');
-        console.error('Error fetching resources:', err);
       } finally {
         setLoading(false);
+        setSearching(false);
       }
     }
 
     fetchResources();
-  }, [searchTerm, filters]);
+  }, [debouncedSearchTerm, filters.type, filters.status, debouncedLocation, debouncedMinCapacity, debouncedAmenities]);
+
+  // Paginate filtered resources (instant, no API call)
+  useEffect(() => {
+    const totalElements = allFilteredResources.length;
+    const totalPages = Math.ceil(totalElements / pagination.size);
+    const startIndex = pagination.page * pagination.size;
+    const paginatedData = allFilteredResources.slice(startIndex, startIndex + pagination.size);
+    
+    setResources(paginatedData);
+    setPagination(prev => ({
+      ...prev,
+      totalElements,
+      totalPages
+    }));
+  }, [allFilteredResources, pagination.page]);
 
   if (loading) {
     return <PageLoader />;
@@ -194,10 +265,10 @@ const ResourceListPage = () => {
           <div className="flex flex-col lg:flex-row gap-4 mb-6">
             {/* Search Bar */}
             <div className="form-control flex-1">
-              <label className="label">
+              <label className="label mb-2">
                 <span className="label-text">Search Resources</span>
               </label>
-              <div className="flex gap-2">
+              <div className="flex gap-4">
                 <input
                   type="text"
                   placeholder="Search by name..."
@@ -296,14 +367,8 @@ const ResourceListPage = () => {
                 </div>
               </div>
 
-              {/* Apply and Clear buttons */}
+              {/* Clear button */}
               <div className="flex gap-2 mt-4">
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => setShowAdvancedFilters(false)}
-                >
-                  Apply Filters
-                </button>
                 <button 
                   className="btn btn-outline"
                   onClick={() => {
@@ -315,6 +380,8 @@ const ResourceListPage = () => {
                       minCapacity: '',
                       amenities: ''
                     });
+                    setSearching(true);
+                    setPagination(prev => ({ ...prev, page: 0 }));
                   }}
                 >
                   Clear All
@@ -334,12 +401,46 @@ const ResourceListPage = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative">
+        {searching && (
+          <div className="absolute inset-0 bg-base-100/80 z-10 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2">
+              <span className="loading loading-spinner loading-lg text-primary"></span>
+              <span className="text-sm text-base-content/70">Searching...</span>
+            </div>
+          </div>
+        )}
         {resources.length === 0 && loading ? (
           // Show 6 skeleton cards while loading
           Array.from({ length: 6 }).map((_, index) => (
             <CardSkeleton key={index} />
           ))
+        ) : resources.length === 0 ? (
+          <div className="col-span-full text-center py-12">
+            <svg className="w-16 h-16 text-base-content/30 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-base-content/60 mb-4">No resources found</p>
+            {(debouncedSearchTerm.trim() !== '' || filters.type !== '' || filters.status !== '' || debouncedLocation !== '' || debouncedMinCapacity !== '' || debouncedAmenities !== '') && (
+              <button 
+                className="btn btn-outline"
+                onClick={() => {
+                  setSearchTerm('');
+                  setFilters({
+                    type: '',
+                    status: '',
+                    location: '',
+                    minCapacity: '',
+                    amenities: ''
+                  });
+                  setSearching(true);
+                  setPagination(prev => ({ ...prev, page: 0 }));
+                }}
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
         ) : (
           resources.map((resource) => (
             <div key={resource.id} className={`card shadow-lg ${getCardStyle(resource.type)}`}>
@@ -387,6 +488,29 @@ const ResourceListPage = () => {
           ))
         )}
       </div>
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-6">
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+            disabled={pagination.page === 0}
+          >
+            Previous
+          </button>
+          <span className="text-sm">
+            Page {pagination.page + 1} of {pagination.totalPages}
+          </span>
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+            disabled={pagination.page >= pagination.totalPages - 1}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 };
