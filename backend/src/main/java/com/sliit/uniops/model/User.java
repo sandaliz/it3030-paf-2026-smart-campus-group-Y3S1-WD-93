@@ -7,11 +7,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.HashSet;
-import java.util.Set;
-
 /**
- * Represents a system user, synchronized with Google OAuth details.
+ * Represents a system user.
  */
 @Data
 @Builder
@@ -30,7 +27,4 @@ public class User {
     private String name;
 
     private String pictureUrl;
-
-    @Builder.Default
-    private Set<Role> roles = new HashSet<>();
 }
