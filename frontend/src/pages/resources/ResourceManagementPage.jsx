@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 const ResourceManagementPage = () => {
   const { user, hasRole, hasAnyRole } = useAuth();
   const [resources, setResources] = useState([]);
+  const [allResources, setAllResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState(null);
@@ -26,6 +27,8 @@ const ResourceManagementPage = () => {
     minCapacity: ''
   });
   const [debouncedLocation, setDebouncedLocation] = useState('');
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [selectedType, setSelectedType] = useState(null);
   const [pagination, setPagination] = useState({
     page: 0,
     size: 10,
@@ -36,6 +39,19 @@ const ResourceManagementPage = () => {
   useEffect(() => {
     fetchResources();
   }, [filters.type, filters.status, filters.minCapacity, debouncedLocation, pagination.page]);
+
+  useEffect(() => {
+    fetchAllResources();
+  }, []);
+
+  const fetchAllResources = async () => {
+    try {
+      const data = await resourceService.getAllResources();
+      setAllResources(data);
+    } catch (err) {
+      console.error('Error fetching all resources for stats:', err);
+    }
+  };
 
   // Debounce location filter
   useEffect(() => {
@@ -118,6 +134,7 @@ const ResourceManagementPage = () => {
       setSuccess('Resource deleted successfully');
       setError(null);
       fetchResources();
+      fetchAllResources();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError('Failed to delete resource');
@@ -134,6 +151,7 @@ const ResourceManagementPage = () => {
       setSuccess(`Resource status updated to ${newStatus.replace('_', ' ')}`);
       setError(null);
       fetchResources();
+      fetchAllResources();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError('Failed to update resource status');
@@ -148,6 +166,7 @@ const ResourceManagementPage = () => {
     setSuccess(editingResource ? 'Resource updated successfully' : 'Resource created successfully');
     setError(null);
     fetchResources();
+    fetchAllResources();
     setTimeout(() => setSuccess(null), 3000);
   };
 
@@ -190,6 +209,7 @@ const ResourceManagementPage = () => {
       setError(null);
       setSelectedResources([]);
       fetchResources();
+      fetchAllResources();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError('Failed to delete resources');
@@ -230,6 +250,53 @@ const ResourceManagementPage = () => {
     }
   };
 
+  const getResourceStats = () => {
+    const stats = {
+      total: allResources.length,
+      byStatus: {
+        ACTIVE: 0,
+        OUT_OF_SERVICE: 0,
+        UNDER_MAINTENANCE: 0
+      },
+      byType: {
+        LECTURE_HALL: 0,
+        LAB: 0,
+        MEETING_ROOM: 0,
+        EQUIPMENT: 0,
+        OFFICE: 0,
+        AUDITORIUM: 0
+      }
+    };
+
+    allResources.forEach(resource => {
+      stats.byStatus[resource.status] = (stats.byStatus[resource.status] || 0) + 1;
+      stats.byType[resource.type] = (stats.byType[resource.type] || 0) + 1;
+    });
+
+    return stats;
+  };
+
+  const getSelectedTypeStats = (type) => {
+    const typeResources = allResources.filter(r => r.type === type);
+    const stats = {
+      total: typeResources.length,
+      byStatus: {
+        ACTIVE: 0,
+        OUT_OF_SERVICE: 0,
+        UNDER_MAINTENANCE: 0
+      }
+    };
+
+    typeResources.forEach(resource => {
+      stats.byStatus[resource.status] = (stats.byStatus[resource.status] || 0) + 1;
+    });
+
+    return stats;
+  };
+
+  const stats = getResourceStats();
+  const selectedTypeStats = selectedType ? getSelectedTypeStats(selectedType) : null;
+
   if (loading && resources.length === 0) {
     return <PageLoader />;
   }
@@ -268,6 +335,110 @@ const ResourceManagementPage = () => {
             >
               Add New Resource
             </button>
+          )}
+        </div>
+      </div>
+
+      {/* Resource Overview Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="card bg-base-100 shadow-lg border border-base-300">
+          <div className="card-body p-4">
+            <h3 className="text-sm text-base-content/70">Total Resources</h3>
+            <p className="text-3xl font-bold">{stats.total}</p>
+          </div>
+        </div>
+        <div className="card bg-base-100 shadow-lg border border-base-300">
+          <div className="card-body p-4">
+            <h3 className="text-sm text-base-content/70">Active</h3>
+            <p className="text-3xl font-bold text-success">{stats.byStatus.ACTIVE}</p>
+          </div>
+        </div>
+        <div className="card bg-base-100 shadow-lg border border-base-300">
+          <div className="card-body p-4">
+            <h3 className="text-sm text-base-content/70">Out of Service</h3>
+            <p className="text-3xl font-bold text-error">{stats.byStatus.OUT_OF_SERVICE}</p>
+          </div>
+        </div>
+        <div className="card bg-base-100 shadow-lg border border-base-300 relative">
+          <div className="card-body p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-sm text-base-content/70">By Type</h3>
+                <p className="text-3xl font-bold text-primary">
+                  {selectedType ? getResourceIcon(selectedType) : 'View'}
+                </p>
+                {selectedType && (
+                  <p className="text-sm text-base-content/70 capitalize">
+                    {selectedType.replace('_', ' ').toLowerCase()}
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                {selectedType && (
+                  <button 
+                    className="btn btn-sm btn-error"
+                    onClick={() => {
+                      setSelectedType(null);
+                      handleFilterChange('type', '');
+                      setSearching(true);
+                    }}
+                  >
+                    Reset
+                  </button>
+                )}
+                <button 
+                  className="btn btn-sm btn-outline"
+                  onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+                >
+                  {showTypeDropdown ? 'Hide' : 'Show'}
+                </button>
+              </div>
+            </div>
+            {selectedType && selectedTypeStats && (
+              <div className="mt-3 pt-3 border-t border-base-300 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-base-content/70">Total:</span>
+                  <span className="font-semibold">{selectedTypeStats.total}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-base-content/70">Active:</span>
+                  <span className="font-semibold text-success">{selectedTypeStats.byStatus.ACTIVE}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-base-content/70">Out of Service:</span>
+                  <span className="font-semibold text-error">{selectedTypeStats.byStatus.OUT_OF_SERVICE}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-base-content/70">Maintenance:</span>
+                  <span className="font-semibold text-warning">{selectedTypeStats.byStatus.UNDER_MAINTENANCE}</span>
+                </div>
+              </div>
+            )}
+          </div>
+          {showTypeDropdown && (
+            <div className="absolute top-full left-0 right-0 bg-base-100 shadow-xl rounded-lg p-4 z-20 border border-base-300">
+              <div className="space-y-2">
+                {Object.entries(stats.byType).map(([type, count]) => (
+                  <button
+                    key={type}
+                    className={`w-full flex justify-between items-center p-2 rounded-lg hover:bg-base-200 transition-colors ${
+                      selectedType === type ? 'bg-primary/20 border border-primary' : ''
+                    }`}
+                    onClick={() => {
+                      setSelectedType(type);
+                      handleFilterChange('type', type);
+                      setShowTypeDropdown(false);
+                    }}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>{getResourceIcon(type)}</span>
+                      <span className="capitalize">{type.replace('_', ' ').toLowerCase()}</span>
+                    </span>
+                    <span className="font-semibold">{count}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>
