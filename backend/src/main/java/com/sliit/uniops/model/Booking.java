@@ -39,6 +39,10 @@ public class Booking {
     
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    private String googleCalendarEventId;  // Store Google Calendar event ID
+    private boolean calendarSynced;
+    private LocalDateTime lastCalendarSync;
     
     // Enum for Booking Status
     public enum BookingStatus {
@@ -59,8 +63,7 @@ public class Booking {
         }
         this.updatedAt = LocalDateTime.now();
     }
-    
-    // Getters and Setters
+// Getters and Setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
     
@@ -105,6 +108,22 @@ public class Booking {
     
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    
+    // Google Calendar related getters and setters
+    public String getGoogleCalendarEventId() { return googleCalendarEventId; }
+    public void setGoogleCalendarEventId(String googleCalendarEventId) { 
+        this.googleCalendarEventId = googleCalendarEventId; 
+    }
+    
+    public boolean isCalendarSynced() { return calendarSynced; }
+    public void setCalendarSynced(boolean calendarSynced) { 
+        this.calendarSynced = calendarSynced; 
+    }
+    
+    public LocalDateTime getLastCalendarSync() { return lastCalendarSync; }
+    public void setLastCalendarSync(LocalDateTime lastCalendarSync) { 
+        this.lastCalendarSync = lastCalendarSync; 
+    }
     
     @Override
     public String toString() {

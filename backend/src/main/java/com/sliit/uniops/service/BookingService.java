@@ -10,6 +10,8 @@ import com.sliit.uniops.dto.response.BookingResponseDTO;
 import com.sliit.uniops.exception.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -24,6 +26,8 @@ import java.util.stream.Collectors;
 @Service
 public class BookingService {
     
+    private static final Logger logger = LoggerFactory.getLogger(BookingService.class);
+    
     @Autowired
     private BookingRepository bookingRepository;
     
@@ -32,6 +36,12 @@ public class BookingService {
     
     @Autowired
     private BookingNotificationService notificationService;
+    
+    @Autowired
+    private GoogleCalendarService calendarService;
+    
+    @Autowired
+    private UserService userService;
     
     // Create a new booking request with conflict checking
     public Booking createBooking(BookingRequestDTO request, String userId) {
@@ -176,6 +186,19 @@ public class BookingService {
             "Your booking has been approved" + (reason != null ? " Reason: " + reason : ""),
             bookingId
         );
+
+        // Auto-sync to Google Calendar if user has connected calendar
+        try {
+            String accessToken = userService.getCalendarAccessToken(booking.getUserId());
+            if (accessToken != null) {
+                calendarService.addBookingToCalendar(booking.getUserId(), approvedBooking, accessToken);
+                approvedBooking.setCalendarSynced(true);
+                approvedBooking.setLastCalendarSync(LocalDateTime.now());
+                bookingRepository.save(approvedBooking);
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to auto-sync booking to calendar: {}", e.getMessage());
+        }
         
         return approvedBooking;
     }

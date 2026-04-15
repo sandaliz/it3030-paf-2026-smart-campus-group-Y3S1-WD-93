@@ -40,13 +40,27 @@ const Header = () => {
                         >
                             Resources
                         </Link>
+                        <Link 
+                            to="/bookings" 
+                            className={`text-lg font-medium hover:text-primary transition-colors ${isActive('/bookings') ? 'text-primary' : 'text-base-content/70'}`}
+                        >
+                            Bookings
+                        </Link>
                         {user && user.roles && user.roles.includes('ADMIN') && (
-                            <Link 
-                                to="/admin/resources" 
-                                className={`text-lg font-medium hover:text-primary transition-colors ${isActive('/admin/resources') ? 'text-primary' : 'text-base-content/70'}`}
-                            >
-                                Admin
-                            </Link>
+                            <>
+                                <Link 
+                                    to="/admin/resources" 
+                                    className={`text-lg font-medium hover:text-primary transition-colors ${isActive('/admin/resources') ? 'text-primary' : 'text-base-content/70'}`}
+                                >
+                                    Admin Resources
+                                </Link>
+                                <Link 
+                                    to="/admin/bookings" 
+                                    className={`text-lg font-medium hover:text-primary transition-colors ${isActive('/admin/bookings') ? 'text-primary' : 'text-base-content/70'}`}
+                                >
+                                    Admin Bookings
+                                </Link>
+                            </>
                         )}
                         
                         <div className="flex items-center gap-4 ml-8">

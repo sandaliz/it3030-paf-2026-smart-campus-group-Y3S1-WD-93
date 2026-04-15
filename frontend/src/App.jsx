@@ -10,10 +10,13 @@ import Footer from './components/layout/Footer';
 // Pages
 import LoginPage from './pages/LoginPage';
 import AuthCallback from './pages/AuthCallback';
+import GoogleCalendarCallback from './pages/calendar/GoogleCalendarCallback';
 import Home from './pages/Home';
 import ResourceDetailPage from './pages/resources/ResourceDetailPage'
 import ResourceManagementPage from './pages/resources/ResourceManagementPage'
 import ResourceListPage from './pages/resources/ResourceListPage'
+import BookingPage from './pages/bookings/BookingPage'
+import BookingManagementPage from './pages/bookings/BookingManagementPage'
 
 function App() {
   const [theme, setTheme] = useState(() => {
@@ -41,6 +44,7 @@ function App() {
               {/* Public Routes */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/auth/calendar/callback" element={<GoogleCalendarCallback />} />
 
               {/* Protected Routes */}
               <Route 
@@ -72,6 +76,22 @@ function App() {
                 element={
                   <ProtectedRoute requiredRoles={['ADMIN']}>
                     <ResourceManagementPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/bookings" 
+                element={
+                  <ProtectedRoute>
+                    <BookingPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/bookings" 
+                element={
+                  <ProtectedRoute requiredRoles={['ADMIN']}>
+                    <BookingManagementPage />
                   </ProtectedRoute>
                 } 
               />
