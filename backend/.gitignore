@@ -32,5 +32,22 @@ build/
 ### VS Code ###
 .vscode/
 
-
 .env.example
+
+### Testing Authentication ###
+src/main/java/com/sliit/uniops/config/DataInitializer.java
+src/main/java/com/sliit/uniops/config/JwtSecurityConfig.java
+src/main/java/com/sliit/uniops/controller/TestAuthController.java
+src/main/java/com/sliit/uniops/model/User.java
+src/main/java/com/sliit/uniops/repository/UserRepository.java
+src/main/java/com/sliit/uniops/security/SecurityConfig.java
+src/main/java/com/sliit/uniops/security/AuthFilter.java
+src/main/java/com/sliit/uniops/security/TestJwtAuthenticationFilter.java
+src/main/java/com/sliit/uniops/security/UserPrincipal.java
+src/main/java/com/sliit/uniops/security/TestJwtTokenProvider.java
+src/main/java/com/sliit/uniops/security/TestCustomOAuth2User.java
+src/main/java/com/sliit/uniops/security/TestCustomOAuth2UserService.java
+src/main/java/com/sliit/uniops/security/TestOAuth2AuthenticationSuccessHandler.java
+src/main/java/com/sliit/uniops/security/TestOAuth2AuthenticationFailureHandler.java
+src/main/java/com/sliit/uniops/security/TestTokenUtils.java
+src/main/java/com/sliit/uniops/service/TestAuthService.java
