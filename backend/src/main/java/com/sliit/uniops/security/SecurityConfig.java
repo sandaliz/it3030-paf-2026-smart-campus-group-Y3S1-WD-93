@@ -33,8 +33,8 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/", "/api/ping", "/actuator/health", "/oauth2/**", "/auth/**").permitAll()
-                        .requestMatchers("/api/resources/**").permitAll() // Allow resources API for now
+                        .requestMatchers("/", "/api/ping", "/actuator/health", "/oauth2/**", "/auth/**", "/api/test/**").permitAll()
+                        .requestMatchers("/api/resources/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))

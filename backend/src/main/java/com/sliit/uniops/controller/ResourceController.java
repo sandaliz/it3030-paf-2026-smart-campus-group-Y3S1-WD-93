@@ -13,6 +13,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -116,8 +117,9 @@ public class ResourceController {
         return ResponseEntity.ok(dtos);
     }
     
-    // POST create new resource (JSON only)
+    // POST create resource (JSON only)
     @PostMapping(consumes = "application/json")
+    @PreAuthorize("hasAnyRole('TECHNICIAN', 'LECTURER', 'ADMIN')")
     public ResponseEntity<ResourceResponseDTO> createResource(@Valid @RequestBody ResourceRequestDTO resourceRequestDTO) {
         Resource resource = convertToEntity(resourceRequestDTO);
         Resource createdResource = resourceService.createResource(resource);
@@ -126,6 +128,7 @@ public class ResourceController {
     
     // PUT update resource (JSON only)
     @PutMapping(value = "/{id}", consumes = "application/json")
+    @PreAuthorize("hasAnyRole('TECHNICIAN', 'LECTURER', 'ADMIN')")
     public ResponseEntity<ResourceResponseDTO> updateResource(
             @PathVariable String id, 
             @Valid @RequestBody ResourceRequestDTO resourceRequestDTO) {
@@ -136,6 +139,7 @@ public class ResourceController {
     
     // DELETE resource
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteResource(@PathVariable String id) {
         resourceService.deleteResource(id);
         return ResponseEntity.noContent().build();

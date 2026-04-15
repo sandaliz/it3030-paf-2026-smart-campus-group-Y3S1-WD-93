@@ -13,8 +13,8 @@ const LoginPage = () => {
     }
 
     const handleGoogleLogin = () => {
-        // Redirect to Spring Boot OAuth2 endpoint
-        window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+        // Redirect to Spring Boot OAuth2 endpoint through proxy
+        window.location.href = '/oauth2/authorization/google';
     };
 
     return (
