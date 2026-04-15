@@ -32,6 +32,8 @@ build/
 ### VS Code ###
 .vscode/
 
+.env.example
+
 ### Testing Authentication ###
 src/main/java/com/sliit/uniops/config/DataInitializer.java
 src/main/java/com/sliit/uniops/config/JwtSecurityConfig.java
