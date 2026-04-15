@@ -20,11 +20,11 @@ import BookingManagementPage from './pages/bookings/BookingManagementPage'
 import TicketListPage from './pages/incidents/TicketListPage';
 import CreateTicketPage from './pages/incidents/CreateTicketPage';
 import TicketDetailPage from './pages/incidents/TicketDetailPage';
-//import UserDashboard from './pages/user/UserDashboard';
+// Role-based Dashboards
 import AdminDashboard from './pages/admin/AdminDashboard';
-//import TechnicianDashboard from './pages/technician/TechnicianDashboard';
-//import TicketAnalyticsPage from './pages/admin/TicketAnalyticsPage';
-//import UserTicketsPage from './pages/user/UserTicketsPage';
+import LecturerDashboard from './pages/LecturerDashboard';
+import StudentDashboard from './pages/StudentDashboard';
+import StaffDashboard from './pages/StaffDashboard';
 
 function App() {
   const [theme, setTheme] = useState(() => {
@@ -118,6 +118,28 @@ function App() {
               <Route path="/tickets/:id" element={
                 <ProtectedRoute>
                   <TicketDetailPage />
+                </ProtectedRoute>
+              } />
+
+              {/* Role-based Dashboard Routes */}
+              <Route path="/admin/dashboard" element={
+                <ProtectedRoute requiredRoles={['ADMIN']}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/lecturer/dashboard" element={
+                <ProtectedRoute requiredRoles={['LECTURER']}>
+                  <LecturerDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/student/dashboard" element={
+                <ProtectedRoute requiredRoles={['STUDENT']}>
+                  <StudentDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/staff/dashboard" element={
+                <ProtectedRoute requiredRoles={['STAFF']}>
+                  <StaffDashboard />
                 </ProtectedRoute>
               } />
 
