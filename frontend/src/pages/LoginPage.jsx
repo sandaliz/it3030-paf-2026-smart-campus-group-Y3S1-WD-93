@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Navigate, useLocation } from 'react-router-dom';
 
 const LoginPage = () => {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const location = useLocation();
     
     // If user is already logged in, redirect them away from the login page
@@ -17,9 +17,16 @@ const LoginPage = () => {
         window.location.href = 'http://localhost:8080/oauth2/authorization/google';
     };
 
+    const handleDebugClear = () => {
+        console.log('DEBUG: Clearing session...');
+        localStorage.clear();
+        logout();
+        window.location.reload();
+    };
+
     return (
-        <div className="min-h-screen flex items-center justify-center bg-base-200">
-            <div className="card w-full max-w-md bg-base-100 shadow-2xl overflow-hidden">
+        <div className="w-full max-w-md">
+            <div className="card bg-base-100 shadow-2xl overflow-hidden">
                 <div className="bg-primary h-2 w-full"></div>
                 <div className="card-body items-center text-center p-10">
                     <div className="avatar mb-4">
@@ -41,6 +48,13 @@ const LoginPage = () => {
                             <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
                         </svg>
                         Sign in with Google
+                    </button>
+                    
+                    <button 
+                        onClick={handleDebugClear}
+                        className="btn btn-ghost btn-sm w-full mt-2 text-xs opacity-50 hover:opacity-100"
+                    >
+                        🔄 Clear Session & Debug
                     </button>
                     
                     <div className="divider mt-8">Secure Access</div>

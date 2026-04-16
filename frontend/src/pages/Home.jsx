@@ -1,9 +1,19 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Home = () => {
-    const { user } = useAuth();
+    const { user, getDashboardPath } = useAuth();
+    const navigate = useNavigate();
+
+    React.useEffect(() => {
+        if (user) {
+            const dashboardPath = getDashboardPath();
+            if (dashboardPath !== '/') {
+                navigate(dashboardPath, { replace: true });
+            }
+        }
+    }, [user, getDashboardPath, navigate]);
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-base-100 to-base-200">
