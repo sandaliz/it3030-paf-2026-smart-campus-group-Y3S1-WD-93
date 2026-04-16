@@ -156,7 +156,7 @@ const AppContent = () => {
             </ProtectedRoute>
           } />
           <Route path="/student/dashboard" element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredRoles={['STUDENT']}>
               <StudentDashboard />
             </ProtectedRoute>
           } />
