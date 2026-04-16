@@ -32,5 +32,13 @@ public class User {
     private String pictureUrl;
 
     @Builder.Default
+    private boolean enabled = true;
+
+    @Builder.Default
+    private java.time.LocalDateTime createdAt = java.time.LocalDateTime.now();
+
+    private java.time.LocalDateTime lastLoginAt;
+
+    @Builder.Default
     private Set<Role> roles = new HashSet<>();
 }
