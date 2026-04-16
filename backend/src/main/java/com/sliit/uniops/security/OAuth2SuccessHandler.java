@@ -62,15 +62,31 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             }
         }
 
+        // If user still doesn't exist, create a new one
         if (user == null) {
-            throw new RuntimeException("User not found after OAuth success (even after retries) for: " + email);
+            System.out.println("Creating new user for: " + email);
+            Role role = roleMappingService.parseRoleFromEmail(email);
+            System.out.println("Assigned role from email: " + role);
+            
+            user = new User();
+            user.setEmail(email);
+            user.setName(oAuth2User.getAttributes().get("name") != null ? 
+                oAuth2User.getAttributes().get("name").toString() : email.split("@")[0]);
+            user.setPictureUrl((String) oAuth2User.getAttributes().get("picture"));
+            user.setGoogleId(googleId);
+            user.setRoles(java.util.Set.of(role));
+            user.setEnabled(true);
+            user.setCreatedAt(java.time.LocalDateTime.now());
+            user.setLastLoginAt(java.time.LocalDateTime.now());
+            
+            user = userRepository.save(user);
+            System.out.println("New user created successfully: " + user.getEmail() + " with role: " + user.getRoles());
+        } else {
+            // Update last login time for existing users
+            user.setLastLoginAt(java.time.LocalDateTime.now());
+            user = userRepository.save(user);
+            System.out.println("Updated last login for existing user: " + user.getEmail());
         }
-
-        // Prepare claims for the JWT
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("roles", user.getRoles().stream().map(Enum::name).collect(Collectors.toList()));
-        claims.put("name", user.getName());
-        claims.put("picture", user.getPictureUrl());
 
         // 2. Identify role from the User object (DB) OR directly from email (Zero Latency fallback)
         Role highestRole = roleMappingService.getHighestPriorityRole(user.getRoles());
@@ -87,6 +103,13 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         String dashboardPath = roleMappingService.getDashboardPath(highestRole);
         System.out.println("DEBUG: Final dashboard path: " + dashboardPath);
+
+        // Prepare claims for the JWT - use the final role after override
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("roles", java.util.Arrays.asList(highestRole.name()));
+        claims.put("name", user.getName());
+        claims.put("picture", user.getPictureUrl());
+        System.out.println("DEBUG: JWT roles claim: " + claims.get("roles"));
 
         // 3. Dynamic origin detection (Port 5173 vs 5174)
         String origin = request.getHeader("Origin");
