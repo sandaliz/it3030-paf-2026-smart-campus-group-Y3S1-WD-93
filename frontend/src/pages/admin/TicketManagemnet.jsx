@@ -198,7 +198,7 @@ const AdminDashboard = () => {
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="bg-base-100 shadow-sm border-b border-base-300 p-4">
-          <h1 className="text-2xl font-bold text-base-content">Admin Dashboard</h1>
+          <h1 className="text-2xl font-bold text-base-content">Ticket Management</h1>
         </div>
 
         {/* Stats Cards */}

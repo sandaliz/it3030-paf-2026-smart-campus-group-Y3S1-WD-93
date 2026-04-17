@@ -44,11 +44,12 @@ import TicketListPage from './pages/incidents/TicketListPage';
 import CreateTicketPage from './pages/incidents/CreateTicketPage';
 import TicketDetailPage from './pages/incidents/TicketDetailPage';
 // Role-based Dashboards
-import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminDashboard from './pages/admin/TicketManagemnet';
 import TicketAnalyticsPage from './pages/admin/TicketAnalyticsPage';
 import LecturerDashboard from './pages/LecturerDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import StaffDashboard from './pages/StaffDashboard';
+import TechnicianDashboard from './pages/technician/TechnicianDashboard';
 
 const AppContent = () => {
   const location = useLocation();
@@ -167,7 +168,7 @@ const AppContent = () => {
           } />
           <Route path="/technician/dashboard" element={
             <ProtectedRoute requiredRoles={['TECHNICIAN']}>
-              <StudentDashboard />
+              <TechnicianDashboard />
             </ProtectedRoute>
           } />
           

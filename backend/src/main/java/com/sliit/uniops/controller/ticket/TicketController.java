@@ -2,6 +2,7 @@ package com.sliit.uniops.controller.ticket;
 
 import com.sliit.uniops.dto.request.ticket.TicketRequestDTO;
 import com.sliit.uniops.dto.response.ticket.TicketResponseDTO;
+import com.sliit.uniops.model.User;
 import com.sliit.uniops.service.ticket.TicketService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,8 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -25,13 +25,13 @@ public class TicketController {
     private final TicketService ticketService;
 
     @PostMapping(consumes = {"multipart/form-data"})
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'TECHNICIAN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TicketResponseDTO> createTicket(
             @Valid @ModelAttribute TicketRequestDTO request,
-            @AuthenticationPrincipal OidcUser user) {
+            Authentication authentication) {
 
-        String userId = user.getSubject();
-        String userName = user.getFullName();
+        String userId = getUserId(authentication);
+        String userName = getUserName(authentication);
 
         TicketResponseDTO ticket = ticketService.createTicket(request, userId, userName);
         return ResponseEntity.status(HttpStatus.CREATED).body(ticket);
@@ -45,12 +45,12 @@ public class TicketController {
     }
 
     @GetMapping("/my-tickets")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'TECHNICIAN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<TicketResponseDTO>> getMyTickets(
-            @AuthenticationPrincipal OidcUser user,
+            Authentication authentication,
             Pageable pageable) {
 
-        String userId = user.getSubject();
+        String userId = getUserId(authentication);
         Page<TicketResponseDTO> tickets = ticketService.getTicketsByUser(userId, pageable);
         return ResponseEntity.ok(tickets);
     }
@@ -58,10 +58,10 @@ public class TicketController {
     @GetMapping("/assigned-to-me")
     @PreAuthorize("hasRole('TECHNICIAN')")
     public ResponseEntity<Page<TicketResponseDTO>> getAssignedTickets(
-            @AuthenticationPrincipal OidcUser user,
+            Authentication authentication,
             Pageable pageable) {
 
-        String technicianId = user.getSubject();
+        String technicianId = getUserId(authentication);
         Page<TicketResponseDTO> tickets = ticketService.getTicketsByTechnician(technicianId, pageable);
         return ResponseEntity.ok(tickets);
     }
@@ -79,14 +79,11 @@ public class TicketController {
             @PathVariable String id,
             @RequestParam String status,
             @RequestParam(required = false) String reason,
-            @AuthenticationPrincipal OidcUser user) {
+            Authentication authentication) {
 
 
-        String userId = user.getSubject();
-        String userRole = user.getAuthorities().stream()
-                .map(auth -> auth.getAuthority())
-                .findFirst()
-                .orElse("USER");
+        String userId = getUserId(authentication);
+        String userRole = getPrimaryRole(authentication);
 
         TicketResponseDTO ticket = ticketService.updateTicketStatus(id, status, reason, userId, userRole);
         return ResponseEntity.ok(ticket);
@@ -98,23 +95,23 @@ public class TicketController {
             @PathVariable String id,
             @RequestParam String technicianId,
             @RequestParam String technicianName,
-            @AuthenticationPrincipal OidcUser user) {
+            Authentication authentication) {
 
 
-        String assignedBy = user.getSubject();
+        String assignedBy = getUserId(authentication);
 
         TicketResponseDTO ticket = ticketService.assignTechnician(id, technicianId, assignedBy);
         return ResponseEntity.ok(ticket);
     }
 
     @PatchMapping("/{id}/confirm")
-    @PreAuthorize("hasRole('USER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<TicketResponseDTO> confirmTicket(
             @PathVariable String id,
             @RequestParam(required = false) String feedback,
-            @AuthenticationPrincipal OidcUser user) {
+            Authentication authentication) {
 
-        TicketResponseDTO ticket = ticketService.confirmTicketResolution(id, user.getSubject(), feedback);
+        TicketResponseDTO ticket = ticketService.confirmTicketResolution(id, getUserId(authentication), feedback);
         return ResponseEntity.ok(ticket);
     }
 
@@ -123,5 +120,28 @@ public class TicketController {
     public ResponseEntity<List<TicketResponseDTO>> searchTickets(@RequestParam String keyword) {
         List<TicketResponseDTO> tickets = ticketService.searchTickets(keyword);
         return ResponseEntity.ok(tickets);
+    }
+
+    private String getUserId(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof User user) {
+            return user.getId();
+        }
+        return authentication.getName();
+    }
+
+    private String getUserName(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof User user) {
+            return user.getName() != null ? user.getName() : user.getEmail();
+        }
+        return authentication.getName();
+    }
+
+    private String getPrimaryRole(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .map(auth -> auth.getAuthority().replace("ROLE_", ""))
+                .findFirst()
+                .orElse("USER");
     }
 }
