@@ -2,7 +2,7 @@
 
 ## System Architecture Overview
 
-![System Architecture Overview](system-architecture-overview.svg)
+![System Architecture Overview](other/system-architecture-overview.svg)
 
 **Technology Stack:**
 - **Frontend:** React 18 + DaisyUI + Tailwind CSS
@@ -15,7 +15,7 @@
 
 ## User Roles & Permissions
 
-![User Roles](user-roles-used.svg)
+![User Roles](other/user-roles-used.svg)
 
 ## Main Workflows
 
@@ -195,7 +195,7 @@ Card Layout by Type:
 
 ## API Endpoints
 
-![API Endpoints](api-endpoints.svg)
+![API Endpoints](other/api-endpoints.svg)
 
 **REST API Endpoints for Module A:**
 
@@ -222,7 +222,7 @@ Card Layout by Type:
 
 ## Database Schema
 
-![Database Schema](db-schema-doc.svg)
+![Database Schema](other/db-schema-doc.svg)
 
 **Resource Document Structure:**
 
