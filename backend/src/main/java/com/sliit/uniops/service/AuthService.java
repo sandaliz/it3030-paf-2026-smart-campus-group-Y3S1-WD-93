@@ -59,24 +59,21 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        String username = normalizeUsername(request.getUsername());
-
+        String email = request.getEmail().trim().toLowerCase();
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(username, request.getPassword())
+                    new UsernamePasswordAuthenticationToken(email, request.getPassword())
             );
         } catch (DisabledException ex) {
             throw new IllegalStateException("Your account is disabled");
         } catch (BadCredentialsException ex) {
-            throw new IllegalArgumentException("Invalid username or password");
+            throw new IllegalArgumentException("Invalid email or password");
         }
 
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid username or password"));
-
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
         user.setLastLoginAt(LocalDateTime.now());
         user = userRepository.save(user);
-
         return buildAuthResponse(user);
     }
 
