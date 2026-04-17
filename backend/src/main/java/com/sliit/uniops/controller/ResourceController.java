@@ -68,6 +68,12 @@ public class ResourceController {
     public ResponseEntity<Resource> updateResourceStatus(@PathVariable String id, @RequestBody java.util.Map<String, String> statusUpdate) {
         return ResponseEntity.ok(resourceService.updateResourceStatus(id, statusUpdate.get("status")));
     }
+
+    // Track resource share (public)
+    @PostMapping("/{id}/share")
+    public ResponseEntity<Resource> trackShare(@PathVariable String id) {
+        return ResponseEntity.ok(resourceService.incrementShareCount(id));
+    }
     
     // Delete resource (admin only)
     @DeleteMapping("/{id}")

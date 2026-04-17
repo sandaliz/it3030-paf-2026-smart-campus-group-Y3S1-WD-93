@@ -23,6 +23,7 @@ public class Resource {
     private String description;
     private List<AvailabilityWindow> availabilityWindows;
     private List<String> amenities;
+    private Integer shareCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -106,7 +107,10 @@ public class Resource {
     
     public List<String> getAmenities() { return amenities; }
     public void setAmenities(List<String> amenities) { this.amenities = amenities; }
-    
+
+    public Integer getShareCount() { return shareCount; }
+    public void setShareCount(Integer shareCount) { this.shareCount = shareCount; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     
