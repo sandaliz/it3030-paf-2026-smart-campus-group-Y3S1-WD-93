@@ -2,12 +2,12 @@ package com.sliit.uniops.controller.ticket;
 
 import com.sliit.uniops.dto.request.ticket.AttachmentRequestDTO;
 import com.sliit.uniops.dto.response.ticket.AttachmentResponseDTO;
+import com.sliit.uniops.model.User;
 import com.sliit.uniops.service.ticket.AttachmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,10 +25,10 @@ public class AttachmentController {
     public ResponseEntity<AttachmentResponseDTO> uploadAttachment(
             @PathVariable String ticketId,
             @RequestParam("file") MultipartFile file,
-            @AuthenticationPrincipal OidcUser user) {
+            @AuthenticationPrincipal User user) {
         
-        String userId = user.getSubject();
-        String userName = user.getFullName();
+        String userId = user.getId();
+        String userName = user.getName();
         
         AttachmentResponseDTO attachment = attachmentService.uploadAttachment(file, ticketId, userId, userName);
         return ResponseEntity.status(HttpStatus.CREATED).body(attachment);
@@ -39,10 +39,10 @@ public class AttachmentController {
     public ResponseEntity<AttachmentResponseDTO> uploadBase64Attachment(
             @PathVariable String ticketId,
             @RequestBody AttachmentRequestDTO request,
-            @AuthenticationPrincipal OidcUser user) {
+            @AuthenticationPrincipal User user) {
         
-        String userId = user.getSubject();
-        String userName = user.getFullName();
+        String userId = user.getId();
+        String userName = user.getName();
         
         AttachmentResponseDTO attachment = attachmentService.uploadBase64Attachment(request, ticketId, userId, userName);
         return ResponseEntity.status(HttpStatus.CREATED).body(attachment);
@@ -69,11 +69,11 @@ public class AttachmentController {
     @DeleteMapping("/{attachmentId}")
     public ResponseEntity<Void> deleteAttachment(
             @PathVariable String attachmentId,
-            @AuthenticationPrincipal OidcUser user) {
+            @AuthenticationPrincipal User user) {
         
-        String userId = user.getSubject();
-        boolean isAdmin = user.getAuthorities().stream()
-            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        String userId = user.getId();
+        boolean isAdmin = user.getRoles().stream()
+            .anyMatch(role -> role.name().equals("ADMIN"));
         
         attachmentService.deleteAttachment(attachmentId, userId, isAdmin);
         return ResponseEntity.noContent().build();
