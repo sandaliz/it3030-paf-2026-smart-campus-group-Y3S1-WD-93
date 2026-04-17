@@ -39,6 +39,36 @@ const UserTicketsPage = () => {
   const [attachments, setAttachments] = useState([]);
   const [attachmentPreviews, setAttachmentPreviews] = useState([]);
 
+  // Handle resource selection with auto-fill location
+  const handleResourceChange = (resourceId) => {
+    if (resourceId) {
+      const selectedResource = resources.find(r => r.id === resourceId);
+      if (selectedResource) {
+        setNewTicket(prev => ({
+          ...prev,
+          resourceId: resourceId,
+          location: selectedResource.location
+        }));
+      }
+    } else {
+      // Clear resource and allow manual location entry
+      setNewTicket(prev => ({
+        ...prev,
+        resourceId: '',
+        location: ''
+      }));
+    }
+  };
+
+  // Handle manual location change (clear resource ID if location is manually edited)
+  const handleLocationChange = (location) => {
+    setNewTicket(prev => ({
+      ...prev,
+      location: location,
+      resourceId: '' // Clear resource ID when location is manually edited
+    }));
+  };
+
   const fetchResources = async () => {
     try {
       const response = await resourceService.getAllResources();
@@ -421,7 +451,7 @@ const UserTicketsPage = () => {
                 <select
                   className="select select-bordered"
                   value={newTicket.resourceId}
-                  onChange={(e) => setNewTicket({...newTicket, resourceId: e.target.value})}
+                  onChange={(e) => handleResourceChange(e.target.value)}
                 >
                   <option value="">Select a resource (if applicable)</option>
                   {resources.map((resource) => (
@@ -440,8 +470,15 @@ const UserTicketsPage = () => {
                   className="input input-bordered"
                   placeholder="Where is issue located?"
                   value={newTicket.location}
-                  onChange={(e) => setNewTicket({...newTicket, location: e.target.value})}
+                  onChange={(e) => handleLocationChange(e.target.value)}
                 />
+                {newTicket.resourceId && (
+                  <label className="label">
+                    <span className="label-text-alt text-xs text-info">
+                      Auto-filled from selected resource
+                    </span>
+                  </label>
+                )}
               </div>
               <div className="form-control">
                 <label className="label">

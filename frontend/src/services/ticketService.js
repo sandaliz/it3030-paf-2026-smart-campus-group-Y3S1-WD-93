@@ -39,7 +39,9 @@ export const ticketService = {
 
   // Update ticket status
   updateStatus: async (id, status, reason = '') => {
-    const response = await api.patch(`/api/tickets/${id}/status`, { status, reason });
+    const response = await api.patch(`/api/tickets/${id}/status`, null, {
+      params: { status, reason }
+    });
     return response.data;
   },
 
@@ -53,7 +55,9 @@ export const ticketService = {
 
   // Confirm resolution
   confirmResolution: async (id, feedback = '') => {
-    const response = await api.patch(`/api/tickets/${id}/confirm`, { feedback });
+    const response = await api.patch(`/api/tickets/${id}/confirm`, null, {
+      params: { feedback }
+    });
     return response.data;
   },
 
@@ -208,6 +212,16 @@ export const notificationService = {
 // ============================================
 
 export const authService = {
+  register: async (payload) => {
+    const response = await api.post('/api/auth/register', payload);
+    return response.data;
+  },
+
+  login: async (payload) => {
+    const response = await api.post('/api/auth/login', payload);
+    return response.data;
+  },
+
   loginWithGoogle: () => {
     window.location.href = `${API_BASE_URL}/oauth2/authorization/google`;
   },

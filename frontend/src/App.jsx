@@ -32,6 +32,7 @@ import Footer from './components/layout/Footer';
 
 // Pages
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import AuthCallback from './pages/AuthCallback';
 import GoogleCalendarCallback from './pages/calendar/GoogleCalendarCallback';
 import Home from './pages/Home';
@@ -44,16 +45,17 @@ import TicketListPage from './pages/incidents/TicketListPage';
 import CreateTicketPage from './pages/incidents/CreateTicketPage';
 import TicketDetailPage from './pages/incidents/TicketDetailPage';
 // Role-based Dashboards
-import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminDashboard from './pages/admin/TicketManagemnet';
 import TicketAnalyticsPage from './pages/admin/TicketAnalyticsPage';
 import LecturerDashboard from './pages/LecturerDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import StaffDashboard from './pages/StaffDashboard';
+import TechnicianDashboard from './pages/technician/TechnicianDashboard';
 
 const AppContent = () => {
   const location = useLocation();
   const { user, loading } = useAuth();
-  const isAuthPage = ['/login', '/auth/callback', '/auth/calendar/callback', '/auth/calendar/callback/'].includes(location.pathname);
+  const isAuthPage = ['/login', '/register', '/auth/callback', '/auth/calendar/callback', '/auth/calendar/callback/'].includes(location.pathname);
 
   const [theme, setTheme] = useState(() => {
     const savedTheme = window.localStorage.getItem('theme');
@@ -76,6 +78,7 @@ const AppContent = () => {
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/auth/calendar/callback" element={<GoogleCalendarCallback />} />
 
@@ -167,7 +170,7 @@ const AppContent = () => {
           } />
           <Route path="/technician/dashboard" element={
             <ProtectedRoute requiredRoles={['TECHNICIAN']}>
-              <StudentDashboard />
+              <TechnicianDashboard />
             </ProtectedRoute>
           } />
           

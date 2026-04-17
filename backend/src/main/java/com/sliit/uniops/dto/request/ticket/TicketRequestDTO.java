@@ -18,8 +18,6 @@ public class TicketRequestDTO {
     private String description;
 
     @NotBlank(message = "Category is required")
-    
-
     private String category;
 
     @NotBlank(message = "Priority is required")

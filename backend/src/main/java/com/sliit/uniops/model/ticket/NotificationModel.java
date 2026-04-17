@@ -5,7 +5,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 
-@Document(collection = "notifications")
+@Document(collection = "ticket_notifications")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
