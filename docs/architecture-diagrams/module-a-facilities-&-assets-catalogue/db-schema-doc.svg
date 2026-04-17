@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 550" font-family="'Courier New', 'Segoe UI', monospace">
+  <defs>
+    <linearGradient id="dbHeader" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1b5e20"/>
+      <stop offset="100%" style="stop-color:#2e7d32"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="2" dy="3" stdDeviation="4" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="550" fill="#f5f7fb"/>
+
+  <rect x="0" y="0" width="1200" height="60" fill="url(#dbHeader)"/>
+  <text x="600" y="38" text-anchor="middle" fill="white" font-size="22" font-weight="bold">Database Schema — Resource Document</text>
+
+  <rect x="60" y="85" width="750" height="420" rx="8" fill="#263238" filter="url(#shadow)"/>
+  <text x="80" y="115" fill="#4fc3f7" font-size="14" font-weight="bold">{</text>
+  <text x="90" y="140" fill="#81d4fa" font-size="13">  "_id": ObjectId,</text>
+  <text x="90" y="165" fill="#81d4fa" font-size="13">  "name": String,</text>
+  <text x="90" y="190" fill="#a5d6a7" font-size="13">  "type": Enum { LECTURE_HALL, LAB, MEETING_ROOM, EQUIPMENT, OFFICE, AUDITORIUM },</text>
+  <text x="90" y="215" fill="#81d4fa" font-size="13">  "capacity": Integer,</text>
+  <text x="90" y="240" fill="#81d4fa" font-size="13">  "location": String,</text>
+  <text x="90" y="265" fill="#ffab91" font-size="13">  "status": Enum { ACTIVE, OUT_OF_SERVICE, UNDER_MAINTENANCE },</text>
+  <text x="90" y="290" fill="#81d4fa" font-size="13">  "description": String,</text>
+  <text x="90" y="315" fill="#81d4fa" font-size="13">  "amenities": Array&lt;String&gt;,</text>
+  <text x="90" y="340" fill="#ffcc80" font-size="13">  "availabilityWindows": Array&lt;{</text>
+  <text x="100" y="362" fill="#ffcc80" font-size="12">    dayOfWeek: Enum,</text>
+  <text x="100" y="384" fill="#ffcc80" font-size="12">    startTime: String,</text>
+  <text x="100" y="406" fill="#ffcc80" font-size="12">    endTime: String,</text>
+  <text x="100" y="428" fill="#ffcc80" font-size="12">    available: Boolean</text>
+  <text x="90" y="450" fill="#ffcc80" font-size="13">  }&gt;,</text>
+  <text x="90" y="475" fill="#81d4fa" font-size="13">  "createdAt": LocalDateTime,</text>
+  <text x="90" y="498" fill="#81d4fa" font-size="13">  "updatedAt": LocalDateTime</text>
+  <text x="80" y="520" fill="#4fc3f7" font-size="14">}</text>
+
+  <rect x="840" y="85" width="300" height="420" rx="8" fill="#1a237e" fill-opacity="0.1" stroke="#1a237e" stroke-width="1"/>
+  <text x="990" y="115" text-anchor="middle" fill="#1a237e" font-size="15" font-weight="bold">Indexes</text>
+  
+  <rect x="860" y="135" width="260" height="30" rx="4" fill="#e8eaf6"/>
+  <text x="990" y="155" text-anchor="middle" fill="#283593" font-size="12">status</text>
+  
+  <rect x="860" y="175" width="260" height="30" rx="4" fill="#e8eaf6"/>
+  <text x="990" y="195" text-anchor="middle" fill="#283593" font-size="12">type</text>
+  
+  <rect x="860" y="215" width="260" height="30" rx="4" fill="#e8eaf6"/>
+  <text x="990" y="235" text-anchor="middle" fill="#283593" font-size="12">location</text>
+  
+  <rect x="860" y="255" width="260" height="30" rx="4" fill="#e8eaf6"/>
+  <text x="990" y="275" text-anchor="middle" fill="#283593" font-size="12">name</text>
+  
+  <rect x="860" y="295" width="260" height="30" rx="4" fill="#e8eaf6"/>
+  <text x="990" y="315" text-anchor="middle" fill="#283593" font-size="12">capacity</text>
+  
+  <rect x="860" y="335" width="260" height="30" rx="4" fill="#e1bee7"/>
+  <text x="990" y="355" text-anchor="middle" fill="#4a148c" font-size="12">status + type (compound)</text>
+  
+  <rect x="860" y="375" width="260" height="30" rx="4" fill="#e1bee7"/>
+  <text x="990" y="395" text-anchor="middle" fill="#4a148c" font-size="12">type + location (compound)</text>
+
+  <rect x="860" y="425" width="260" height="50" rx="4" fill="#fff3e0"/>
+  <text x="990" y="445" text-anchor="middle" fill="#bf360c" font-size="12" font-weight="bold">Collection: resources</text>
+  <text x="990" y="465" text-anchor="middle" fill="#e65100" font-size="11">Optimized for query perf</text>
+</svg>
