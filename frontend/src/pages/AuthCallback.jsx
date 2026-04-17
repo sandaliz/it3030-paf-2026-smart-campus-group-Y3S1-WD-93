@@ -24,8 +24,8 @@ const AuthCallback = () => {
     return (
         <div className="text-center">
             <span className="loading loading-ring loading-lg text-primary scale-150 mb-4"></span>
-            <h2 className="text-xl font-semibold animate-pulse">Completing sign in...</h2>
-            <p className="text-base-content/60">Finalizing your authentication session.</p>
+            <h2 className="text-xl font-semibold animate-pulse">Authenticating with Google...</h2>
+            <p className="text-base-content/60">Finishing your secure login Session</p>
         </div>
     );
 };

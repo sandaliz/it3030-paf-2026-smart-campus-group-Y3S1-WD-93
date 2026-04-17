@@ -1,10 +1,10 @@
 package com.sliit.uniops.controller.ticket;
 
-import com.sliit.uniops.model.User;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.sliit.uniops.dto.request.ticket.CommentRequestDTO;
 import com.sliit.uniops.service.ticket.TicketCommentService;
@@ -28,10 +28,10 @@ public class CommentController {
     public ResponseEntity<CommentResponseDTO> addComment(
             @PathVariable String ticketId,
             @Valid @RequestBody CommentRequestDTO request,
-            @AuthenticationPrincipal User user) {
+            @AuthenticationPrincipal OidcUser user) {
         
-        String userId = user.getId();
-        String userName = user.getName();
+        String userId = user.getSubject();
+        String userName = user.getFullName();
         String userRole = extractUserRole(user);
         
         CommentResponseDTO comment = commentService.addComment(ticketId, request, userId, userName, userRole);
@@ -41,9 +41,9 @@ public class CommentController {
     @GetMapping
     public ResponseEntity<List<CommentResponseDTO>> getComments(
             @PathVariable String ticketId,
-            @AuthenticationPrincipal User user) {
+            @AuthenticationPrincipal OidcUser user) {
         
-        String userId = user.getId();
+        String userId = user.getSubject();
         String userRole = extractUserRole(user);
         
         List<CommentResponseDTO> comments = commentService.getCommentsByTicket(ticketId, userRole, userId);
@@ -61,9 +61,9 @@ public class CommentController {
             @PathVariable String ticketId,
             @PathVariable String commentId,
             @Valid @RequestBody CommentUpdateDTO request,
-            @AuthenticationPrincipal User user) {
+            @AuthenticationPrincipal OidcUser user) {
         
-        String userId = user.getId();
+        String userId = user.getSubject();
         String userRole = extractUserRole(user);
         
         CommentResponseDTO comment = commentService.updateComment(commentId, request, userId, userRole);
@@ -74,9 +74,9 @@ public class CommentController {
     public ResponseEntity<Void> deleteComment(
             @PathVariable String ticketId,
             @PathVariable String commentId,
-            @AuthenticationPrincipal User user) {
+            @AuthenticationPrincipal OidcUser user) {
         
-        String userId = user.getId();
+        String userId = user.getSubject();
         String userRole = extractUserRole(user);
         
         commentService.deleteComment(commentId, userId, userRole);
@@ -87,7 +87,7 @@ public class CommentController {
     public ResponseEntity<Void> hardDeleteComment(
             @PathVariable String ticketId,
             @PathVariable String commentId,
-            @AuthenticationPrincipal User user) {
+            @AuthenticationPrincipal OidcUser user) {
         
         String userRole = extractUserRole(user);
         
@@ -107,11 +107,12 @@ public class CommentController {
         return ResponseEntity.ok(count);
     }
     
-    private String extractUserRole(User user) {
-        if (user.getRoles().stream().anyMatch(role -> role.name().equals("ADMIN"))) {
+    private String extractUserRole(OidcUser user) {
+        // Extract role from authorities or custom attribute
+        if (user.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
             return "ADMIN";
         }
-        if (user.getRoles().stream().anyMatch(role -> role.name().equals("TECHNICIAN"))) {
+        if (user.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_TECHNICIAN"))) {
             return "TECHNICIAN";
         }
         return "USER";

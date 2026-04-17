@@ -2,7 +2,7 @@ package com.sliit.uniops.controller;
 
 import com.google.api.services.calendar.model.Event;
 import com.sliit.uniops.model.Booking;
-import com.sliit.uniops.model.User;
+import com.sliit.uniops.security.UserPrincipal;
 import com.sliit.uniops.service.BookingService;
 import com.sliit.uniops.service.GoogleCalendarService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,9 +34,9 @@ public class GoogleCalendarController {
     public ResponseEntity<?> addBookingToCalendar(
             @PathVariable String bookingId,
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         
-        Booking booking = bookingService.getBookingById(bookingId, currentUser.getId(), isAdmin(currentUser));
+        Booking booking = bookingService.getBookingById(bookingId, currentUser.getId(), currentUser.isAdmin());
         
         String eventId = calendarService.addBookingToCalendar(
             currentUser.getId(),
@@ -58,7 +58,7 @@ public class GoogleCalendarController {
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public ResponseEntity<?> syncAllBookingsToCalendar(
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         
         List<Booking> bookings = bookingService.getUserBookings(currentUser.getId());
         calendarService.syncAllBookingsToCalendar(currentUser.getId(), bookings, accessToken);
@@ -78,7 +78,7 @@ public class GoogleCalendarController {
             @RequestParam String startDate,
             @RequestParam String endDate,
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         
         LocalDateTime start = LocalDateTime.parse(startDate);
         LocalDateTime end = LocalDateTime.parse(endDate);
@@ -101,9 +101,9 @@ public class GoogleCalendarController {
     public ResponseEntity<?> removeBookingFromCalendar(
             @PathVariable String bookingId,
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         
-        Booking booking = bookingService.getBookingById(bookingId, currentUser.getId(), isAdmin(currentUser));
+        Booking booking = bookingService.getBookingById(bookingId, currentUser.getId(), currentUser.isAdmin());
         
         if (booking.getGoogleCalendarEventId() != null) {
             calendarService.deleteCalendarEvent(
@@ -117,9 +117,5 @@ public class GoogleCalendarController {
         response.put("message", "Booking removed from Google Calendar");
         
         return ResponseEntity.ok(response);
-    }
-
-    private boolean isAdmin(User currentUser) {
-        return currentUser.getRoles() != null && currentUser.getRoles().stream().anyMatch(role -> role.name().equals("ADMIN"));
     }
 }
