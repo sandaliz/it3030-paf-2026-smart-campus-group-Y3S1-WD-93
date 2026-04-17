@@ -1,58 +1,100 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const LecturerDashboard = () => {
     const [stats, setStats] = useState({
-        upcomingLectures: 6,
-        totalBookings: 24,
-        pendingApprovals: 3,
-        openTickets: 2
+        upcomingLectures: 0,
+        totalBookings: 0,
+        pendingApprovals: 0,
+        openTickets: 0
     });
 
     const [loading, setLoading] = useState(true);
-
-    // Mock data for things without models yet
-    const teachingSchedule = [
-        { time: '9:00 - 11:00 AM', course: 'CS301 - Web Development', room: 'Lab 201', attendance: '28/30', status: 'Active' },
-        { time: '2:00 - 4:00 PM', course: 'CS205 - Database Systems', room: 'Hall A', attendance: '45/50', status: 'Active' }
-    ];
-
-    const studentRequests = [
-        { id: 1, course: 'CS301', request: 'Lab booking', student: 'John Doe', status: 'New' },
-        { id: 2, course: 'CS205', request: 'Equipment request', student: 'Sarah Lee', status: 'New' }
-    ];
-
-    const openTickets = [
-        { id: 101, title: 'Projector not working', location: 'Hall A', status: 'IN_PROGRESS' },
-        { id: 102, title: 'No internet connection', location: 'Lab 201', status: 'OPEN' }
-    ];
-
-    const courseStudents = [
-        { name: 'John Doe', status: 'Active', bookings: 5 },
-        { name: 'Sarah Lee', status: 'Active', bookings: 3 },
-        { name: 'Mike Brown', status: 'Inactive', bookings: 0 }
-    ];
-
-    const myBookings = [
-        { date: 'Apr 20', resource: 'Hall A', time: '9:00 - 11:00 AM', purpose: 'Guest Lecture', status: 'APPROVED' },
-        { date: 'Apr 22', resource: 'Lab 201', time: '2:00 - 5:00 PM', purpose: 'Practical Session', status: 'APPROVED' },
-        { date: 'Apr 25', resource: 'Hall B', time: '10:00 AM - 12:00 PM', purpose: 'Final Exam', status: 'PENDING' }
-    ];
+    const [teachingSchedule, setTeachingSchedule] = useState([]);
+    const [studentRequests, setStudentRequests] = useState([]);
+    const [openTickets, setOpenTickets] = useState([]);
+    const [courseStudents, setCourseStudents] = useState([]);
+    const [myBookings, setMyBookings] = useState([]);
+    const [facilities, setFacilities] = useState([]);
+    const { user } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchStats = async () => {
+        const fetchDashboardData = async () => {
             try {
-                const response = await axios.get('http://localhost:8080/api/lecturer/stats');
-                setStats(response.data);
+                // Get user info from AuthContext (same as student dashboard)
+                const token = localStorage.getItem('token');
+                
+                // Fetch stats
+                const statsResponse = await axios.get('http://localhost:8080/api/lecturer/stats', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setStats(statsResponse.data);
+                
+                // Fetch teaching schedule
+                const scheduleResponse = await axios.get('http://localhost:8080/api/lecturer/schedule', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setTeachingSchedule(scheduleResponse.data || []);
+                
+                // Fetch student requests
+                const requestsResponse = await axios.get('http://localhost:8080/api/lecturer/student-requests', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setStudentRequests(requestsResponse.data || []);
+                
+                // Fetch open tickets
+                const ticketsResponse = await axios.get('http://localhost:8080/api/tickets/lecturer-tickets', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setOpenTickets(ticketsResponse.data || []);
+                
+                // Fetch course students
+                const studentsResponse = await axios.get('http://localhost:8080/api/lecturer/course-students', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setCourseStudents(studentsResponse.data || []);
+                
+                // Fetch my bookings
+                const bookingsResponse = await axios.get('http://localhost:8080/api/bookings/my-bookings', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setMyBookings(bookingsResponse.data || []);
+                
+                // Fetch facilities
+                const facilitiesResponse = await axios.get('http://localhost:8080/api/facilities');
+                setFacilities(facilitiesResponse.data || []);
+                
             } catch (error) {
-                console.error('Error fetching lecturer stats:', error);
+                console.error('Error fetching lecturer dashboard data:', error);
+                // Set fallback data if API fails
+                setStats({ upcomingLectures: 0, totalBookings: 0, pendingApprovals: 0, openTickets: 0 });
+                setTeachingSchedule([]);
+                setStudentRequests([]);
+                setOpenTickets([]);
+                setCourseStudents([]);
+                setMyBookings([]);
+                setFacilities([]);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchStats();
+        fetchDashboardData();
     }, []);
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-base-200 p-4 md:p-8 font-sans flex items-center justify-center">
+                <div className="text-center">
+                    <div className="loading loading-spinner loading-lg text-primary mb-4"></div>
+                    <p className="text-lg font-bold">Loading dashboard...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-base-200 p-4 md:p-8 font-sans">
@@ -61,21 +103,26 @@ const LecturerDashboard = () => {
                 {/* Header Header Header */}
                 <div className="flex flex-col md:flex-row justify-between items-center bg-base-100 p-8 rounded-3xl shadow-xl border border-base-300 gap-6">
                     <div className="flex items-center gap-6">
-                        <div className="avatar">
-                            <div className="w-20 rounded-2xl bg-primary text-primary-content flex items-center justify-center text-3xl font-black">
-                                JS
+                        <div className="avatar shadow-lg">
+                            <div className="w-20 rounded-full bg-gradient-to-tr from-primary to-accent text-white flex items-center justify-center text-3xl font-black">
+                                {user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) : 'U'}
                             </div>
                         </div>
                         <div>
-                            <h1 className="text-4xl font-black bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                            <h1 className="text-4xl font-black bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                                 LECTURER DASHBOARD
                             </h1>
-                            <p className="text-xl font-bold opacity-70">Dr. Jane Smith — <span className="text-primary italic">Computer Science</span></p>
+                            <p className="text-xl font-bold opacity-70">{user?.name || 'User'} — <span className="text-secondary italic">{user?.roles?.[0]?.replace('ROLE_', '') || 'Lecturer'}</span></p>
                         </div>
                     </div>
                     <div className="flex gap-3">
-                        <button className="btn btn-primary px-8 shadow-lg shadow-primary/20">Create Booking</button>
-                        <button className="btn btn-outline">My Profile</button>
+                        <button 
+                            onClick={() => window.location.href = 'http://localhost:5173/bookings'}
+                            className="btn btn-secondary px-8 shadow-lg shadow-secondary/20"
+                        >
+                            Help Center
+                        </button>
+                        <button className="btn btn-outline border-base-300">Profile</button>
                     </div>
                 </div>
 
@@ -118,20 +165,28 @@ const LecturerDashboard = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {teachingSchedule.map((item, i) => (
-                                    <tr key={i} className="hover:bg-base-200/50 transition-colors">
-                                        <td className="font-black text-lg">{item.time}</td>
-                                        <td className="font-bold text-primary">{item.course}</td>
-                                        <td><span className="badge badge-outline border-base-300 p-3 font-bold">{item.room}</span></td>
-                                        <td className="font-mono">{item.attendance}</td>
-                                        <td>
-                                            <div className="flex items-center gap-2 text-success font-black">
-                                                <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
-                                                {item.status}
-                                            </div>
+                                {teachingSchedule.length > 0 ? (
+                                    teachingSchedule.map((item, i) => (
+                                        <tr key={i} className="hover:bg-base-200/50 transition-colors">
+                                            <td className="font-black text-lg">{item.time}</td>
+                                            <td className="font-bold text-primary">{item.course}</td>
+                                            <td><span className="badge badge-outline border-base-300 p-3 font-bold">{item.room}</span></td>
+                                            <td className="font-mono">{item.attendance}</td>
+                                            <td>
+                                                <div className="flex items-center gap-2 text-success font-black">
+                                                    <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+                                                    {item.status}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="5" className="text-center py-8 opacity-50">
+                                            <p className="font-bold">No teaching schedule found</p>
                                         </td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -148,21 +203,27 @@ const LecturerDashboard = () => {
                             <span className="badge badge-accent badge-md text-white font-bold">{studentRequests.length} NEW</span>
                         </div>
                         <div className="card-body p-6 space-y-4">
-                            {studentRequests.map((req) => (
-                                <div key={req.id} className="p-5 bg-base-200 rounded-2xl border border-base-300 hover:border-accent/50 transition-all group">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <p className="text-xs font-black text-accent uppercase tracking-tighter mb-1">{req.course}</p>
-                                            <h4 className="font-bold text-lg">{req.request}</h4>
-                                            <p className="text-sm opacity-60">Student: {req.student}</p>
+                            {studentRequests.length > 0 ? (
+                                studentRequests.map((req) => (
+                                    <div key={req.id} className="p-5 bg-base-200 rounded-2xl border border-base-300 hover:border-accent/50 transition-all group">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <p className="text-xs font-black text-accent uppercase tracking-tighter mb-1">{req.course}</p>
+                                                <h4 className="font-bold text-lg">{req.request}</h4>
+                                                <p className="text-sm opacity-60">Student: {req.student}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2 justify-end">
+                                            <button className="btn btn-sm btn-success text-white px-6">Approve</button>
+                                            <button className="btn btn-sm btn-outline border-error text-error hover:bg-error hover:text-white">Reject</button>
                                         </div>
                                     </div>
-                                    <div className="flex gap-2 justify-end">
-                                        <button className="btn btn-sm btn-success text-white px-6">Approve</button>
-                                        <button className="btn btn-sm btn-outline border-error text-error hover:bg-error hover:text-white">Reject</button>
-                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-8 opacity-50">
+                                    <p className="font-bold">No student requests found</p>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
 
@@ -176,18 +237,29 @@ const LecturerDashboard = () => {
                             <button className="btn btn-sm btn-ghost text-secondary">VIEW HISTORY</button>
                         </div>
                         <div className="card-body p-6 space-y-4">
-                            {openTickets.map((ticket) => (
-                                <div key={ticket.id} className="flex gap-4 p-5 bg-base-200 rounded-2xl border border-base-300 items-center justify-between">
-                                    <div>
-                                        <h4 className="font-bold">{ticket.title}</h4>
-                                        <p className="text-xs opacity-60 uppercase font-black">{ticket.location}</p>
+                            {openTickets.length > 0 ? (
+                                openTickets.map((ticket) => (
+                                    <div key={ticket.id} className="flex gap-4 p-5 bg-base-200 rounded-2xl border border-base-300 items-center justify-between">
+                                        <div>
+                                            <h4 className="font-bold">{ticket.title}</h4>
+                                            <p className="text-xs opacity-60 uppercase font-black">{ticket.location}</p>
+                                        </div>
+                                        <span className={`badge font-black p-3 text-xs ${ticket.status === 'IN_PROGRESS' ? 'badge-warning' : 'badge-primary'} text-white`}>
+                                            {ticket.status}
+                                        </span>
                                     </div>
-                                    <span className={`badge font-black p-3 text-xs ${ticket.status === 'IN_PROGRESS' ? 'badge-warning' : 'badge-primary'} text-white`}>
-                                        {ticket.status}
-                                    </span>
+                                ))
+                            ) : (
+                                <div className="text-center py-8 opacity-50">
+                                    <p className="font-bold">No open tickets found</p>
                                 </div>
-                            ))}
-                            <button className="btn btn-secondary btn-block btn-outline mt-4">Raise New Support Ticket</button>
+                            )}
+                            <button 
+                                onClick={() => window.location.href = 'http://localhost:5173/tickets'}
+                                className="btn btn-secondary btn-block btn-outline mt-4"
+                            >
+                                Raise New Support Ticket
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -212,27 +284,35 @@ const LecturerDashboard = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {courseStudents.map((s, i) => (
-                                    <tr key={i} className="hover">
-                                        <td className="font-bold flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-info/20 flex items-center justify-center text-info font-black">
-                                                {s.name[0]}
-                                            </div>
-                                            {s.name}
-                                        </td>
-                                        <td>
-                                            <span className={`badge font-bold p-3 text-white ${s.status === 'Active' ? 'badge-success' : 'badge-error'}`}>
-                                                {s.status}
-                                            </span>
-                                        </td>
-                                        <td className="font-mono font-bold text-center">{s.bookings}</td>
-                                        <td className="text-right">
-                                            <button className={`btn btn-sm ${s.status === 'Active' ? 'btn-ghost text-info' : 'btn-info text-white'} px-6`}>
-                                                {s.status === 'Active' ? 'View Details' : 'Contact'}
-                                            </button>
+                                {courseStudents.length > 0 ? (
+                                    courseStudents.map((s, i) => (
+                                        <tr key={i} className="hover">
+                                            <td className="font-bold flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-info/20 flex items-center justify-center text-info font-black">
+                                                    {s.name ? s.name[0] : 'U'}
+                                                </div>
+                                                {s.name}
+                                            </td>
+                                            <td>
+                                                <span className={`badge font-bold p-3 text-white ${s.status === 'Active' ? 'badge-success' : 'badge-error'}`}>
+                                                    {s.status}
+                                                </span>
+                                            </td>
+                                            <td className="font-mono font-bold text-center">{s.bookings}</td>
+                                            <td className="text-right">
+                                                <button className={`btn btn-sm ${s.status === 'Active' ? 'btn-ghost text-info' : 'btn-info text-white'} px-6`}>
+                                                    {s.status === 'Active' ? 'View Details' : 'Contact'}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="4" className="text-center py-8 opacity-50">
+                                            <p className="font-bold">No course students found</p>
                                         </td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -251,25 +331,31 @@ const LecturerDashboard = () => {
                         </div>
                     </div>
                     <div className="card-body p-6 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {myBookings.map((b, i) => (
-                                <div key={i} className="p-6 bg-base-200 rounded-3xl border border-base-300 flex flex-col justify-between hover:border-success/50 transition-all group">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <h4 className="font-black text-lg text-primary">{b.resource}</h4>
-                                            <p className="text-sm font-bold opacity-60 uppercase">{b.purpose}</p>
+                        {myBookings.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {myBookings.map((b, i) => (
+                                    <div key={i} className="p-6 bg-base-200 rounded-3xl border border-base-300 flex flex-col justify-between hover:border-success/50 transition-all group">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <h4 className="font-black text-lg text-primary">{b.resource || b.facilityName}</h4>
+                                                <p className="text-sm font-bold opacity-60 uppercase">{b.purpose}</p>
+                                            </div>
+                                            <span className={`badge font-black text-xs p-3 text-white ${b.status === 'APPROVED' ? 'badge-success' : 'badge-warning'}`}>
+                                                {b.status}
+                                            </span>
                                         </div>
-                                        <span className={`badge font-black text-xs p-3 text-white ${b.status === 'APPROVED' ? 'badge-success' : 'badge-warning'}`}>
-                                            {b.status}
-                                        </span>
+                                        <div className="pt-4 border-t border-base-300 mt-4 flex items-center justify-between">
+                                            <p className="text-xs font-mono font-bold">{b.time || `${b.startTime} - ${b.endTime}`}</p>
+                                            <p className="text-xs bg-base-100 px-3 py-1 rounded-full border border-base-300">{b.date}</p>
+                                        </div>
                                     </div>
-                                    <div className="pt-4 border-t border-base-300 mt-4 flex items-center justify-between">
-                                        <p className="text-xs font-mono font-bold">{b.time}</p>
-                                        <p className="text-xs bg-base-100 px-3 py-1 rounded-full border border-base-300">{b.date}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 opacity-50">
+                                <p className="font-bold">No bookings found</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
