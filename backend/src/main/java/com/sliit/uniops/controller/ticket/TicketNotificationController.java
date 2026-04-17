@@ -2,11 +2,11 @@ package com.sliit.uniops.controller.ticket;
 
 import java.util.List;
 
+import com.sliit.uniops.model.User;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
 
 import com.sliit.uniops.model.ticket.NotificationModel;
 import com.sliit.uniops.service.ticket.TicketNotificationService;
@@ -22,15 +22,15 @@ public class TicketNotificationController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<NotificationModel>> getMyNotifications(
-            @AuthenticationPrincipal OidcUser user) {
-        String userId = user.getSubject();
+            Authentication authentication) {
+        String userId = getUserId(authentication);
         return ResponseEntity.ok(notificationService.getUserNotifications(userId));
     }
 
     @GetMapping("/unread/count")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Long> getUnreadCount(@AuthenticationPrincipal OidcUser user) {
-        String userId = user.getSubject();
+    public ResponseEntity<Long> getUnreadCount(Authentication authentication) {
+        String userId = getUserId(authentication);
         return ResponseEntity.ok(notificationService.getUnreadCount(userId));
     }
 
@@ -43,10 +43,18 @@ public class TicketNotificationController {
 
     @PatchMapping("/read-all")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Void> markAllAsRead(@AuthenticationPrincipal OidcUser user) {
-        String userId = user.getSubject();
+    public ResponseEntity<Void> markAllAsRead(Authentication authentication) {
+        String userId = getUserId(authentication);
         notificationService.markNotificationAsRead(userId);
         return ResponseEntity.ok().build();
+    }
+
+    private String getUserId(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof User user) {
+            return user.getId();
+        }
+        return authentication.getName();
     }
 }
 
