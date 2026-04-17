@@ -1,6 +1,7 @@
 package com.sliit.uniops.model;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,10 +10,15 @@ import java.util.List;
 public class Resource {
     @Id
     private String id;
+    @Indexed
     private String name;
+    @Indexed
     private ResourceType type;
+    @Indexed
     private Integer capacity;
+    @Indexed
     private String location;
+    @Indexed
     private ResourceStatus status;
     private String description;
     private List<AvailabilityWindow> availabilityWindows;

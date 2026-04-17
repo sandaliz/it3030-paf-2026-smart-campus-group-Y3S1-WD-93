@@ -3,18 +3,30 @@ package com.sliit.uniops.service;
 import com.sliit.uniops.model.Resource;
 import com.sliit.uniops.repository.ResourceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class ResourceService {
-    
+
     @Autowired
     private ResourceRepository resourceRepository;
+
+    @Autowired
+    private MongoTemplate mongoTemplate;
     
     public List<Resource> getAllResources() {
-        return resourceRepository.findAll();
+        Query query = new Query();
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description");
+        return mongoTemplate.find(query, Resource.class);
     }
     
     public Resource getResourceById(String id) {
@@ -42,39 +54,35 @@ public class ResourceService {
         resource.setAvailabilityWindows(resourceDetails.getAvailabilityWindows());
         return resourceRepository.save(resource);
     }
+
+    public Resource updateResourceStatus(String id, String status) {
+        Resource resource = getResourceById(id);
+        resource.setStatus(Resource.ResourceStatus.valueOf(status));
+        return resourceRepository.save(resource);
+    }
     
     public void deleteResource(String id) {
         resourceRepository.deleteById(id);
     }
     
     public List<Resource> searchResources(String status, String type, Integer minCapacity, String location) {
-        List<Resource> resources = resourceRepository.findAll();
-        
+        Query query = new Query();
+
         if (status != null && !status.isEmpty()) {
-            resources = resources.stream()
-                .filter(r -> r.getStatus().toString().equalsIgnoreCase(status))
-                .toList();
+            query.addCriteria(Criteria.where("status").is(status));
         }
-        
         if (type != null && !type.isEmpty()) {
-            resources = resources.stream()
-                .filter(r -> r.getType().toString().equalsIgnoreCase(type))
-                .toList();
+            query.addCriteria(Criteria.where("type").is(type));
         }
-        
         if (minCapacity != null) {
-            resources = resources.stream()
-                .filter(r -> r.getCapacity() >= minCapacity)
-                .toList();
+            query.addCriteria(Criteria.where("capacity").gte(minCapacity));
         }
-        
         if (location != null && !location.isEmpty()) {
-            resources = resources.stream()
-                .filter(r -> r.getLocation() != null && r.getLocation().toLowerCase().contains(location.toLowerCase()))
-                .toList();
+            query.addCriteria(Criteria.where("location").regex(location, "i"));
         }
-        
-        return resources;
+
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description");
+        return mongoTemplate.find(query, Resource.class);
     }
     
     public Object getResourceAvailability(String resourceId, String date) {
@@ -114,51 +122,51 @@ public class ResourceService {
         return availability;
     }
     
-    public Object getResourcesPaginated(int page, int size, String search, String status, String type) {
-        List<Resource> resources = resourceRepository.findAll();
-        
-        // Apply filters
+    public Object getResourcesPaginated(int page, int size, String search, String status, String type, String sortBy, String sortDir) {
+        Query query = new Query();
+
+        // Build dynamic query
         if (search != null && !search.trim().isEmpty()) {
-            String searchTerm = search.toLowerCase();
-            resources = resources.stream()
-                .filter(r -> r.getName().toLowerCase().contains(searchTerm) ||
-                           r.getLocation().toLowerCase().contains(searchTerm) ||
-                           r.getDescription().toLowerCase().contains(searchTerm))
-                .toList();
+            Criteria searchCriteria = new Criteria().orOperator(
+                Criteria.where("name").regex(search, "i"),
+                Criteria.where("location").regex(search, "i"),
+                Criteria.where("description").regex(search, "i")
+            );
+            query.addCriteria(searchCriteria);
+        } else {
+            if (status != null && !status.isEmpty()) {
+                query.addCriteria(Criteria.where("status").is(status));
+            }
+            if (type != null && !type.isEmpty()) {
+                query.addCriteria(Criteria.where("type").is(type));
+            }
         }
-        
-        if (status != null && !status.isEmpty()) {
-            resources = resources.stream()
-                .filter(r -> r.getStatus().toString().equals(status))
-                .toList();
-        }
-        
-        if (type != null && !type.isEmpty()) {
-            resources = resources.stream()
-                .filter(r -> r.getType().toString().equals(type))
-                .toList();
-        }
-        
-        // Apply pagination
-        int totalElements = resources.size();
-        int startIndex = page * size;
-        int endIndex = Math.min(startIndex + size, totalElements);
-        
-        List<Resource> paginatedResources = new ArrayList<>();
-        if (startIndex < totalElements) {
-            paginatedResources = resources.subList(startIndex, endIndex);
-        }
-        
+
+        // Field projection
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description");
+
+        // Sorting
+        Sort sort = Sort.by(Sort.Direction.fromString(sortDir != null ? sortDir : "asc"), sortBy != null ? sortBy : "name");
+        query.with(sort);
+
+        // Count total elements
+        long totalElements = mongoTemplate.count(query, Resource.class);
+
+        // Pagination
+        query.skip((long) page * size).limit(size);
+
+        List<Resource> content = mongoTemplate.find(query, Resource.class);
+
         // Create response
         java.util.Map<String, Object> response = new java.util.HashMap<>();
-        response.put("content", paginatedResources);
+        response.put("content", content);
         response.put("totalElements", totalElements);
         response.put("totalPages", (int) Math.ceil((double) totalElements / size));
         response.put("size", size);
         response.put("number", page);
         response.put("first", page == 0);
-        response.put("last", endIndex >= totalElements);
-        
+        response.put("last", (page + 1) * size >= totalElements);
+
         return response;
     }
 }
