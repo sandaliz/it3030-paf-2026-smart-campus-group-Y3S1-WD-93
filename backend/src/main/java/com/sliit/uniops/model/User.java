@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -25,11 +26,19 @@ public class User {
 
     private String googleId; // Unique ID from Google
 
+    private String username;
+
+    @JsonIgnore
+    private String password;
+
     private String email;
 
     private String name;
 
     private String pictureUrl;
+
+    @Builder.Default
+    private String authProvider = "LOCAL";
 
     @Builder.Default
     private boolean enabled = true;
