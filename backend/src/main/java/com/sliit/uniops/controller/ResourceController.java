@@ -31,8 +31,10 @@ public class ResourceController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String type) {
-        return ResponseEntity.ok(resourceService.getResourcesPaginated(page, size, search, status, type));
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
+        return ResponseEntity.ok(resourceService.getResourcesPaginated(page, size, search, status, type, sortBy, sortDir));
     }
     
     // Get resource by ID
@@ -59,6 +61,12 @@ public class ResourceController {
     @PutMapping("/{id}")
     public ResponseEntity<Resource> updateResource(@PathVariable String id, @RequestBody Resource resource) {
         return ResponseEntity.ok(resourceService.updateResource(id, resource));
+    }
+
+    // Update resource status (admin only)
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<Resource> updateResourceStatus(@PathVariable String id, @RequestBody java.util.Map<String, String> statusUpdate) {
+        return ResponseEntity.ok(resourceService.updateResourceStatus(id, statusUpdate.get("status")));
     }
     
     // Delete resource (admin only)
