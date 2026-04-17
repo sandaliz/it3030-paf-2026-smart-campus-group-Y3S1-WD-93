@@ -12,12 +12,15 @@ const CreateTicketPage = () => {
   const [files, setFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
   const [resources, setResources] = useState([]);
+  const [resourcesError, setResourcesError] = useState('');
   
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     category: 'IT',
     priority: 'MEDIUM',
+    preferredContactMethod: 'EMAIL',
+    contactDetails: user?.email || '',
     location: '',
     resourceId: ''  // This will store the ID, but display the name
   });
@@ -31,11 +34,24 @@ const CreateTicketPage = () => {
       setLoadingResources(true);
       try {
         const response = await resourceService.getAllResources();
-        // Filter only active resources
-        const activeResources = response.filter(r => r.status === 'ACTIVE');
-        setResources(activeResources);
+        const resourceList = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.content)
+            ? response.content
+            : [];
+
+        const sortedResources = [...resourceList].sort((a, b) => {
+          if (a.status === 'ACTIVE' && b.status !== 'ACTIVE') return -1;
+          if (a.status !== 'ACTIVE' && b.status === 'ACTIVE') return 1;
+          return (a.name || '').localeCompare(b.name || '');
+        });
+
+        setResources(sortedResources);
+        setResourcesError(sortedResources.length === 0 ? 'No resources were found in the system.' : '');
       } catch (error) {
         console.error('Failed to fetch resources:', error);
+        setResources([]);
+        setResourcesError('Failed to load resources from the server.');
       } finally {
         setLoadingResources(false);
       }
@@ -43,15 +59,22 @@ const CreateTicketPage = () => {
     fetchResources();
   }, []);
 
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      contactDetails: prev.contactDetails || user?.email || ''
+    }));
+  }, [user]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     
     if (name === 'resourceId') {
       // When user selects a resource, we store the ID
-      // The dropdown shows the name, but value is the ID
+      // The dropdown shows name, but value is the ID
       setFormData(prev => ({ ...prev, [name]: value }));
       
-      // Optional: Auto-fill location from selected resource
+      // Auto-fill location from selected resource
       const selectedResource = resources.find(r => r.id === value);
       if (selectedResource && selectedResource.location) {
         setFormData(prev => ({ 
@@ -59,6 +82,13 @@ const CreateTicketPage = () => {
           location: selectedResource.location 
         }));
       }
+    } else if (name === 'location') {
+      // When location is manually edited, clear the resource ID
+      setFormData(prev => ({ 
+        ...prev, 
+        [name]: value,
+        resourceId: '' // Clear resource ID when location is manually edited
+      }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -113,6 +143,8 @@ const CreateTicketPage = () => {
       formDataToSend.append('description', formData.description);
       formDataToSend.append('category', formData.category);
       formDataToSend.append('priority', formData.priority);
+      formDataToSend.append('preferredContactMethod', formData.preferredContactMethod);
+      formDataToSend.append('contactDetails', formData.contactDetails);
       formDataToSend.append('location', formData.location);
       
       // Send the resource ID to backend (not the name)
@@ -232,6 +264,40 @@ const CreateTicketPage = () => {
               </div>
             </div>
 
+            {/* Contact Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-medium">Preferred Contact Method *</span>
+                </label>
+                <select
+                  name="preferredContactMethod"
+                  className="select select-bordered"
+                  value={formData.preferredContactMethod}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="EMAIL">Email</option>
+                  <option value="PHONE">Phone</option>
+                </select>
+              </div>
+
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-medium">Contact Details *</span>
+                </label>
+                <input
+                  type="text"
+                  name="contactDetails"
+                  placeholder={formData.preferredContactMethod === 'PHONE' ? 'Phone number' : 'Email address'}
+                  className="input input-bordered"
+                  value={formData.contactDetails}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+
             {/* Location */}
             <div className="form-control mb-4">
               <label className="label">
@@ -246,6 +312,13 @@ const CreateTicketPage = () => {
                 onChange={handleChange}
                 required
               />
+              {formData.resourceId && (
+                <label className="label">
+                  <span className="label-text-alt text-xs text-info">
+                    Auto-filled from selected resource
+                  </span>
+                </label>
+              )}
             </div>
 
             {/* Resource Selection - Shows Name, Sends ID */}
@@ -260,19 +333,27 @@ const CreateTicketPage = () => {
                   <span className="text-sm text-base-content/70">Loading resources...</span>
                 </div>
               ) : (
-                <select
-                  name="resourceId"
-                  className="select select-bordered"
-                  value={formData.resourceId}
-                  onChange={handleChange}
-                >
-                  <option value="">-- Select a resource (optional) --</option>
-                  {resources.map(resource => (
-                    <option key={resource.id} value={resource.id}>
-                      {resource.name} ({resource.type} - {resource.location})
-                    </option>
-                  ))}
-                </select>
+                <>
+                  <select
+                    name="resourceId"
+                    className="select select-bordered"
+                    value={formData.resourceId}
+                    onChange={handleChange}
+                    disabled={resources.length === 0}
+                  >
+                    <option value="">-- Select a resource (optional) --</option>
+                    {resources.map(resource => (
+                      <option key={resource.id} value={resource.id}>
+                        {resource.name} ({resource.type} - {resource.location}) [{resource.status || 'UNKNOWN'}]
+                      </option>
+                    ))}
+                  </select>
+                  {resourcesError && (
+                    <label className="label">
+                      <span className="label-text-alt text-warning">{resourcesError}</span>
+                    </label>
+                  )}
+                </>
               )}
               <label className="label">
                 <span className="label-text-alt">Select the equipment or facility related to this issue</span>

@@ -2,6 +2,21 @@ import axios from 'axios';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
+const normalizeUrl = (baseURL, requestUrl) => {
+  if (!requestUrl || !baseURL) {
+    return requestUrl;
+  }
+
+  const normalizedBase = baseURL.replace(/\/+$/, '');
+  const normalizedRequest = requestUrl.startsWith('/') ? requestUrl : `/${requestUrl}`;
+
+  if (normalizedBase.endsWith('/api') && normalizedRequest.startsWith('/api/')) {
+    return normalizedRequest.slice(4);
+  }
+
+  return requestUrl;
+};
+
 const apiInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -12,6 +27,8 @@ const apiInstance = axios.create({
 // Request interceptor to add auth token if available
 apiInstance.interceptors.request.use(
   (config) => {
+    config.url = normalizeUrl(config.baseURL, config.url);
+
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
