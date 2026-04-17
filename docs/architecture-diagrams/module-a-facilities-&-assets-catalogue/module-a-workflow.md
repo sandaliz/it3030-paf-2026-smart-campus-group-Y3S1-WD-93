@@ -2,7 +2,7 @@
 
 ## System Architecture Overview
 
-![System Architecture Overview](architecture-diagrams/module-a-facilities-&-assets-catalogue/system-architecture-overview.svg)
+![System Architecture Overview](system-architecture-overview.svg)
 
 **Technology Stack:**
 - **Frontend:** React 18 + DaisyUI + Tailwind CSS
@@ -15,13 +15,13 @@
 
 ## User Roles & Permissions
 
-![User Roles](architecture-diagrams/module-a-facilities-&-assets-catalogue/user-roles-used.svg)
+![User Roles](user-roles-used.svg)
 
 ## Main Workflows
 
 ### 1. Resource Management Workflow (Admin/Technician/Lecturer)
 
-![Resource Management Workflow](architecture-diagrams/module-a-facilities-&-assets-catalogue/admin/resources-management-workflow.svg)
+![Resource Management Workflow](admin/resources-management-workflow.svg)
 
 **Key Operations:**
 
@@ -70,7 +70,7 @@
 
 ### 2. Resource Listing & Filtering Workflow
 
-![Resource Listing and Filtering Workflow](architecture-diagrams/module-a-facilities-&-assets-catalogue/client/resource-listing-filtering-workflow.svg)
+![Resource Listing and Filtering Workflow](client/resource-listing-filtering-workflow.svg)
 
 **Key Operations:**
 
@@ -195,7 +195,7 @@ Card Layout by Type:
 
 ## API Endpoints
 
-![API Endpoints](architecture-diagrams/module-a-facilities-&-assets-catalogue/api-endpoints.svg)
+![API Endpoints](api-endpoints.svg)
 
 **REST API Endpoints for Module A:**
 
@@ -222,7 +222,7 @@ Card Layout by Type:
 
 ## Database Schema
 
-![Database Schema](architecture-diagrams/module-a-facilities-&-assets-catalogue/db-schema-doc.svg)
+![Database Schema](db-schema-doc.svg)
 
 **Resource Document Structure:**
 
