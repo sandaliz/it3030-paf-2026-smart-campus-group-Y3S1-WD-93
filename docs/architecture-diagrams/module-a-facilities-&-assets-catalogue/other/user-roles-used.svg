@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 550" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <linearGradient id="roleHeader" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#455a64"/>
+      <stop offset="100%" style="stop-color:#37474f"/>
+    </linearGradient>
+    <linearGradient id="adminGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ef5350"/>
+      <stop offset="100%" style="stop-color:#e53935"/>
+    </linearGradient>
+    <linearGradient id="techGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#42a5f5"/>
+      <stop offset="100%" style="stop-color:#1e88e5"/>
+    </linearGradient>
+    <linearGradient id="lectGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#66bb6a"/>
+      <stop offset="100%" style="stop-color:#43a047"/>
+    </linearGradient>
+    <linearGradient id="studGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffa726"/>
+      <stop offset="100%" style="stop-color:#fb8c00"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="2" dy="3" stdDeviation="4" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="550" fill="#f5f7fb"/>
+
+  <rect x="0" y="0" width="1200" height="60" fill="url(#roleHeader)"/>
+  <text x="600" y="38" text-anchor="middle" fill="white" font-size="22" font-weight="bold">User Roles and Permissions</text>
+
+  <rect x="60" y="100" width="240" height="120" rx="10" fill="url(#adminGrad)" filter="url(#shadow)"/>
+  <text x="180" y="145" text-anchor="middle" fill="white" font-size="20" font-weight="bold">ADMIN</text>
+  <text x="180" y="175" text-anchor="middle" fill="#ffcdd2" font-size="12">Full Access</text>
+  <text x="180" y="195" text-anchor="middle" fill="#ffcdd2" font-size="12">Create / Edit / Delete</text>
+
+  <rect x="330" y="100" width="240" height="120" rx="10" fill="url(#techGrad)" filter="url(#shadow)"/>
+  <text x="450" y="145" text-anchor="middle" fill="white" font-size="20" font-weight="bold">TECHNICIAN</text>
+  <text x="450" y="175" text-anchor="middle" fill="#bbdefb" font-size="12">Create / Edit Resources</text>
+  <text x="450" y="195" text-anchor="middle" fill="#bbdefb" font-size="12">Maintenance Access</text>
+
+  <rect x="600" y="100" width="240" height="120" rx="10" fill="url(#lectGrad)" filter="url(#shadow)"/>
+  <text x="720" y="145" text-anchor="middle" fill="white" font-size="20" font-weight="bold">LECTURER</text>
+  <text x="720" y="175" text-anchor="middle" fill="#c8e6c9" font-size="12">Create / Edit Resources</text>
+  <text x="720" y="195" text-anchor="middle" fill="#c8e6c9" font-size="12">Book Resources</text>
+
+  <rect x="870" y="100" width="240" height="120" rx="10" fill="url(#studGrad)" filter="url(#shadow)"/>
+  <text x="990" y="145" text-anchor="middle" fill="white" font-size="20" font-weight="bold">STUDENT</text>
+  <text x="990" y="175" text-anchor="middle" fill="#ffe0b2" font-size="12">View Resources</text>
+  <text x="990" y="195" text-anchor="middle" fill="#ffe0b2" font-size="12">Book Resources</text>
+
+  <rect x="180" y="260" width="840" height="60" rx="8" fill="#eceff1"/>
+  <text x="600" y="285" text-anchor="middle" fill="#37474f" font-size="14" font-weight="bold">Role-Based Access Control (RBAC)</text>
+  <text x="600" y="305" text-anchor="middle" fill="#546e7f" font-size="12">Permissions enforced at API level with Spring Security</text>
+
+  <rect x="250" y="360" width="700" height="45" rx="8" fill="#e8eaf6"/>
+  <text x="600" y="380" text-anchor="middle" fill="#283593" font-size="13" font-weight="bold">Permission Matrix</text>
+  <text x="600" y="397" text-anchor="middle" fill="#3949ab" font-size="12">
+    Admin: All CRUD + Stats | Technician: Create/Edit | Lecturer: Create/Edit/Book | Student: View/Book
+  </text>
+
+  <rect x="200" y="440" width="800" height="55" rx="8" fill="#e0f2f1"/>
+  <text x="600" y="465" text-anchor="middle" fill="#004d40" font-size="13" font-weight="bold">Authentication</text>
+  <text x="600" y="485" text-anchor="middle" fill="#00695c" font-size="12">Google OAuth 2.0 | JWT Tokens | Session Management</text>
+</svg>

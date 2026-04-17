@@ -82,6 +82,8 @@ public class TicketService {
         ticket.setStatus(TicketStatus.OPEN);
         ticket.setLocation(request.getLocation());
         ticket.setResourceId(request.getResourceId()); // Can be null
+        ticket.setPreferredContactMethod(request.getPreferredContactMethod());
+        ticket.setContactDetails(request.getContactDetails());
         ticket.setCreatedBy(userId);
         ticket.setCreatedByName(userName); // Make sure this field exists in TicketModel
         ticket.setAttachmentIds(new ArrayList<>());

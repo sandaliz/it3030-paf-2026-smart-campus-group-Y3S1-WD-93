@@ -39,7 +39,9 @@ export const ticketService = {
 
   // Update ticket status
   updateStatus: async (id, status, reason = '') => {
-    const response = await api.patch(`/api/tickets/${id}/status`, { status, reason });
+    const response = await api.patch(`/api/tickets/${id}/status`, null, {
+      params: { status, reason }
+    });
     return response.data;
   },
 
@@ -53,7 +55,9 @@ export const ticketService = {
 
   // Confirm resolution
   confirmResolution: async (id, feedback = '') => {
-    const response = await api.patch(`/api/tickets/${id}/confirm`, { feedback });
+    const response = await api.patch(`/api/tickets/${id}/confirm`, null, {
+      params: { feedback }
+    });
     return response.data;
   },
 

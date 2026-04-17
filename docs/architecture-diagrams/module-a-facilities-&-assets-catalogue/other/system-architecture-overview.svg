@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <linearGradient id="archHeader" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1a237e"/>
+      <stop offset="100%" style="stop-color:#0d47a1"/>
+    </linearGradient>
+    <linearGradient id="frontendGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e3f2fd"/>
+      <stop offset="100%" style="stop-color:#bbdefb"/>
+    </linearGradient>
+    <linearGradient id="backendGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8f5e9"/>
+      <stop offset="100%" style="stop-color:#c8e6c9"/>
+    </linearGradient>
+    <linearGradient id="dbGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff3e0"/>
+      <stop offset="100%" style="stop-color:#ffe0b2"/>
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="2" dy="3" stdDeviation="4" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="500" fill="#f5f7fb"/>
+
+  <rect x="0" y="0" width="1200" height="60" fill="url(#archHeader)"/>
+  <text x="600" y="38" text-anchor="middle" fill="white" font-size="22" font-weight="bold">System Architecture Overview</text>
+
+  <rect x="100" y="100" width="300" height="130" rx="10" fill="url(#frontendGrad)" stroke="#1565c0" stroke-width="2" filter="url(#shadow)"/>
+  <text x="250" y="150" text-anchor="middle" fill="#0d47a1" font-size="20" font-weight="bold">Frontend</text>
+  <text x="250" y="180" text-anchor="middle" fill="#1565c0" font-size="14">React + DaisyUI</text>
+  <text x="250" y="200" text-anchor="middle" fill="#1565c0" font-size="12">Port: 5173</text>
+
+  <text x="500" y="170" text-anchor="middle" fill="#37474f" font-size="18" font-weight="bold">HTTP API</text>
+
+  <rect x="550" y="100" width="300" height="130" rx="10" fill="url(#backendGrad)" stroke="#2e7d32" stroke-width="2" filter="url(#shadow)"/>
+  <text x="700" y="150" text-anchor="middle" fill="#1b5e20" font-size="20" font-weight="bold">Backend</text>
+  <text x="700" y="180" text-anchor="middle" fill="#2e7d32" font-size="14">Spring Boot 3.x</text>
+  <text x="700" y="200" text-anchor="middle" fill="#2e7d32" font-size="12">Port: 8080</text>
+
+  <text x="950" y="170" text-anchor="middle" fill="#37474f" font-size="18" font-weight="bold">Driver</text>
+
+  <rect x="1000" y="100" width="150" height="130" rx="10" fill="url(#dbGrad)" stroke="#e65100" stroke-width="2" filter="url(#shadow)"/>
+  <text x="1075" y="155" text-anchor="middle" fill="#bf360c" font-size="18" font-weight="bold">MongoDB</text>
+  <text x="1075" y="185" text-anchor="middle" fill="#e65100" font-size="12">Atlas</text>
+  <text x="1075" y="205" text-anchor="middle" fill="#e65100" font-size="12">Cloud</text>
+
+  <rect x="200" y="280" width="800" height="50" rx="8" fill="#eceff1"/>
+  <text x="600" y="310" text-anchor="middle" fill="#37474f" font-size="14">
+    Three-tier architecture with REST API communication
+  </text>
+
+  <rect x="250" y="360" width="700" height="40" rx="8" fill="#e8eaf6"/>
+  <text x="600" y="385" text-anchor="middle" fill="#283593" font-size="13">
+    Technology Stack: React 18 | Spring Boot 3.x | MongoDB Atlas | DaisyUI | Tailwind CSS
+  </text>
+</svg>

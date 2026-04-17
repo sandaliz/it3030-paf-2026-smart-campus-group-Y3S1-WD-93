@@ -3,9 +3,10 @@ package com.sliit.uniops.controller.ticket;
 import com.sliit.uniops.model.User;
 import java.util.List;
 
+import com.sliit.uniops.model.User;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
 import com.sliit.uniops.dto.request.ticket.CommentRequestDTO;
 import com.sliit.uniops.service.ticket.TicketCommentService;
 import com.sliit.uniops.dto.response.ticket.CommentResponseDTO;
@@ -28,11 +29,11 @@ public class CommentController {
     public ResponseEntity<CommentResponseDTO> addComment(
             @PathVariable String ticketId,
             @Valid @RequestBody CommentRequestDTO request,
-            @AuthenticationPrincipal User user) {
+            Authentication authentication) {
         
-        String userId = user.getId();
-        String userName = user.getName();
-        String userRole = extractUserRole(user);
+        String userId = getUserId(authentication);
+        String userName = getUserName(authentication);
+        String userRole = extractUserRole(authentication);
         
         CommentResponseDTO comment = commentService.addComment(ticketId, request, userId, userName, userRole);
         return ResponseEntity.status(HttpStatus.CREATED).body(comment);
@@ -41,10 +42,10 @@ public class CommentController {
     @GetMapping
     public ResponseEntity<List<CommentResponseDTO>> getComments(
             @PathVariable String ticketId,
-            @AuthenticationPrincipal User user) {
+            Authentication authentication) {
         
-        String userId = user.getId();
-        String userRole = extractUserRole(user);
+        String userId = getUserId(authentication);
+        String userRole = extractUserRole(authentication);
         
         List<CommentResponseDTO> comments = commentService.getCommentsByTicket(ticketId, userRole, userId);
         return ResponseEntity.ok(comments);
@@ -61,10 +62,10 @@ public class CommentController {
             @PathVariable String ticketId,
             @PathVariable String commentId,
             @Valid @RequestBody CommentUpdateDTO request,
-            @AuthenticationPrincipal User user) {
+            Authentication authentication) {
         
-        String userId = user.getId();
-        String userRole = extractUserRole(user);
+        String userId = getUserId(authentication);
+        String userRole = extractUserRole(authentication);
         
         CommentResponseDTO comment = commentService.updateComment(commentId, request, userId, userRole);
         return ResponseEntity.ok(comment);
@@ -74,10 +75,10 @@ public class CommentController {
     public ResponseEntity<Void> deleteComment(
             @PathVariable String ticketId,
             @PathVariable String commentId,
-            @AuthenticationPrincipal User user) {
+            Authentication authentication) {
         
-        String userId = user.getId();
-        String userRole = extractUserRole(user);
+        String userId = getUserId(authentication);
+        String userRole = extractUserRole(authentication);
         
         commentService.deleteComment(commentId, userId, userRole);
         return ResponseEntity.noContent().build();
@@ -87,9 +88,9 @@ public class CommentController {
     public ResponseEntity<Void> hardDeleteComment(
             @PathVariable String ticketId,
             @PathVariable String commentId,
-            @AuthenticationPrincipal User user) {
+            Authentication authentication) {
         
-        String userRole = extractUserRole(user);
+        String userRole = extractUserRole(authentication);
         
         commentService.hardDeleteComment(commentId, userRole);
         return ResponseEntity.noContent().build();
@@ -107,13 +108,29 @@ public class CommentController {
         return ResponseEntity.ok(count);
     }
     
-    private String extractUserRole(User user) {
-        if (user.getRoles().stream().anyMatch(role -> role.name().equals("ADMIN"))) {
+    private String extractUserRole(Authentication authentication) {
+        if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
             return "ADMIN";
         }
-        if (user.getRoles().stream().anyMatch(role -> role.name().equals("TECHNICIAN"))) {
+        if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_TECHNICIAN"))) {
             return "TECHNICIAN";
         }
         return "USER";
+    }
+
+    private String getUserId(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof User user) {
+            return user.getId();
+        }
+        return authentication.getName();
+    }
+
+    private String getUserName(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof User user) {
+            return user.getName() != null ? user.getName() : user.getEmail();
+        }
+        return authentication.getName();
     }
 }

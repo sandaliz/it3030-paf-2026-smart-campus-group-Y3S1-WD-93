@@ -12,6 +12,7 @@ import com.sliit.uniops.model.ticket.TicketModel;
 import com.sliit.uniops.model.ticket.CommentModel;
 import com.sliit.uniops.model.ticket.NotificationModel;
 import com.sliit.uniops.repository.ticket.TicketNotificationRepository;
+import com.sliit.uniops.service.EmailService;
 
 @Service("ticketNotificationService")
 @RequiredArgsConstructor
@@ -19,6 +20,7 @@ import com.sliit.uniops.repository.ticket.TicketNotificationRepository;
 public class TicketNotificationService {
 
     private final TicketNotificationRepository notificationRepository;
+    private final EmailService emailService;
 
     // ✅ Ticket Created
     public void notifyTicketCreated(TicketModel ticket, String userName) {
@@ -46,15 +48,33 @@ public class TicketNotificationService {
     }
 
     // ✅ Assigned
-    public void notifyTicketAssigned(TicketModel ticket, String technicianName, String assignedBy) {
+    public void notifyTicketAssigned(TicketModel ticket, String technicianId, String assignedBy) {
 
         String message = String.format(
                 "Ticket #%s assigned to %s by %s | Title: %s | Priority: %s",
-                ticket.getId(), technicianName, assignedBy,
+                ticket.getId(), technicianId, assignedBy,
                 ticket.getTitle(), ticket.getPriority());
 
         if (ticket.getAssignedTo() != null) {
             storeNotification(ticket.getAssignedTo(), "TICKET_ASSIGNED", message, ticket.getId());
+            
+            // Send email notification to technician
+            try {
+                emailService.sendTicketAssignmentNotification(
+                    ticket.getAssignedTo(),           // technician email
+                    technicianId,                    // technician name
+                    ticket.getId(),                   // ticket ID
+                    ticket.getTitle(),                 // ticket title
+                    ticket.getDescription(),            // ticket description
+                    ticket.getPriority().toString(),  // priority
+                    ticket.getCategory().toString(),  // category
+                    ticket.getLocation()               // location
+                );
+                log.info("Email notification sent to technician: {} for ticket: {}", ticket.getAssignedTo(), ticket.getId());
+            } catch (Exception e) {
+                log.error("Failed to send email notification to technician: {} for ticket: {}", 
+                           ticket.getAssignedTo(), ticket.getId(), e);
+            }
         }
 
         storeNotification(ticket.getCreatedBy(), "TICKET_ASSIGNED", message, ticket.getId());
