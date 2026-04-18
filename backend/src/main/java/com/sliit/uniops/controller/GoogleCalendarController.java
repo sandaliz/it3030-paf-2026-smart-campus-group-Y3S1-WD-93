@@ -2,14 +2,13 @@ package com.sliit.uniops.controller;
 
 import com.google.api.services.calendar.model.Event;
 import com.sliit.uniops.model.Booking;
-import com.sliit.uniops.model.User;
+import com.sliit.uniops.security.UserPrincipal;
 import com.sliit.uniops.service.BookingService;
 import com.sliit.uniops.service.GoogleCalendarService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -26,10 +25,6 @@ public class GoogleCalendarController {
     
     @Autowired
     private BookingService bookingService;
-
-    @Autowired
-    private UserRepository userRepository;
-    
     /**
      * Add a specific booking to Google Calendar
      */
@@ -38,12 +33,12 @@ public class GoogleCalendarController {
     public ResponseEntity<?> addBookingToCalendar(
             @PathVariable String bookingId,
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         
         Booking booking = bookingService.getBookingById(bookingId, currentUser.getId(), isAdmin(currentUser));
         
         String eventId = calendarService.addBookingToCalendar(
-            currentUserId,
+            currentUser.getId(),
             booking,
             accessToken
         );
@@ -62,11 +57,10 @@ public class GoogleCalendarController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> syncAllBookingsToCalendar(
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         
-        String currentUserId = getCurrentUserId(authentication);
-        List<Booking> bookings = bookingService.getUserBookings(currentUserId);
-        calendarService.syncAllBookingsToCalendar(currentUserId, bookings, accessToken);
+        List<Booking> bookings = bookingService.getUserBookings(currentUser.getId());
+        calendarService.syncAllBookingsToCalendar(currentUser.getId(), bookings, accessToken);
         
         Map<String, String> response = new HashMap<>();
         response.put("message", "All bookings synced to Google Calendar successfully");
@@ -83,13 +77,13 @@ public class GoogleCalendarController {
             @RequestParam String startDate,
             @RequestParam String endDate,
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         
         LocalDateTime start = LocalDateTime.parse(startDate);
         LocalDateTime end = LocalDateTime.parse(endDate);
         
         List<Event> events = calendarService.getUserCalendarEvents(
-            getCurrentUserId(authentication),
+            currentUser.getId(),
             accessToken,
             start,
             end
@@ -106,13 +100,13 @@ public class GoogleCalendarController {
     public ResponseEntity<?> removeBookingFromCalendar(
             @PathVariable String bookingId,
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         
         Booking booking = bookingService.getBookingById(bookingId, currentUser.getId(), isAdmin(currentUser));
         
         if (booking.getGoogleCalendarEventId() != null) {
             calendarService.deleteCalendarEvent(
-                currentUserId,
+                currentUser.getId(),
                 booking.getGoogleCalendarEventId(),
                 accessToken
             );
@@ -129,7 +123,8 @@ public class GoogleCalendarController {
         return ResponseEntity.ok(response);
     }
 
-    private boolean isAdmin(User currentUser) {
-        return currentUser.getRoles() != null && currentUser.getRoles().stream().anyMatch(role -> role.name().equals("ADMIN"));
+    private boolean isAdmin(UserPrincipal currentUser) {
+        return currentUser != null && currentUser.getAuthorities().stream()
+            .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 }

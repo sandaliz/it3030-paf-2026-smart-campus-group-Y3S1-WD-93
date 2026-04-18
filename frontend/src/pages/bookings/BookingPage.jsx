@@ -48,7 +48,10 @@ const BookingPage = () => {
 
       {/* Booking List */}
       <div>
-        <BookingList key={refreshKey} userRole={user?.role || 'USER'} />
+        <BookingList
+          key={refreshKey}
+          userRole={user?.roles?.some((role) => role.replace('ROLE_', '') === 'ADMIN') ? 'ADMIN' : 'USER'}
+        />
       </div>
     </div>
   );

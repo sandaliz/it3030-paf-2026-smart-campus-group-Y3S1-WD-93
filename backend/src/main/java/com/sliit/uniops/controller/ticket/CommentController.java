@@ -1,9 +1,8 @@
 package com.sliit.uniops.controller.ticket;
 
-import com.sliit.uniops.model.User;
 import java.util.List;
 
-import com.sliit.uniops.model.User;
+import com.sliit.uniops.security.UserPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -120,7 +119,7 @@ public class CommentController {
 
     private String getUserId(Authentication authentication) {
         Object principal = authentication.getPrincipal();
-        if (principal instanceof User user) {
+        if (principal instanceof UserPrincipal user) {
             return user.getId();
         }
         return authentication.getName();
@@ -128,7 +127,7 @@ public class CommentController {
 
     private String getUserName(Authentication authentication) {
         Object principal = authentication.getPrincipal();
-        if (principal instanceof User user) {
+        if (principal instanceof UserPrincipal user) {
             return user.getName() != null ? user.getName() : user.getEmail();
         }
         return authentication.getName();

@@ -173,7 +173,7 @@ const AppContent = () => {
           {/* Role-based Dashboard Routes */}
           <Route path="/admin/dashboard" element={
             <ProtectedRoute requiredRoles={['ADMIN']}>
-              <TicketManagementPage />
+              <AdminDashboard />
             </ProtectedRoute>
           } />
           <Route path="/admin/tickets" element={

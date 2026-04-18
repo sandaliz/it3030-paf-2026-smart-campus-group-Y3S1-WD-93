@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/resources")
@@ -41,6 +42,26 @@ public class ResourceController {
     @GetMapping("/{id}")
     public ResponseEntity<Resource> getResourceById(@PathVariable String id) {
         return ResponseEntity.ok(resourceService.getResourceById(id));
+    }
+
+    @GetMapping("/type/{type}")
+    public ResponseEntity<List<Resource>> getResourcesByType(@PathVariable String type) {
+        return ResponseEntity.ok(resourceService.getResourcesByType(type));
+    }
+
+    @GetMapping("/status/{status}")
+    public ResponseEntity<List<Resource>> getResourcesByStatus(@PathVariable String status) {
+        return ResponseEntity.ok(resourceService.getResourcesByStatus(status));
+    }
+
+    @GetMapping("/location")
+    public ResponseEntity<List<Resource>> getResourcesByLocation(@RequestParam String location) {
+        return ResponseEntity.ok(resourceService.getResourcesByLocation(location));
+    }
+
+    @GetMapping("/capacity")
+    public ResponseEntity<List<Resource>> getResourcesByMinCapacity(@RequestParam Integer minCapacity) {
+        return ResponseEntity.ok(resourceService.getResourcesByMinCapacity(minCapacity));
     }
     
     // Create resource (admin only)
@@ -92,5 +113,19 @@ public class ResourceController {
             @PathVariable String id,
             @RequestParam String date) {
         return ResponseEntity.ok(resourceService.getResourceAvailability(id, date));
+    }
+
+    @GetMapping("/{id}/availability/check")
+    public ResponseEntity<Map<String, Object>> checkResourceAvailability(
+            @PathVariable String id,
+            @RequestParam String date,
+            @RequestParam String startTime,
+            @RequestParam String endTime) {
+        return ResponseEntity.ok(resourceService.checkResourceAvailability(id, date, startTime, endTime));
+    }
+
+    @GetMapping("/{id}/audit")
+    public ResponseEntity<List<Map<String, Object>>> getResourceAudit(@PathVariable String id) {
+        return ResponseEntity.ok(resourceService.getResourceAudit(id));
     }
 }

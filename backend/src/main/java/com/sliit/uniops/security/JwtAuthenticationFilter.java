@@ -2,14 +2,15 @@ package com.sliit.uniops.security;
 
 import com.sliit.uniops.model.User;
 import com.sliit.uniops.repository.UserRepository;
+import com.sliit.uniops.security.UserPrincipal;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 /**
  * Filter that intercepts every request to check for a valid JWT token.
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -52,20 +54,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 User user = userRepository.findByUsername(username.toLowerCase()).orElse(null);
 
-<<<<<<< HEAD
                 // 4. Validate token and set security context
-                if (user != null && jwtUtils.validateToken(jwt, user.getEmail())) {
+                if (user != null && jwtUtils.validateToken(jwt, user.getUsername())) {
                     // Create UserPrincipal instead of using User directly
                     UserPrincipal userPrincipal = new UserPrincipal(
                             user.getId(),
                             user.getEmail(),
                             user.getName(),
-                            user.getRoles().isEmpty() ? "USER" : user.getRoles().iterator().next().name()
+                            user.getRoles().isEmpty()
+                                ? java.util.Set.of("USER")
+                                : user.getRoles().stream().map(Enum::name).collect(Collectors.toSet())
                     );
                     
-=======
-                if (user != null && jwtUtils.validateToken(jwt, user.getUsername())) {
->>>>>>> 0f46080d9e4dab6c3380dc5d0b9b91330220c6df
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userPrincipal,
                             null,
@@ -77,7 +77,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         } catch (Exception e) {
             // If token is invalid/expired, we just let it go for now (anyRequest().authenticated() will catch it later)
-            logger.error("Could not set user authentication in security context", e);
+            log.error("Could not set user authentication in security context", e);
         }
 
         filterChain.doFilter(request, response);
