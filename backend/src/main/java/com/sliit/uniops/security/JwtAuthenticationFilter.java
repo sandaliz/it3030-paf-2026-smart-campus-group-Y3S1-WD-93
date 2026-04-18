@@ -36,7 +36,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
-        final String userEmail;
+        final String username;
 
         // 1. Check if the header contains Bearer token
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -47,20 +47,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 2. Extract JWT and Email from token
         jwt = authHeader.substring(7);
         try {
-            userEmail = jwtUtils.extractUsername(jwt);
+            username = jwtUtils.extractUsername(jwt);
 
-            // 3. If email is present and user is not yet authenticated in this context
-            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                User user = userRepository.findByEmail(userEmail).orElse(null);
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                User user = userRepository.findByUsername(username.toLowerCase()).orElse(null);
 
                 // 4. Validate token and set security context
                 if (user != null && jwtUtils.validateToken(jwt, user.getEmail())) {
+                    // Create UserPrincipal instead of using User directly
+                    UserPrincipal userPrincipal = new UserPrincipal(
+                            user.getId(),
+                            user.getEmail(),
+                            user.getName(),
+                            user.getRoles().isEmpty() ? "USER" : user.getRoles().iterator().next().name()
+                    );
+                    
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            user,
+                            userPrincipal,
                             null,
-                            user.getRoles().stream()
-                                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
-                                    .collect(Collectors.toList())
+                            userPrincipal.getAuthorities()
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);

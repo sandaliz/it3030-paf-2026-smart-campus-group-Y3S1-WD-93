@@ -25,17 +25,6 @@ public class UserController {
     private final UserRepository userRepository;
 
     /**
-     * Get the currently logged-in user's profile info.
-     */
-    @GetMapping("/auth/me")
-    public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal User user) {
-        if (user == null) {
-            return ResponseEntity.status(401).body("Not authenticated");
-        }
-        return ResponseEntity.ok(user);
-    }
-
-    /**
      * List all users (Admin only).
      */
     @GetMapping("/admin/users")
