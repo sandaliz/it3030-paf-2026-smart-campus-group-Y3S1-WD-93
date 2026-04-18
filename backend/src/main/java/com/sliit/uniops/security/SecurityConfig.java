@@ -67,6 +67,7 @@ public class SecurityConfig {
                                 "/api/resources",
                                 "/api/resources/search",
                                 "/api/resources/paginated",
+                                "/api/resources/*/share",
                                 "/oauth2/**",
                                 "/login/**",
                                 "/api/debug/**"
@@ -85,7 +86,6 @@ public class SecurityConfig {
                         .requestMatchers("/api/tickets/**", "/api/attachments/**", "/api/ticket/notifications/**", "/api/calendar/**", "/api/notifications/**").authenticated()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2.successHandler(oauth2SuccessHandler))
-                
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

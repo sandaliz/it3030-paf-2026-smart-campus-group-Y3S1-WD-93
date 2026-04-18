@@ -12,7 +12,7 @@ const apiFacade = {
   getResources: async (paramsOrQuery) => {
     if (typeof paramsOrQuery === 'string') {
       // If it's a query string, use the base api instance directly or parse it
-      const response = await api.get(`/api/resources/search${paramsOrQuery}`);
+      const response = await api.get(`/api/resources${paramsOrQuery}`);
       return response.data;
     }
     // Default to getAllResources if no params, or search if params exist

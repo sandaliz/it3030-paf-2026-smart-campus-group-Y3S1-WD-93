@@ -1,9 +1,9 @@
 package com.sliit.uniops.dto.request;
 
 import com.sliit.uniops.model.Resource;
-import lombok.Data;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
-
+import lombok.Data;
 import java.util.List;
 
 @Data
@@ -21,6 +21,7 @@ public class ResourceRequestDTO {
     @NotBlank(message = "Location is required")
     private String location;
     
+    @Valid
     private List<Resource.AvailabilityWindow> availabilityWindows;
     
     @NotNull(message = "Status is required")

@@ -19,7 +19,7 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
       setLoading(true);
       // Fetch all resources to calculate analytics
       const allResources = await resourceService.getAllResources();
-      
+
       // Calculate analytics
       const totalShares = allResources.reduce((sum, r) => sum + (r.shareCount || 0), 0);
       const sharedResources = allResources.filter(r => r.shareCount > 0);
