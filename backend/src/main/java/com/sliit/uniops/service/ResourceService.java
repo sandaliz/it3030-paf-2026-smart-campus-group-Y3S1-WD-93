@@ -1,6 +1,7 @@
 package com.sliit.uniops.service;
 
 import com.sliit.uniops.model.Resource;
+import com.sliit.uniops.model.User;
 import com.sliit.uniops.repository.ResourceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -34,6 +35,10 @@ public class ResourceService {
 
     private String getCurrentUserId(Authentication authentication) {
         if (authentication == null) return null;
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof User) {
+            return ((User) principal).getId();
+        }
         return authentication.getName();
     }
 
@@ -68,8 +73,12 @@ public class ResourceService {
 
     public List<Resource> getResourcesByCreator(Authentication authentication) {
         String userId = getCurrentUserId(authentication);
-        Query query = new Query(Criteria.where("createdBy").is(userId));
-        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "createdBy");
+        // Get resources created by user OR assigned to user
+        Query query = new Query(new Criteria().orOperator(
+                Criteria.where("createdBy").is(userId),
+                Criteria.where("assignedStaff").in(userId)
+        ));
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "createdBy", "assignedStaff");
         return mongoTemplate.find(query, Resource.class);
     }
 
@@ -258,5 +267,12 @@ public class ResourceService {
         response.put("last", (page + 1) * size >= totalElements);
 
         return response;
+    }
+
+    public Resource assignStaffToResource(String resourceId, List<String> staffIds) {
+        Resource resource = getResourceById(resourceId);
+        resource.setAssignedStaff(staffIds);
+        resource.setUpdatedAt(java.time.LocalDateTime.now());
+        return resourceRepository.save(resource);
     }
 }

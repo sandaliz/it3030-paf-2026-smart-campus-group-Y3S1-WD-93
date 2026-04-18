@@ -1,15 +1,38 @@
 package com.sliit.uniops.controller;
 
 import com.sliit.uniops.model.Resource;
+import com.sliit.uniops.model.Role;
+import com.sliit.uniops.model.User;
+import com.sliit.uniops.repository.UserRepository;
 import com.sliit.uniops.service.ResourceService;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+class StaffResponse {
+    private String id;
+    private String username;
+    private String name;
+    private String email;
+    private Set<String> roles;
+    private boolean enabled;
+}
 
 @RestController
 @RequestMapping("/api/resources")
@@ -18,6 +41,7 @@ import java.util.List;
 public class ResourceController {
 
     private final ResourceService resourceService;
+    private final MongoTemplate mongoTemplate;
     
     // Get all resources (public)
     @GetMapping
@@ -105,5 +129,39 @@ public class ResourceController {
             @PathVariable String id,
             @RequestParam String date) {
         return ResponseEntity.ok(resourceService.getResourceAvailability(id, date));
+    }
+
+    // Assign staff to resource (admin only)
+    @PostMapping("/{id}/assign-staff")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Resource> assignStaffToResource(
+            @PathVariable String id,
+            @RequestBody java.util.Map<String, List<String>> request) {
+        List<String> staffIds = request.get("staffIds");
+        return ResponseEntity.ok(resourceService.assignStaffToResource(id, staffIds));
+    }
+
+    // Get all staff users (LECTURER, NON_ACADEMIC, TECHNICIAN) for resource assignment (admin only)
+    @GetMapping("/staff")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<StaffResponse>> getStaffUsers() {
+        Query query = new Query();
+        // Match users who have any of the staff roles (even if they have other roles too)
+        query.addCriteria(Criteria.where("roles").in("LECTURER", "NON_ACADEMIC", "TECHNICIAN"));
+        // Exclude only the problematic fields to avoid LocalDateTime serialization issues
+        query.fields().exclude("createdAt", "lastLoginAt", "password", "googleId", "pictureUrl", "authProvider");
+
+        List<User> staffUsers = mongoTemplate.find(query, User.class);
+        List<StaffResponse> response = staffUsers.stream()
+                .map(user -> new StaffResponse(
+                        user.getId(),
+                        user.getUsername(),
+                        user.getName(),
+                        user.getEmail(),
+                        user.getRoles().stream().map(Role::toString).collect(Collectors.toSet()),
+                        user.isEnabled()
+                ))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
     }
 }

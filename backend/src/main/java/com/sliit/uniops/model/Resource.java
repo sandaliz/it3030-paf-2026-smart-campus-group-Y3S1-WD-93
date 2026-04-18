@@ -25,6 +25,7 @@ public class Resource {
     private List<String> amenities;
     private Integer shareCount;
     private String createdBy; // User ID of who created this resource
+    private List<String> assignedStaff; // List of user IDs assigned to this resource
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -114,6 +115,9 @@ public class Resource {
 
     public String getCreatedBy() { return createdBy; }
     public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+
+    public List<String> getAssignedStaff() { return assignedStaff; }
+    public void setAssignedStaff(List<String> assignedStaff) { this.assignedStaff = assignedStaff; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

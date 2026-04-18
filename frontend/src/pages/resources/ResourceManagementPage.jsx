@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 import { resourceService } from '../../services/resourceService';
 import ResourceForm from '../../components/forms/ResourceForm';
 import { TableRowSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
@@ -22,6 +23,10 @@ const ResourceManagementPage = () => {
   const [editingResource, setEditingResource] = useState(null);
   const [selectedResources, setSelectedResources] = useState([]);
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+  const [showAssignStaffModal, setShowAssignStaffModal] = useState(false);
+  const [selectedResource, setSelectedResource] = useState(null);
+  const [selectedStaffIds, setSelectedStaffIds] = useState([]);
+  const [allStaff, setAllStaff] = useState([]);
   const [filters, setFilters] = useState({
     type: '',
     status: '',
@@ -44,6 +49,12 @@ const ResourceManagementPage = () => {
 
   useEffect(() => {
     fetchAllResources();
+  }, []);
+
+  useEffect(() => {
+    if (hasRole('ADMIN')) {
+      fetchAllStaff();
+    }
   }, []);
 
   const fetchAllResources = async () => {
@@ -220,6 +231,39 @@ const ResourceManagementPage = () => {
     }
   };
 
+  const handleAssignStaff = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`http://localhost:8080/api/resources/${selectedResource.id}/assign-staff`, 
+        { staffIds: selectedStaffIds },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSuccess('Staff assigned successfully');
+      setError(null);
+      setShowAssignStaffModal(false);
+      setSelectedResource(null);
+      setSelectedStaffIds([]);
+      fetchResources();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError('Failed to assign staff');
+      setSuccess(null);
+      console.error('Error assigning staff:', err);
+    }
+  };
+
+  const fetchAllStaff = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('http://localhost:8080/api/resources/staff', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAllStaff(response.data || []);
+    } catch (err) {
+      console.error('Error fetching staff:', err);
+    }
+  };
+
   const getStatusBadgeColor = (status) => {
     switch (status) {
       case 'ACTIVE':
@@ -323,7 +367,10 @@ const ResourceManagementPage = () => {
           </button>
           <button
             className="btn btn-outline"
-            onClick={fetchResources}
+            onClick={() => {
+              fetchResources();
+              fetchAllResources();
+            }}
             disabled={loading}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -658,6 +705,17 @@ const ResourceManagementPage = () => {
                               Edit
                             </button>
                           )}
+                          {hasRole('ADMIN') && (
+                            <button
+                              className="btn btn-sm btn-info text-white"
+                              onClick={() => {
+                                setSelectedResource(resource);
+                                setShowAssignStaffModal(true);
+                              }}
+                            >
+                              Assign Staff
+                            </button>
+                          )}
                           {canDeleteResources && (
                             <button
                               className="btn btn-sm btn-error"
@@ -727,6 +785,64 @@ const ResourceManagementPage = () => {
         isOpen={showAnalyticsModal}
         onClose={() => setShowAnalyticsModal(false)}
       />
+
+      {/* Assign Staff Modal */}
+      {showAssignStaffModal && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg mb-4">
+              Assign Staff to {selectedResource?.name}
+            </h3>
+            <div className="space-y-4">
+              <div className="form-control">
+                <label className="label">Select Staff</label>
+                <div className="max-h-60 overflow-y-auto space-y-2 border border-base-300 rounded p-2">
+                  {allStaff.length === 0 ? (
+                    <p className="text-sm opacity-60">No staff available</p>
+                  ) : (
+                    allStaff.map((staff) => (
+                      <label key={staff.id} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedStaffIds.includes(staff.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedStaffIds([...selectedStaffIds, staff.id]);
+                            } else {
+                              setSelectedStaffIds(selectedStaffIds.filter(id => id !== staff.id));
+                            }
+                          }}
+                          className="checkbox checkbox-sm"
+                        />
+                        <span className="text-sm">{staff.username}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+              <div className="modal-action">
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => {
+                    setShowAssignStaffModal(false);
+                    setSelectedResource(null);
+                    setSelectedStaffIds([]);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleAssignStaff}
+                  disabled={selectedStaffIds.length === 0}
+                >
+                  Assign ({selectedStaffIds.length})
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
