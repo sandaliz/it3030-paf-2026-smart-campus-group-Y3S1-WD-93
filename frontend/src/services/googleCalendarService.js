@@ -1,35 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-
-// Create axios instance
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Request interceptor to add auth token if available
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Response interceptor for error handling
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error('Google Calendar API Error:', error.response?.data || error.message);
-    return Promise.reject(error);
-  }
-);
+import api from './axiosInstance';
 
 // Google Calendar API service
 export const googleCalendarService = {
@@ -96,16 +65,23 @@ export const googleCalendarService = {
 
   // Get Google OAuth URL for calendar access
   getGoogleAuthUrl: () => {
-    const clientId = import.meta.env.VITE_GOOGLE_CALENDAR_CLIENT_ID;
+    const clientId =
+      import.meta.env.VITE_GOOGLE_CALENDAR_CLIENT_ID ||
+      import.meta.env.VITE_GOOGLE_CLIENT_ID;
     const redirectUri = `${window.location.origin}/auth/calendar/callback`;
     const scope = 'https://www.googleapis.com/auth/calendar';
+
+    if (!clientId) {
+      throw new Error('Google Calendar client ID is not configured');
+    }
     
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${clientId}&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `response_type=code&` +
       `scope=${encodeURIComponent(scope)}&` +
-      `access_type=offline`;
+      `access_type=offline&` +
+      `prompt=consent`;
     
     return authUrl;
   },

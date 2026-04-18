@@ -39,7 +39,10 @@ import ResourceDetailPage from './pages/resources/ResourceDetailPage'
 import ResourceManagementPage from './pages/resources/ResourceManagementPage'
 import ResourceListPage from './pages/resources/ResourceListPage'
 import BookingPage from './pages/bookings/BookingPage'
-import BookingManagementPage from './pages/admin/BookingManagement'
+import CreateBooking from './pages/bookings/CreateBooking'
+import BookingManagementPage from './pages/admin/BookingManagement';
+import CalendarPage from './pages/calendar/CalendarPage';
+import UserCalendarPage from './pages/calendar/UserCalendarPage';
 import TicketListPage from './pages/incidents/TicketListPage';
 import CreateTicketPage from './pages/incidents/CreateTicketPage';
 import TicketDetailPage from './pages/incidents/TicketDetailPage';
@@ -111,8 +114,24 @@ const AppContent = () => {
           <Route 
             path="/bookings" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRoles={['ADMIN', 'LECTURER', 'STUDENT']}>
                 <BookingPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/calendar" 
+            element={
+              <ProtectedRoute requiredRoles={['ADMIN', 'LECTURER', 'STUDENT', 'NON_ACADEMIC', 'TECHNICIAN']}>
+                <UserCalendarPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/bookings/new" 
+            element={
+              <ProtectedRoute requiredRoles={['ADMIN', 'LECTURER', 'STUDENT']}>
+                <CreateBooking />
               </ProtectedRoute>
             } 
           />
@@ -121,6 +140,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute requiredRoles={['ADMIN', 'BOOKING_MANAGER']}>
                 <BookingManagementPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/calendar" 
+            element={
+              <ProtectedRoute requiredRoles={['ADMIN', 'BOOKING_MANAGER']}>
+                <CalendarPage />
               </ProtectedRoute>
             } 
           />

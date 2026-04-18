@@ -17,6 +17,9 @@ const BookingForm = ({ onBookingCreated, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  const [alternativeResources, setAlternativeResources] = useState([]);
+  const [showAlternatives, setShowAlternatives] = useState(false);
+  const [isLoadingAlternatives, setIsLoadingAlternatives] = useState(false);
 
   useEffect(() => {
     loadResources();
@@ -89,6 +92,9 @@ const BookingForm = ({ onBookingCreated, onCancel }) => {
     if (!validateForm()) return;
     
     setLoading(true);
+    setShowAlternatives(false);
+    setAlternativeResources([]);
+    
     try {
       const booking = await bookingService.createBooking(formData);
       onBookingCreated(booking);
@@ -103,10 +109,63 @@ const BookingForm = ({ onBookingCreated, onCancel }) => {
       });
     } catch (error) {
       console.error('Error creating booking:', error);
-      setErrors({ submit: error.response?.data?.message || 'Failed to create booking' });
+      const errorMessage = error.response?.data?.message || '';
+      
+      // Check if error is due to booking conflict
+      if (errorMessage.includes('already booked') || errorMessage.includes('conflict')) {
+        setErrors({
+          submit: errorMessage
+        });
+        
+        // Load alternative resources
+        loadAlternativeResources();
+      } else {
+        const validationErrors = error.response?.data?.validationErrors;
+        const validationMessage = validationErrors
+          ? Object.values(validationErrors).join(', ')
+          : null;
+        setErrors({
+          submit: validationMessage || errorMessage || 'Failed to create booking'
+        });
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadAlternativeResources = async () => {
+    if (!formData.resourceId || !formData.date || !formData.startTime || !formData.endTime) {
+      return;
+    }
+    
+    setIsLoadingAlternatives(true);
+    try {
+      const alternatives = await bookingService.getAlternativeResources(
+        formData.resourceId,
+        formData.date,
+        formData.startTime,
+        formData.endTime,
+        formData.expectedAttendees
+      );
+      setAlternativeResources(alternatives);
+      setShowAlternatives(alternatives.length > 0);
+    } catch (error) {
+      console.error('Error loading alternative resources:', error);
+      setAlternativeResources([]);
+      setShowAlternatives(false);
+    } finally {
+      setIsLoadingAlternatives(false);
+    }
+  };
+
+  const selectAlternativeResource = (resource) => {
+    setFormData(prev => ({
+      ...prev,
+      resourceId: resource.id
+    }));
+    setShowAlternatives(false);
+    setAlternativeResources([]);
+    setErrors(prev => ({ ...prev, submit: '' }));
   };
 
   const handleChange = (e) => {
@@ -300,6 +359,92 @@ const BookingForm = ({ onBookingCreated, onCancel }) => {
           {errors.submit && (
             <div className="alert alert-error">
               <span>{errors.submit}</span>
+            </div>
+          )}
+
+          {/* Alternative Resources Suggestions */}
+          {isLoadingAlternatives && (
+            <div className="card bg-base-200 border border-base-300">
+              <div className="card-body p-4">
+                <div className="flex items-center gap-2">
+                  <span className="loading loading-spinner loading-sm"></span>
+                  <span className="text-sm">Finding alternative resources...</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showAlternatives && alternativeResources.length > 0 && (
+            <div className="card bg-success/10 border border-success/20">
+              <div className="card-body p-4">
+                <h3 className="text-lg font-semibold mb-3 text-success">
+                  Alternative Resources Available
+                </h3>
+                <p className="text-sm text-base-content/70 mb-4">
+                  The following resources are available at your requested time:
+                </p>
+                <div className="space-y-2">
+                  {alternativeResources.map((resource) => (
+                    <div
+                      key={resource.id}
+                      className="card bg-base-100 border border-base-300 cursor-pointer hover:border-primary hover:shadow-sm transition-all"
+                      onClick={() => selectAlternativeResource(resource)}
+                    >
+                      <div className="card-body p-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-primary">{resource.name}</h4>
+                            <div className="text-sm text-base-content/70 mt-1">
+                              <span className="badge badge-outline badge-sm">{resource.type}</span>
+                              <span className="ml-2">Capacity: {resource.capacity} people</span>
+                              <span className="ml-2">Location: {resource.location}</span>
+                            </div>
+                          </div>
+                          <button className="btn btn-sm btn-primary">
+                            Select
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4">
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => {
+                      setShowAlternatives(false);
+                      setAlternativeResources([]);
+                    }}
+                  >
+                    Hide alternatives
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showAlternatives && alternativeResources.length === 0 && !isLoadingAlternatives && (
+            <div className="card bg-warning/10 border border-warning/20">
+              <div className="card-body p-4">
+                <h3 className="text-lg font-semibold mb-2 text-warning">
+                  No Alternative Resources Available
+                </h3>
+                <p className="text-sm text-base-content/70">
+                  Unfortunately, no alternative resources are available at your requested time. 
+                  Try selecting a different time or date.
+                </p>
+                <div className="mt-3">
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => {
+                      setShowAlternatives(false);
+                      setAlternativeResources([]);
+                    }}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

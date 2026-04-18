@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { ticketAPI } from '../../services/ticketService';
+import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 
