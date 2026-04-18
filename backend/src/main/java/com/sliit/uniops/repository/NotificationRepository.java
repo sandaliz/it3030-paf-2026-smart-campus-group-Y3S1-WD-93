@@ -3,6 +3,7 @@ package com.sliit.uniops.repository;
 import com.sliit.uniops.model.Notification;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 
 /**
@@ -10,6 +11,34 @@ import java.util.List;
  */
 @Repository
 public interface NotificationRepository extends MongoRepository<Notification, String> {
+
+    /**
+     * Get all notifications for a user, ordered by creation date (newest first)
+     */
     List<Notification> findByUserIdOrderByCreatedAtDesc(String userId);
-    long countByUserIdAndStatus(String userId, String status);
+
+    /**
+     * Get only unread notifications for a user
+     */
+    List<Notification> findByUserIdAndIsReadFalse(String userId);
+
+    /**
+     * Count unread notifications for a user (for badge display)
+     */
+    long countByUserIdAndIsReadFalse(String userId);
+
+    /**
+     * Delete a notification (user can only delete their own)
+     */
+    void deleteByIdAndUserId(String id, String userId);
+
+    /**
+     * Find a specific notification by ID and user ID
+     */
+    Notification findByIdAndUserId(String id, String userId);
+
+    /**
+     * Find notifications by user ID and related entity ID (for migration)
+     */
+    List<Notification> findByUserIdAndRelatedEntityId(String userId, String relatedEntityId);
 }

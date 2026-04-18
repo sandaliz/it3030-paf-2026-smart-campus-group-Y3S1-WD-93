@@ -9,108 +9,98 @@ import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserServ
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
-/**
- * Custom service to handle user info retrieval and role assignment during OAuth2 login.
- */
 @Service
 @RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
-
-    @Value("${auth.admins:}")
-    private String adminEmails;
-
-    @Value("${auth.students:}")
-    private String studentEmails;
-
-    @Value("${auth.lecturers:}")
-    private String lecturerEmails;
-
-    @Value("${auth.staff:}")
-    private String staffEmails;
-
-    @Value("${auth.technicians:}")
-    private String technicianEmails;
-
     private final RoleMappingService roleMappingService;
-
-    @jakarta.annotation.PostConstruct
-    public void init() {
-        System.out.println("=================================================");
-        System.out.println("UniOps Auth System V2 (Google ID + Normalization) Active");
-        System.out.println("=================================================");
-    }
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         OAuth2User oAuth2User = super.loadUser(userRequest);
         
-        try {
-            return processOAuth2User(oAuth2User);
-        } catch (Exception ex) {
-            throw new OAuth2AuthenticationException(ex.getMessage());
+        String email = oAuth2User.getAttribute("email");
+        if (email == null || email.isBlank()) {
+            throw new OAuth2AuthenticationException("Email is required for OAuth2 authentication");
+        }
+
+        String normalizedEmail = email.trim().toLowerCase();
+        String googleId = oAuth2User.getAttribute("sub");
+        
+        User user = userRepository.findByGoogleId(googleId)
+                .or(() -> userRepository.findByEmail(normalizedEmail))
+                .orElseGet(() -> createNewOAuthUser(normalizedEmail, googleId, oAuth2User));
+
+        updateOAuthUser(user, googleId, oAuth2User);
+        userRepository.save(user);
+
+        return oAuth2User;
+    }
+
+    private User createNewOAuthUser(String email, String googleId, OAuth2User oAuth2User) {
+        String name = oAuth2User.getAttribute("name");
+        String picture = oAuth2User.getAttribute("picture");
+        
+        Role primaryRole = roleMappingService.parseRoleFromEmail(email);
+        Set<Role> roles = defaultRoles(primaryRole);
+        
+        return User.builder()
+                .email(email)
+                .username(generateUniqueUsername(email.split("@")[0]))
+                .name(name != null && !name.isBlank() ? name : email.split("@")[0])
+                .googleId(googleId)
+                .pictureUrl(picture)
+                .authProvider("GOOGLE")
+                .enabled(true)
+                .roles(roles)
+                .lastLoginAt(LocalDateTime.now())
+                .build();
+    }
+
+    private void updateOAuthUser(User user, String googleId, OAuth2User oAuth2User) {
+        String name = oAuth2User.getAttribute("name");
+        String picture = oAuth2User.getAttribute("picture");
+        
+        user.setGoogleId(googleId);
+        user.setName(name != null && !name.isBlank() ? name : user.getName());
+        user.setPictureUrl(picture);
+        user.setAuthProvider("GOOGLE");
+        user.setEnabled(true);
+        user.setLastLoginAt(LocalDateTime.now());
+        
+        if (user.getRoles() == null || user.getRoles().isEmpty()) {
+            Role primaryRole = roleMappingService.parseRoleFromEmail(user.getEmail());
+            user.setRoles(defaultRoles(primaryRole));
         }
     }
 
-    private OAuth2User processOAuth2User(OAuth2User oAuth2User) {
-        Map<String, Object> attributes = oAuth2User.getAttributes();
-        String rawEmail = (String) attributes.get("email");
-        String email = rawEmail != null ? rawEmail.toLowerCase().trim() : null;
-        String googleId = (String) attributes.get("sub");
-        String name = (String) attributes.get("name");
-        String pictureUrl = (String) attributes.get("picture");
+    private Set<Role> defaultRoles(Role primaryRole) {
+        Set<Role> roles = new LinkedHashSet<>();
+        roles.add(primaryRole);
+        if (primaryRole == Role.STUDENT) {
+            roles.add(Role.USER);
+        }
+        return roles;
+    }
 
-        if (email == null || googleId == null) {
-            throw new RuntimeException("Essential user data missing from Google response");
+    private String generateUniqueUsername(String baseName) {
+        String sanitized = baseName == null ? "user" : baseName.trim().toLowerCase().replaceAll("[^a-z0-9._-]", "");
+        if (sanitized.isBlank()) {
+            sanitized = "user";
         }
 
-        System.out.println("Processing login for: " + email + " (Google ID: " + googleId + ")");
-
-        // 1. Try to find user by Google ID first (Most reliable)
-        // 2. Fallback to Email search
-        User user = userRepository.findByGoogleId(googleId)
-                .or(() -> userRepository.findByEmail(email))
-                .orElseGet(() -> {
-                    System.out.println("Creating new User document for: " + email);
-                    return User.builder()
-                        .email(email)
-                        .roles(new HashSet<>())
-                        .enabled(true)
-                        .createdAt(java.time.LocalDateTime.now())
-                        .build();
-                });
-
-        // Always sync the latest details
-        user.setEmail(email);
-        user.setGoogleId(googleId);
-        user.setName(name);
-        user.setPictureUrl(pictureUrl);
-        user.setLastLoginAt(java.time.LocalDateTime.now());
-
-        // Always update/sync roles based on email mapping to ensure correct dashboard redirection
-        Set<Role> roles = new HashSet<>();
-        boolean isFirstUser = userRepository.count() == 0;
-        
-        if (isFirstUser && (user.getRoles() == null || user.getRoles().isEmpty())) {
-            System.out.println("First system user detected. Assigning ADMIN role.");
-            roles.add(Role.ADMIN);
-        } else {
-            Role identifiedRole = roleMappingService.parseRoleFromEmail(email);
-            System.out.println("Identified role for " + email + ": " + identifiedRole);
-            roles.add(identifiedRole);
+        String candidate = sanitized;
+        int suffix = 1;
+        while (userRepository.existsByUsername(candidate)) {
+            candidate = sanitized + suffix++;
         }
-        
-        user.setRoles(roles);
-
-        User savedUser = userRepository.save(user);
-        System.out.println("Successfully saved/updated user: " + savedUser.getEmail() + " with roles: " + savedUser.getRoles());
-        
-        return oAuth2User;
+        return candidate;
     }
 }

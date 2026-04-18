@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import NotificationBell from '../notifications/NotificationBell';
+import NotificationPanel from '../notifications/NotificationPanel';
 
 const Header = () => {
     const { user, logout } = useAuth();
@@ -110,6 +112,18 @@ const Header = () => {
                         )}
                         
                         <div className="flex items-center gap-4 ml-8">
+                            {/* Notification Bell */}
+                            {user && (
+                                <div className="dropdown dropdown-end">
+                                    <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
+                                        <NotificationBell />
+                                    </div>
+                                    <div tabIndex={0} className="dropdown-content mt-3 p-0 shadow-xl bg-base-100 rounded-box w-80 z-[100] border border-base-300">
+                                        <NotificationPanel />
+                                    </div>
+                                </div>
+                            )}
+                            
                             <button className="btn btn-outline btn-circle border-base-content/30 hover:border-primary hover:bg-base-200" onClick={toggleTheme}>
                                 {theme === 'nord' ? (
                                 <svg className="w-5 h-5 text-base-content" viewBox="0 0 24 24" fill="currentColor">
