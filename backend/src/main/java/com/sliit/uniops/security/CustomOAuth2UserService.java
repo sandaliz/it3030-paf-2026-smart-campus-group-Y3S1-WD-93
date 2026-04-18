@@ -60,7 +60,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 .authProvider("GOOGLE")
                 .enabled(true)
                 .roles(roles)
-                .lastLoginAt(LocalDateTime.now())
+                .lastLoginAt(System.currentTimeMillis())
                 .build();
     }
 
@@ -73,12 +73,11 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         user.setPictureUrl(picture);
         user.setAuthProvider("GOOGLE");
         user.setEnabled(true);
-        user.setLastLoginAt(LocalDateTime.now());
+        user.setLastLoginAt(System.currentTimeMillis());
         
-        if (user.getRoles() == null || user.getRoles().isEmpty()) {
-            Role primaryRole = roleMappingService.parseRoleFromEmail(user.getEmail());
-            user.setRoles(defaultRoles(primaryRole));
-        }
+        // Always update roles based on email to ensure correct role assignment
+        Role primaryRole = roleMappingService.parseRoleFromEmail(user.getEmail());
+        user.setRoles(defaultRoles(primaryRole));
     }
 
     private Set<Role> defaultRoles(Role primaryRole) {

@@ -36,6 +36,16 @@ const Header = () => {
                     </div>
                     
                     <div className="flex items-center gap-6">
+                        {/* Admin Dashboard Link */}
+                        {user && (user.roles && (user.roles.includes('ROLE_ADMIN') || user.roles.includes('ADMIN'))) && (
+                            <Link 
+                                to="/admin/dashboard" 
+                                className={`text-lg font-medium hover:text-primary transition-colors ${isActive('/admin/dashboard') ? 'text-primary' : 'text-base-content/70'}`}
+                            >
+                                Admin Dashboard
+                            </Link>
+                        )}
+                        
                         {(user && (user.roles && (user.roles.includes('ROLE_STUDENT') || user.roles.includes('ROLE_LECTURER') || user.roles.includes('ROLE_NON_ACADEMIC') || user.roles.includes('STUDENT') || user.roles.includes('LECTURER') || user.roles.includes('NON_ACADEMIC')))) && (
                             <>
                                 <Link 
