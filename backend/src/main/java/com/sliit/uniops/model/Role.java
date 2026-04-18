@@ -21,6 +21,7 @@ public enum Role {
     LECTURER(6),            // Faculty access
     TECHNICIAN(5),          // Maintenance access
     NON_ACADEMIC(4),        // General staff
+    USER(2),                // Generic end-user access for existing protected endpoints
     STUDENT(1);             // Default access
 
     private final int priority;

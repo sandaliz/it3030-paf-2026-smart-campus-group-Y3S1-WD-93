@@ -4,53 +4,120 @@ import com.sliit.uniops.model.Notification;
 import com.sliit.uniops.model.User;
 import com.sliit.uniops.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
- * Controller for notification REST endpoints.
+ * REST controller for notification operations.
  */
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
+@Slf4j
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
 public class NotificationController {
 
     private final NotificationService notificationService;
 
     /**
-     * Get all notifications for the authenticated user.
+     * 1. GET /api/notifications → get current user's notifications
      */
     @GetMapping
-    public ResponseEntity<List<Notification>> getMyNotifications(@AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(notificationService.getNotificationsForUser(user.getEmail()));
+    public ResponseEntity<List<Notification>> getUserNotifications() {
+        String userId = getCurrentUserId();
+        if (userId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        List<Notification> notifications = notificationService.getUserNotifications(userId);
+        log.info("Retrieved {} notifications for user: {}", notifications.size(), userId);
+        return ResponseEntity.ok(notifications);
     }
 
     /**
-     * Get unread notification count.
+     * 2. GET /api/notifications/unread-count → get unread count for badge
      */
     @GetMapping("/unread-count")
-    public ResponseEntity<Long> getUnreadCount(@AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(notificationService.getUnreadCount(user.getEmail()));
+    public ResponseEntity<?> getUnreadCount() {
+        String userId = getCurrentUserId();
+        if (userId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        long unreadCount = notificationService.getUnreadCount(userId);
+        log.info("Unread count for user {}: {}", unreadCount, userId);
+        return ResponseEntity.ok().body(Map.of("count", unreadCount));
     }
 
     /**
-     * Mark a specific notification as read.
+     * 3. PUT /api/notifications/{id}/read → mark as read
      */
-    @PatchMapping("/{id}/read")
-    public ResponseEntity<Void> markAsRead(@PathVariable String id) {
-        notificationService.markAsRead(id);
-        return ResponseEntity.noContent().build();
+    @PutMapping("/{id}/read")
+    public ResponseEntity<Notification> markAsRead(@PathVariable String id) {
+        String userId = getCurrentUserId();
+        if (userId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        Notification notification = notificationService.markAsRead(id, userId);
+        if (notification != null) {
+            log.info("Notification {} marked as read by user: {}", id, userId);
+            return ResponseEntity.ok(notification);
+        } else {
+            log.warn("Failed to mark notification {} as read for user: {}", id, userId);
+            return ResponseEntity.notFound().build();
+        }
     }
 
     /**
-     * Mark all notifications as read for the authenticated user.
+     * 4. DELETE /api/notifications/{id} → delete notification
      */
-    @PostMapping("/mark-all-read")
-    public ResponseEntity<Void> markAllAsRead(@AuthenticationPrincipal User user) {
-        notificationService.markAllAsRead(user.getEmail());
-        return ResponseEntity.noContent().build();
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteNotification(@PathVariable String id) {
+        String userId = getCurrentUserId();
+        if (userId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        boolean deleted = notificationService.deleteNotification(id, userId);
+        if (deleted) {
+            log.info("Notification {} deleted by user: {}", id, userId);
+            return ResponseEntity.noContent().build();
+        } else {
+            log.warn("Failed to delete notification {} for user: {}", id, userId);
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * 5. PUT /api/notifications/read-all → mark all as read
+     */
+    @PutMapping("/read-all")
+    public ResponseEntity<Integer> markAllAsRead() {
+        String userId = getCurrentUserId();
+        if (userId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        int markedCount = notificationService.markAllAsRead(userId);
+        log.info("Marked {} notifications as read for user: {}", markedCount, userId);
+        return ResponseEntity.ok(markedCount);
+    }
+
+    /**
+     * Get current authenticated user ID from security context
+     */
+    private String getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            return authentication.getName(); // This should be the email/user ID
+        }
+        return null;
     }
 }

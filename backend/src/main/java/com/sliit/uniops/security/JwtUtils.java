@@ -59,18 +59,18 @@ public class JwtUtils {
         return extractExpiration(token).before(new Date());
     }
 
-    public String generateToken(String email, Map<String, Object> extraClaims) {
+    public String generateToken(String subject, Map<String, Object> extraClaims) {
         return Jwts.builder()
                 .setClaims(extraClaims)
-                .setSubject(email)
+                .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(signingKey, SignatureAlgorithm.HS512)
                 .compact();
     }
 
-    public Boolean validateToken(String token, String userEmail) {
-        final String username = extractUsername(token);
-        return (username.equals(userEmail) && !isTokenExpired(token));
+    public Boolean validateToken(String token, String expectedUsername) {
+        final String tokenUsername = extractUsername(token);
+        return (tokenUsername.equalsIgnoreCase(expectedUsername) && !isTokenExpired(token));
     }
 }
