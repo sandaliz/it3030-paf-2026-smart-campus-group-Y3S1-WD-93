@@ -227,6 +227,20 @@ export const bookingService = {
       bookings: bookingRequests
     });
     return response.data;
+  },
+
+  // Get alternative resource suggestions
+  getAlternativeResources: async (unavailableResourceId, date, startTime, endTime, minCapacity) => {
+    const response = await api.get('/api/bookings/alternative-resources', {
+      params: {
+        unavailableResourceId,
+        date,
+        startTime,
+        endTime,
+        minCapacity
+      }
+    });
+    return response.data;
   }
 };
 

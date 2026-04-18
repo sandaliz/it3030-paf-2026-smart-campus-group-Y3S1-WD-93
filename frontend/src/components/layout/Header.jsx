@@ -49,6 +49,12 @@ const Header = () => {
                                     Bookings
                                 </Link>
                                 <Link 
+                                    to="/calendar" 
+                                    className={`text-lg font-medium hover:text-primary transition-colors ${isActive('/calendar') ? 'text-primary' : 'text-base-content/70'}`}
+                                >
+                                    Calendar
+                                </Link>
+                                <Link 
                                     to="/tickets" 
                                     className={`text-lg font-medium hover:text-primary transition-colors ${isActive('/tickets') ? 'text-primary' : 'text-base-content/70'}`}
                                 >
