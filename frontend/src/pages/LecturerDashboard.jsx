@@ -85,6 +85,16 @@ const LecturerDashboard = () => {
         fetchDashboardData();
     }, []);
 
+    const getFacilityIcon = (type) => {
+        const icons = {
+            'LECTURE_HALL': '🏛️',
+            'LAB': '🔬',
+            'MEETING_ROOM': '🏢',
+            'EQUIPMENT': '📱',
+        };
+        return icons[type] || '📚';
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-base-200 p-4 md:p-8 font-sans flex items-center justify-center">
@@ -189,6 +199,52 @@ const LecturerDashboard = () => {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                {/* Available Resources Section Available Resources Section */}
+                <div className="card bg-base-100 shadow-2xl border border-base-300 overflow-hidden">
+                    <div className="p-8 border-b border-base-200 bg-accent/5 flex justify-between items-center">
+                        <h3 className="text-2xl font-black flex items-center gap-4">
+                            <span className="w-3 h-8 bg-accent rounded-full"></span>
+                            🏢 AVAILABLE FACILITIES & RESOURCES
+                        </h3>
+                        <button
+                            onClick={() => window.location.href = 'http://localhost:5173/bookings'}
+                            className="btn btn-sm btn-accent text-white"
+                        >
+                            Book a Resource
+                        </button>
+                    </div>
+                    <div className="card-body p-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {facilities.length > 0 ? facilities.slice(0, 8).map((facility, i) => (
+                                <div key={i} className="card bg-base-200 border border-base-300 hover:shadow-2xl hover:border-accent/50 transition-all p-6 text-center group">
+                                    <div className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-300">
+                                        {getFacilityIcon(facility.type)}
+                                    </div>
+                                    <h4 className="text-lg font-black">{facility.name}</h4>
+                                    <p className="text-xs font-bold opacity-60 uppercase mt-1">{facility.type?.replace('_', ' ')}</p>
+                                    <div className="divider my-3"></div>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center text-xs">
+                                            <span className="opacity-60">Capacity:</span>
+                                            <span className="font-bold">{facility.capacity || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-xs">
+                                            <span className="opacity-60">Status:</span>
+                                            <span className={`badge badge-xs ${facility.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'}`}>
+                                                {facility.status}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="col-span-full text-center py-8 opacity-50">
+                                    <p className="font-bold">No facilities found</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 

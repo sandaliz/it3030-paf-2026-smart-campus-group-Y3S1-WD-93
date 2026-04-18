@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -15,7 +16,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @CrossOrigin(origins = {"http://localhost:5173", "http://localhost:5174", "http://localhost:3000"})
 public class ResourceController {
-    
+
     private final ResourceService resourceService;
     
     // Get all resources (public)
@@ -43,11 +44,17 @@ public class ResourceController {
         return ResponseEntity.ok(resourceService.getResourceById(id));
     }
     
-    // Create resource (admin only)
+    // Create resource (admin and staff)
     @PostMapping
-    public ResponseEntity<Resource> createResource(@RequestBody Resource resource) {
+    public ResponseEntity<Resource> createResource(@RequestBody Resource resource, Authentication authentication) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(resourceService.createResource(resource));
+                .body(resourceService.createResource(resource, authentication));
+    }
+
+    // Get resources created by current user (staff and admin)
+    @GetMapping("/my")
+    public ResponseEntity<List<Resource>> getMyResources(Authentication authentication) {
+        return ResponseEntity.ok(resourceService.getResourcesByCreator(authentication));
     }
     
     // Create multiple resources (admin only)
@@ -57,16 +64,16 @@ public class ResourceController {
                 .body(resourceService.createMultipleResources(resources));
     }
     
-    // Update resource (admin only)
+    // Update resource (admin and owner)
     @PutMapping("/{id}")
-    public ResponseEntity<Resource> updateResource(@PathVariable String id, @RequestBody Resource resource) {
-        return ResponseEntity.ok(resourceService.updateResource(id, resource));
+    public ResponseEntity<Resource> updateResource(@PathVariable String id, @RequestBody Resource resource, Authentication authentication) {
+        return ResponseEntity.ok(resourceService.updateResource(id, resource, authentication));
     }
 
-    // Update resource status (admin only)
+    // Update resource status (admin and owner)
     @PatchMapping("/{id}/status")
-    public ResponseEntity<Resource> updateResourceStatus(@PathVariable String id, @RequestBody java.util.Map<String, String> statusUpdate) {
-        return ResponseEntity.ok(resourceService.updateResourceStatus(id, statusUpdate.get("status")));
+    public ResponseEntity<Resource> updateResourceStatus(@PathVariable String id, @RequestBody java.util.Map<String, String> statusUpdate, Authentication authentication) {
+        return ResponseEntity.ok(resourceService.updateResourceStatus(id, statusUpdate.get("status"), authentication));
     }
 
     // Track resource share (public)
@@ -74,11 +81,11 @@ public class ResourceController {
     public ResponseEntity<Resource> trackShare(@PathVariable String id) {
         return ResponseEntity.ok(resourceService.incrementShareCount(id));
     }
-    
-    // Delete resource (admin only)
+
+    // Delete resource (admin and owner)
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteResource(@PathVariable String id) {
-        resourceService.deleteResource(id);
+    public ResponseEntity<Void> deleteResource(@PathVariable String id, Authentication authentication) {
+        resourceService.deleteResource(id, authentication);
         return ResponseEntity.noContent().build();
     }
     

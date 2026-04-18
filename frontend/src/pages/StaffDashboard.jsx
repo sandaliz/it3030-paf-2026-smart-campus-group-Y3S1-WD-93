@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import ResourceForm from '../components/forms/ResourceForm';
 
 const StaffDashboard = () => {
     const [stats, setStats] = useState({
@@ -10,13 +11,14 @@ const StaffDashboard = () => {
     });
 
     const [loading, setLoading] = useState(true);
-
-    // Mock data for things without models yet
-    const inventory = [
-        { category: 'Projectors', available: 12, total: 15, icon: '📽️' },
-        { category: 'Laptops', available: 25, total: 30, icon: '💻' },
-        { category: 'Cameras', available: 8, total: 10, icon: '📷' }
-    ];
+    const [resources, setResources] = useState([]);
+    const [myResources, setMyResources] = useState([]);
+    const [inventory, setInventory] = useState([]);
+    const [showResourceModal, setShowResourceModal] = useState(false);
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState(null);
+    const [showAllInventory, setShowAllInventory] = useState(false);
+    const [editingResource, setEditingResource] = useState(null);
 
     const deptBookings = [
         { id: 1, resource: 'Conference Room', date: 'Apr 15', time: '10 AM - 12 PM', details: 'Equipment: Projector x2', status: 'ACTIVE' },
@@ -28,26 +30,106 @@ const StaffDashboard = () => {
         { id: 102, title: 'Lights flickering - Lab 105', status: 'IN_PROGRESS', priority: 'Medium' }
     ];
 
-    const analytics = [
-        { name: 'Projectors', usage: 85 },
-        { name: 'Laptops', usage: 72 },
-        { name: 'Cameras', usage: 45 }
-    ];
-
     useEffect(() => {
-        const fetchStats = async () => {
+        const fetchDashboardData = async () => {
             try {
-                const response = await axios.get('http://localhost:8080/api/staff/stats');
-                setStats(response.data);
+                const token = localStorage.getItem('token');
+
+                // Fetch all resources for inventory and category view
+                const resourcesResponse = await axios.get('http://localhost:8080/api/resources');
+                const resourcesData = resourcesResponse.data;
+                setResources(resourcesData);
+
+                // Fetch my resources (created by current user)
+                const myResourcesResponse = await axios.get('http://localhost:8080/api/resources/my', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const myResourcesData = myResourcesResponse.data || [];
+                setMyResources(myResourcesData);
+
+                // Transform all resources to inventory format by type (system-wide view)
+                const resourceByType = resourcesData.reduce((acc, resource) => {
+                    const type = resource.type || 'OTHER';
+                    if (!acc[type]) {
+                        acc[type] = { category: type, available: 0, total: 0, icon: getTypeIcon(type) };
+                    }
+                    acc[type].total += 1;
+                    if (resource.status === 'ACTIVE') {
+                        acc[type].available += 1;
+                    }
+                    return acc;
+                }, {});
+
+                setInventory(Object.values(resourceByType));
+
+                // Update stats based on actual data
+                setStats({
+                    equipmentItems: myResourcesData.length,
+                    activeBookings: 0,
+                    pendingRequests: 0,
+                    maintenanceTickets: 0
+                });
             } catch (error) {
-                console.error('Error fetching staff stats:', error);
+                console.error('Error fetching staff dashboard data:', error);
+                // Set fallback data if API fails
+                setInventory([
+                    { category: 'LECTURE_HALL', available: 12, total: 15, icon: '🏛️' },
+                    { category: 'LAB', available: 25, total: 30, icon: '🔬' },
+                    { category: 'MEETING_ROOM', available: 8, total: 10, icon: '🏢' }
+                ]);
+                setMyResources([]);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchStats();
+        fetchDashboardData();
     }, []);
+
+
+    const handleDeleteResource = async (id) => {
+        if (!confirm('Are you sure you want to delete this resource?')) return;
+        try {
+            const token = localStorage.getItem('token');
+            await axios.delete(`http://localhost:8080/api/resources/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            // Refresh my resources
+            const myResourcesResponse = await axios.get('http://localhost:8080/api/resources/my', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setMyResources(myResourcesResponse.data || []);
+        } catch (error) {
+            console.error('Error deleting resource:', error);
+            alert('Failed to delete resource');
+        }
+    };
+
+    const openCreateResourceModal = () => {
+        setEditingResource(null);
+        setShowResourceModal(true);
+    };
+
+    const openEditResourceModal = (resource) => {
+        setEditingResource(resource);
+        setShowResourceModal(true);
+    };
+
+    const handleViewCategory = (category) => {
+        setSelectedCategory(category);
+        setShowCategoryModal(true);
+    };
+
+    const getTypeIcon = (type) => {
+        const icons = {
+            'LECTURE_HALL': '🏛️',
+            'LAB': '🔬',
+            'MEETING_ROOM': '🏢',
+            'EQUIPMENT': '📱',
+            'OTHER': '📚'
+        };
+        return icons[type] || '📚';
+    };
 
     return (
         <div className="min-h-screen bg-base-200 p-4 md:p-8 font-sans">
@@ -69,15 +151,17 @@ const StaffDashboard = () => {
                         </div>
                     </div>
                     <div className="flex gap-3">
-                        <button className="btn btn-warning text-white px-8 shadow-lg shadow-warning/20">Add Equipment</button>
+                        <button onClick={openCreateResourceModal} className="btn btn-warning text-white px-8 shadow-lg shadow-warning/20">Add Resource</button>
                         <button className="btn btn-outline border-base-300">Inventory Logs</button>
                     </div>
                 </div>
 
                 {/* Stats Section Stats Section */}
+
+                {/* Stats Section Stats Section */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {[
-                        { label: 'Equipment Items', value: stats.equipmentItems, color: 'from-orange-600 to-yellow-500' },
+                        { label: 'My Resources', value: stats.equipmentItems, color: 'from-orange-600 to-yellow-500' },
                         { label: 'Active Bookings', value: stats.activeBookings, color: 'from-teal-600 to-emerald-500' },
                         { label: 'Pending Requests', value: stats.pendingRequests, color: 'from-blue-600 to-indigo-500' },
                         { label: 'Maintenance Tickets', value: stats.maintenanceTickets, color: 'from-rose-600 to-pink-500' }
@@ -99,24 +183,23 @@ const StaffDashboard = () => {
                     <div className="p-8 border-b border-base-200 bg-warning/5 flex flex-col md:flex-row justify-between items-center gap-6">
                         <h3 className="text-2xl font-black flex items-center gap-4 uppercase tracking-tighter">
                             <span className="w-3 h-8 bg-warning rounded-full"></span>
-                            🔧 EQUIPMENT INVENTORY
+                             RESOURCE INVENTORY
                         </h3>
                         <div className="flex gap-2">
-                            <select className="select select-bordered select-sm rounded-full">
-                                <option disabled selected>Category: All</option>
-                                <option>Projectors</option>
-                                <option>Laptops</option>
-                                <option>Cameras</option>
-                            </select>
-                            <input type="text" placeholder="🔍 Search..." className="input input-bordered input-sm rounded-full w-48" />
+                            <button
+                                onClick={() => setShowAllInventory(!showAllInventory)}
+                                className="btn btn-sm btn-warning text-white"
+                            >
+                                {showAllInventory ? 'Show Less' : 'View All Resources'}
+                            </button>
                         </div>
                     </div>
                     <div className="card-body p-8">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            {inventory.map((item, i) => (
+                            {inventory.length > 0 ? (showAllInventory ? inventory : inventory.slice(0, 3)).map((item, i) => (
                                 <div key={i} className="card bg-base-200 border border-base-300 hover:shadow-2xl hover:border-warning/40 transition-all p-6 text-center group">
                                     <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">{item.icon}</div>
-                                    <h4 className="text-2xl font-black">{item.category}</h4>
+                                    <h4 className="text-2xl font-black">{item.category.replace('_', ' ')}</h4>
                                     <div className="divider my-4">Status</div>
                                     <div className="flex justify-between items-center px-4">
                                         <div className="text-center">
@@ -129,10 +212,90 @@ const StaffDashboard = () => {
                                             <p className="text-[10px] uppercase font-bold opacity-60">Total</p>
                                         </div>
                                     </div>
-                                    <button className="btn btn-sm btn-ghost btn-block mt-6 border-base-300">View Category →</button>
+                                    <button
+                                        onClick={() => handleViewCategory(item.category)}
+                                        className="btn btn-sm btn-ghost btn-block mt-6 border-base-300"
+                                    >
+                                        View Category →
+                                    </button>
                                 </div>
-                            ))}
+                            )) : (
+                                <div className="col-span-3 text-center py-8 opacity-50">
+                                    <p className="font-bold">No resources found</p>
+                                </div>
+                            )}
                         </div>
+                    </div>
+                </div>
+
+                {/* My Resources Section My Resources Section */}
+                <div className="card bg-base-100 shadow-2xl border border-base-300 overflow-hidden">
+                    <div className="p-8 border-b border-base-200 bg-warning/5 flex justify-between items-center">
+                        <h3 className="text-2xl font-black flex items-center gap-4 uppercase tracking-tighter">
+                            <span className="w-3 h-8 bg-warning rounded-full"></span>
+                            MY RESOURCES
+                        </h3>
+                        <button onClick={openCreateResourceModal} className="btn btn-sm btn-warning text-white">
+                            + Add New
+                        </button>
+                    </div>
+                    <div className="card-body p-8">
+                        {myResources.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <table className="table table-lg">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Capacity</th>
+                                            <th>Location</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {myResources.map((resource) => (
+                                            <tr key={resource.id} className="hover">
+                                                <td className="font-bold">{resource.name}</td>
+                                                <td>
+                                                    <span className="badge badge-outline">{resource.type?.replace('_', ' ')}</span>
+                                                </td>
+                                                <td>{resource.capacity || 'N/A'}</td>
+                                                <td>{resource.location}</td>
+                                                <td>
+                                                    <span className={`badge ${resource.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'}`}>
+                                                        {resource.status}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => openEditResourceModal(resource)}
+                                                            className="btn btn-sm btn-outline"
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteResource(resource.id)}
+                                                            className="btn btn-sm btn-error text-white"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 opacity-50">
+                                <p className="font-bold">No resources created by you yet</p>
+                                <button onClick={openCreateResourceModal} className="btn btn-sm btn-warning text-white mt-4">
+                                    Create Your First Resource
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -199,37 +362,197 @@ const StaffDashboard = () => {
                     </div>
                 </div>
 
-                {/* Resource Usage Analytics Resource Usage Analytics */}
+                {/* Resource Usage Analytics */}
                 <div className="card bg-base-100 shadow-2xl border border-base-300 overflow-hidden">
                     <div className="p-8 border-b border-base-200 bg-indigo-500/5 flex justify-between items-center">
                         <h3 className="text-2xl font-black flex items-center gap-4">
                              <span className="w-3 h-8 bg-indigo-500 rounded-full"></span>
-                             📊 RESOURCE USAGE ANALYTICS
+                             RESOURCE USAGE ANALYTICS
                         </h3>
                         <div className="flex gap-2">
-                             <button className="btn btn-sm btn-ghost border-base-300">Generate Report</button>
-                             <button className="btn btn-sm btn-primary">Export Data</button>
+                             <button className="btn btn-sm btn-primary" onClick={() => {
+                                 const data = myResources.map(r => ({
+                                     name: r.name,
+                                     type: r.type,
+                                     location: r.location,
+                                     capacity: r.capacity,
+                                     status: r.status
+                                 }));
+                                 const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                                 const url = URL.createObjectURL(blob);
+                                 const a = document.createElement('a');
+                                 a.href = url;
+                                 a.download = 'my-resources.json';
+                                 a.click();
+                             }}>Export Data</button>
                         </div>
                     </div>
                     <div className="card-body p-8 space-y-8">
                         <div>
-                            <p className="text-sm font-black opacity-60 uppercase mb-4 tracking-widest">Most Used Equipment This Month</p>
-                            <div className="space-y-6">
-                                {analytics.map((a, i) => (
-                                    <div key={i} className="space-y-2">
-                                        <div className="flex justify-between items-center">
-                                            <span className="font-bold">{a.name}</span>
-                                            <span className="font-black text-indigo-600">{a.usage}%</span>
+                            <p className="text-sm font-black opacity-60 uppercase mb-4 tracking-widest">My Resources Overview</p>
+                            {myResources.length > 0 ? (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="stat bg-base-200 rounded-lg p-4">
+                                            <div className="stat-title text-xs">Total Resources</div>
+                                            <div className="stat-value text-2xl">{myResources.length}</div>
                                         </div>
-                                        <div className="w-full bg-base-200 rounded-full h-3 overflow-hidden border border-base-300">
-                                            <div className="bg-indigo-500 h-full rounded-full transition-all duration-1000" style={{ width: `${a.usage}%` }}></div>
+                                        <div className="stat bg-base-200 rounded-lg p-4">
+                                            <div className="stat-title text-xs">Active</div>
+                                            <div className="stat-value text-2xl text-green-600">{myResources.filter(r => r.status === 'ACTIVE').length}</div>
+                                        </div>
+                                        <div className="stat bg-base-200 rounded-lg p-4">
+                                            <div className="stat-title text-xs">In Maintenance</div>
+                                            <div className="stat-value text-2xl text-orange-600">{myResources.filter(r => r.status === 'UNDER_MAINTENANCE').length}</div>
+                                        </div>
+                                        <div className="stat bg-base-200 rounded-lg p-4">
+                                            <div className="stat-title text-xs">Out of Service</div>
+                                            <div className="stat-value text-2xl text-red-600">{myResources.filter(r => r.status === 'OUT_OF_SERVICE').length}</div>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="space-y-2">
+                                        <p className="text-sm font-bold opacity-60 uppercase">Resources by Type</p>
+                                        {['LECTURE_HALL', 'LAB', 'MEETING_ROOM', 'EQUIPMENT'].map(type => {
+                                            const count = myResources.filter(r => r.type === type).length;
+                                            const percentage = myResources.length > 0 ? (count / myResources.length) * 100 : 0;
+                                            return count > 0 ? (
+                                                <div key={type} className="space-y-1">
+                                                    <div className="flex justify-between items-center text-sm">
+                                                        <span className="font-bold">{type.replace('_', ' ')}</span>
+                                                        <span className="font-black text-indigo-600">{count} ({percentage.toFixed(0)}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-base-200 rounded-full h-2 overflow-hidden border border-base-300">
+                                                        <div className="bg-indigo-500 h-full rounded-full transition-all duration-1000" style={{ width: `${percentage}%` }}></div>
+                                                    </div>
+                                                </div>
+                                            ) : null;
+                                        })}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 opacity-60">
+                                    <p>No resources to analyze</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
+
+                {/* Category View Modal */}
+                {showCategoryModal && (
+                    <div className="modal modal-open">
+                        <div className="modal-box max-w-4xl">
+                            <h3 className="font-bold text-lg mb-4">
+                                {getTypeIcon(selectedCategory)} {selectedCategory?.replace('_', ' ')} Resources
+                            </h3>
+                            <div className="overflow-x-auto">
+                                {resources && resources.length > 0 ? (
+                                    <>
+                                        {resources.filter(r => r.type === selectedCategory).length > 0 ? (
+                                            <table className="table table-lg">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Name</th>
+                                                        <th>Capacity</th>
+                                                        <th>Location</th>
+                                                        <th>Status</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {resources
+                                                        .filter(r => r.type === selectedCategory)
+                                                        .map((resource) => (
+                                                        <tr key={resource.id} className="hover">
+                                                            <td className="font-bold">{resource.name}</td>
+                                                            <td>{resource.capacity || 'N/A'}</td>
+                                                            <td>{resource.location}</td>
+                                                            <td>
+                                                                <span className={`badge ${resource.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'}`}>
+                                                                    {resource.status}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <div className="flex gap-2">
+                                                                    {resource.createdBy && resource.createdBy.toLowerCase() === localStorage.getItem('username')?.toLowerCase() ? (
+                                                                        <>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setShowCategoryModal(false);
+                                                                                    openEditResourceModal(resource);
+                                                                                }}
+                                                                                className="btn btn-sm btn-outline"
+                                                                            >
+                                                                                Edit
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    if (confirm('Are you sure you want to delete this resource?')) {
+                                                                                        handleDeleteResource(resource.id);
+                                                                                        setShowCategoryModal(false);
+                                                                                    }
+                                                                                }}
+                                                                                className="btn btn-sm btn-error text-white"
+                                                                            >
+                                                                                Delete
+                                                                            </button>
+                                                                        </>
+                                                                    ) : (
+                                                                        <span className="text-xs opacity-50">View only</span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        ) : (
+                                            <div className="text-center py-8">
+                                                <p className="font-bold opacity-50">No resources found in this category</p>
+                                                <p className="text-sm opacity-40">Try creating some resources of this type first</p>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="text-center py-8">
+                                        <p className="font-bold opacity-50">No resources found in the system</p>
+                                        <p className="text-sm opacity-40">Create your first resource to get started</p>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="modal-action">
+                                <button
+                                    className="btn"
+                                    onClick={() => setShowCategoryModal(false)}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Resource Create/Edit Modal */}
+                {showResourceModal && (
+                    <div className="modal modal-open">
+                        <div className="modal-box w-11/12 max-w-2xl">
+                            <ResourceForm
+                                resource={editingResource}
+                                onSubmit={() => {
+                                    setShowResourceModal(false);
+                                    // Refresh resources
+                                    const token = localStorage.getItem('token');
+                                    axios.get('http://localhost:8080/api/resources/my', {
+                                        headers: { Authorization: `Bearer ${token}` }
+                                    }).then(response => {
+                                        setMyResources(response.data || []);
+                                    });
+                                }}
+                                onCancel={() => setShowResourceModal(false)}
+                            />
+                        </div>
+                    </div>
+                )}
 
             </div>
         </div>
