@@ -58,15 +58,34 @@ public class SecurityConfig {
                 .authenticationProvider(authenticationProvider())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/", "/api/ping", "/actuator/health", "/api/auth/login", "/api/auth/register", "/oauth2/**", "/login/**", "/api/debug/**").permitAll()
+                        .requestMatchers(
+                                "/",
+                                "/api/ping",
+                                "/actuator/health",
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/resources",
+                                "/api/resources/search",
+                                "/api/resources/paginated",
+                                "/oauth2/**",
+                                "/login/**",
+                                "/api/debug/**"
+                        ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/technician/**").hasRole("TECHNICIAN")
                         .requestMatchers("/api/lecturer/**").hasRole("LECTURER")
-                        .requestMatchers("/api/resource/**").hasAnyRole("RESOURCE_MANAGER", "ADMIN")
-                        .requestMatchers("/api/booking/**").hasAnyRole("BOOKING_MANAGER", "ADMIN")
-                        .requestMatchers("/api/notifications/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/resources", "/api/resources/bulk").hasAnyRole("RESOURCE_MANAGER", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/resources/**").hasAnyRole("RESOURCE_MANAGER", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/resources/**").hasAnyRole("RESOURCE_MANAGER", "ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/resources/**").hasAnyRole("RESOURCE_MANAGER", "ADMIN")
+                        .requestMatchers("/api/bookings/admin/**").hasAnyRole("BOOKING_MANAGER", "ADMIN")
+                        .requestMatchers("/api/bookings/**").authenticated()
+                        .requestMatchers("/api/tickets/assigned-to-me").hasRole("TECHNICIAN")
+                        .requestMatchers(HttpMethod.GET, "/api/tickets").hasRole("ADMIN")
+                        .requestMatchers("/api/tickets/**", "/api/attachments/**", "/api/ticket/notifications/**", "/api/calendar/**", "/api/notifications/**").authenticated()
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2.successHandler(oauth2SuccessHandler))
+                
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

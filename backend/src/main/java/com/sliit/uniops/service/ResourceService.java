@@ -15,7 +15,9 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ResourceService {
@@ -46,6 +48,22 @@ public class ResourceService {
     public Resource getResourceById(String id) {
         return resourceRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Resource not found with ID: " + id));
+    }
+
+    public List<Resource> getResourcesByType(String type) {
+        return searchResources(null, type, null, null);
+    }
+
+    public List<Resource> getResourcesByStatus(String status) {
+        return searchResources(status, null, null, null);
+    }
+
+    public List<Resource> getResourcesByLocation(String location) {
+        return searchResources(null, null, null, location);
+    }
+
+    public List<Resource> getResourcesByMinCapacity(Integer minCapacity) {
+        return searchResources(null, null, minCapacity, null);
     }
     
     public Resource createResource(Resource resource, Authentication authentication) {
@@ -210,6 +228,62 @@ public class ResourceService {
         availability.put("dayOfWeek", dayName);
         
         return availability;
+    }
+
+    public Map<String, Object> checkResourceAvailability(String resourceId, String date, String startTime, String endTime) {
+        Resource resource = getResourceById(resourceId);
+        Map<String, Object> availability = new HashMap<>();
+        availability.put("resourceId", resource.getId());
+        availability.put("date", date);
+        availability.put("startTime", startTime);
+        availability.put("endTime", endTime);
+
+        if (!Resource.ResourceStatus.ACTIVE.equals(resource.getStatus())) {
+            availability.put("available", false);
+            availability.put("reason", "Resource is not active");
+            return availability;
+        }
+
+        if (resource.getAvailabilityWindows() == null || resource.getAvailabilityWindows().isEmpty()) {
+            availability.put("available", true);
+            availability.put("reason", "No schedule restrictions configured");
+            return availability;
+        }
+
+        java.time.LocalDate localDate = java.time.LocalDate.parse(date);
+        String dayName = localDate.getDayOfWeek().toString();
+
+        boolean available = resource.getAvailabilityWindows().stream().anyMatch(window ->
+            window.isAvailable()
+                && dayName.equals(window.getDayOfWeek())
+                && startTime.compareTo(window.getStartTime()) >= 0
+                && endTime.compareTo(window.getEndTime()) <= 0
+        );
+
+        availability.put("available", available);
+        availability.put("reason", available ? "Within configured availability window" : "Outside configured availability window");
+        return availability;
+    }
+
+    public List<Map<String, Object>> getResourceAudit(String resourceId) {
+        Resource resource = getResourceById(resourceId);
+        List<Map<String, Object>> auditEntries = new ArrayList<>();
+
+        auditEntries.add(Map.of(
+            "resourceId", resource.getId(),
+            "action", "RESOURCE_CREATED",
+            "timestamp", resource.getCreatedAt() != null ? resource.getCreatedAt().toString() : "",
+            "details", "Resource record exists in the system"
+        ));
+
+        auditEntries.add(Map.of(
+            "resourceId", resource.getId(),
+            "action", "RESOURCE_LAST_UPDATED",
+            "timestamp", resource.getUpdatedAt() != null ? resource.getUpdatedAt().toString() : "",
+            "details", "Current status: " + String.valueOf(resource.getStatus())
+        ));
+
+        return auditEntries;
     }
     
     public Object getResourcesPaginated(int page, int size, String search, String status, String type, String sortBy, String sortDir) {

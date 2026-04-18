@@ -10,8 +10,8 @@ const AdminSidebar = () => {
 
   const menuItems = [
     {
-      path: '/admin/dashboard',
-      label: 'Ticket Management',
+      path: '/admin/ticket-analytics',
+      label: 'Ticket Analytics',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 10l2-2m-2 2l-2-2" />
@@ -46,8 +46,8 @@ const AdminSidebar = () => {
       ),
     },
     {
-      path: '/admin/users',
-      label: 'User Management',
+      path: '/admin/tickets',
+      label: 'Ticket Management',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H7a2 2 0 00-2-2v14a2 2 0 002 2h14a2 2 0 002 2z" />

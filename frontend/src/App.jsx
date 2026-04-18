@@ -47,8 +47,9 @@ import TicketListPage from './pages/incidents/TicketListPage';
 import CreateTicketPage from './pages/incidents/CreateTicketPage';
 import TicketDetailPage from './pages/incidents/TicketDetailPage';
 // Role-based Dashboards
-import TicketManagementPage from './pages/admin/TicketManagemnet';
-import UserManagement from './pages/admin/UserManagement';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import TicketAnalyticsPage from './pages/admin/TicketAnalyticsPage';
+import TicketManagemnet from './pages/admin/TicketManagemnet';
 import LecturerDashboard from './pages/LecturerDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import StaffDashboard from './pages/StaffDashboard';
@@ -171,18 +172,17 @@ const AppContent = () => {
           {/* Role-based Dashboard Routes */}
           <Route path="/admin/dashboard" element={
             <ProtectedRoute requiredRoles={['ADMIN']}>
-              <TicketManagementPage />
+              <AdminDashboard />
             </ProtectedRoute>
           } />
           <Route path="/admin/tickets" element={
-            <ProtectedRoute requiredRoles={['ADMIN']}>
-              <TicketManagementPage />
+            <ProtectedRoute requiredRoles={['TECHNICIAN', 'TICKET_MANAGER', 'ADMIN']}>
+              <TicketManagemnet />
             </ProtectedRoute>
           } />
-          
-          <Route path="/admin/users" element={
+          <Route path="/admin/ticket-analytics" element={
             <ProtectedRoute requiredRoles={['ADMIN']}>
-              <UserManagement />
+              <TicketAnalyticsPage />
             </ProtectedRoute>
           } />
           <Route path="/lecturer/dashboard" element={
