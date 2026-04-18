@@ -9,7 +9,7 @@ import com.sliit.uniops.repository.UserRepository;
 import com.sliit.uniops.dto.request.BookingRequestDTO;
 import com.sliit.uniops.dto.request.BookingUpdateRequestDTO;
 import com.sliit.uniops.exception.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -20,23 +20,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Service for handling booking operations.
+ */
 @Service
+@RequiredArgsConstructor
 public class BookingService {
-    
-    @Autowired
-    private BookingRepository bookingRepository;
-    
-    @Autowired
-    private ResourceRepository resourceRepository;
-    
-    @Autowired
-    private BookingNotificationService notificationService;
 
-    @Autowired
-    private EmailService emailService;
-
-    @Autowired
-    private UserRepository userRepository;
+    private final BookingRepository bookingRepository;
+    private final ResourceRepository resourceRepository;
+    private final BookingNotificationService notificationService;
     
     // Create a new booking request with conflict checking
     public Booking createBooking(BookingRequestDTO request, String userId) {
@@ -149,11 +142,11 @@ public class BookingService {
             booking.setRejectionReason("Auto-rejected: New conflict detected during approval");
             bookingRepository.save(booking);
             
-            notificationService.sendNotification(
+            notificationService.sendBookingRejectedNotification(
                 booking.getUserId(),
-                "BOOKING_REJECTED",
-                "Your booking was auto-rejected due to a scheduling conflict",
-                bookingId
+                bookingId,
+                booking.getResourceName(),
+                "Auto-rejected: New conflict detected during approval"
             );
             
             throw new BookingConflictException("New conflict detected. Booking auto-rejected.");
@@ -162,11 +155,10 @@ public class BookingService {
         booking.setStatus("APPROVED");
         Booking approvedBooking = bookingRepository.save(booking);
         
-        notificationService.sendNotification(
+        notificationService.sendBookingApprovedNotification(
             booking.getUserId(),
-            "BOOKING_APPROVED",
-            "Your booking has been approved" + (reason != null ? " Reason: " + reason : ""),
-            bookingId
+            bookingId,
+            booking.getResourceName()
         );
 
         sendBookingStatusEmail(approvedBooking, "APPROVED", adminId, reason);
@@ -188,14 +180,12 @@ public class BookingService {
         booking.setRejectionReason(reason);
         Booking rejectedBooking = bookingRepository.save(booking);
         
-        notificationService.sendNotification(
+        notificationService.sendBookingRejectedNotification(
             booking.getUserId(),
-            "BOOKING_REJECTED",
-            "Your booking was rejected. Reason: " + reason,
-            bookingId
+            bookingId,
+            booking.getResourceName(),
+            reason
         );
-
-        sendBookingStatusEmail(rejectedBooking, "REJECTED", adminId, reason);
         
         return rejectedBooking;
     }

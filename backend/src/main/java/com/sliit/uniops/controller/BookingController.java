@@ -8,9 +8,6 @@ import com.sliit.uniops.dto.request.BookingRequestDTO;
 import com.sliit.uniops.dto.request.BookingUpdateRequestDTO;
 import com.sliit.uniops.dto.response.BookingResponseDTO;
 import com.sliit.uniops.dto.response.BookingStatusUpdateDTO;
-import com.sliit.uniops.exception.UnauthorizedException;
-import com.sliit.uniops.repository.UserRepository;
-import com.sliit.uniops.security.UserPrincipal;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,8 +37,8 @@ public class BookingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'STUDENT')")
     public ResponseEntity<BookingResponseDTO> createBooking(
             @Valid @RequestBody BookingRequestDTO request,
-            Authentication authentication) {
-        Booking booking = bookingService.createBooking(request, getCurrentUserId(authentication));
+            @AuthenticationPrincipal User currentUser) {
+        Booking booking = bookingService.createBooking(request, currentUser.getId());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(BookingResponseDTO.fromBooking(booking));
     }
@@ -51,8 +48,8 @@ public class BookingController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<BookingResponseDTO>> createMultipleBookings(
             @Valid @RequestBody List<BookingRequestDTO> requests,
-            Authentication authentication) {
-        List<Booking> bookings = bookingService.createMultipleBookings(requests, getCurrentUserId(authentication));
+            @AuthenticationPrincipal User currentUser) {
+        List<Booking> bookings = bookingService.createMultipleBookings(requests, currentUser.getId());
         List<BookingResponseDTO> response = bookings.stream()
                 .map(BookingResponseDTO::fromBooking)
                 .collect(Collectors.toList());
@@ -65,8 +62,8 @@ public class BookingController {
     @GetMapping("/my-bookings")
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'STUDENT')")
     public ResponseEntity<List<BookingResponseDTO>> getMyBookings(
-            Authentication authentication) {
-        List<Booking> bookings = bookingService.getUserBookings(getCurrentUserId(authentication));
+            @AuthenticationPrincipal User currentUser) {
+        List<Booking> bookings = bookingService.getUserBookings(currentUser.getId());
         List<BookingResponseDTO> response = bookings.stream()
                 .map(BookingResponseDTO::fromBooking)
                 .collect(Collectors.toList());
@@ -94,12 +91,8 @@ public class BookingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'STUDENT')")
     public ResponseEntity<BookingResponseDTO> getBookingById(
             @PathVariable String bookingId,
-            Authentication authentication) {
-        Booking booking = bookingService.getBookingById(
-            bookingId,
-            getCurrentUserId(authentication),
-            isAdmin(authentication)
-        );
+            @AuthenticationPrincipal User currentUser) {
+        Booking booking = bookingService.getBookingById(bookingId, currentUser.getId(), isAdmin(currentUser));
         return ResponseEntity.ok(BookingResponseDTO.fromBooking(booking));
     }
     
@@ -109,13 +102,8 @@ public class BookingController {
     public ResponseEntity<List<BookingResponseDTO>> getBookingsByDateRange(
             @RequestParam String startDate,
             @RequestParam String endDate,
-            Authentication authentication) {
-        List<Booking> bookings = bookingService.getBookingsByDateRange(
-            startDate,
-            endDate,
-            getCurrentUserId(authentication),
-            isAdmin(authentication)
-        );
+            @AuthenticationPrincipal User currentUser) {
+        List<Booking> bookings = bookingService.getBookingsByDateRange(startDate, endDate, currentUser.getId(), isAdmin(currentUser));
         List<BookingResponseDTO> response = bookings.stream()
                 .map(BookingResponseDTO::fromBooking)
                 .collect(Collectors.toList());
@@ -131,12 +119,12 @@ public class BookingController {
     public ResponseEntity<BookingResponseDTO> updateBooking(
             @PathVariable String bookingId,
             @Valid @RequestBody BookingUpdateRequestDTO updateRequest,
-            Authentication authentication) {
+            @AuthenticationPrincipal User currentUser) {
         Booking booking = bookingService.updateBooking(
             bookingId, 
             updateRequest, 
-            getCurrentUserId(authentication), 
-            isAdmin(authentication)
+            currentUser.getId(), 
+            isAdmin(currentUser)
         );
         return ResponseEntity.ok(BookingResponseDTO.fromBooking(booking));
     }
@@ -147,12 +135,12 @@ public class BookingController {
     public ResponseEntity<BookingResponseDTO> partialUpdateBooking(
             @PathVariable String bookingId,
             @RequestBody BookingUpdateRequestDTO updateRequest,
-            Authentication authentication) {
+            @AuthenticationPrincipal User currentUser) {
         Booking booking = bookingService.partialUpdateBooking(
             bookingId, 
             updateRequest, 
-            getCurrentUserId(authentication), 
-            isAdmin(authentication)
+            currentUser.getId(), 
+            isAdmin(currentUser)
         );
         return ResponseEntity.ok(BookingResponseDTO.fromBooking(booking));
     }
@@ -163,7 +151,7 @@ public class BookingController {
     public ResponseEntity<BookingResponseDTO> updateBookingStatus(
             @PathVariable String bookingId,
             @Valid @RequestBody BookingStatusUpdateDTO update,
-            Authentication authentication) {
+            @AuthenticationPrincipal User currentUser) {
         
         Booking booking;
         if ("APPROVED".equals(update.getStatus())) {
@@ -185,14 +173,14 @@ public class BookingController {
             @RequestParam String newDate,
             @RequestParam String newStartTime,
             @RequestParam String newEndTime,
-            Authentication authentication) {
+            @AuthenticationPrincipal User currentUser) {
         Booking booking = bookingService.rescheduleBooking(
             bookingId, 
             newDate, 
             newStartTime, 
             newEndTime, 
-            getCurrentUserId(authentication), 
-            isAdmin(authentication)
+            currentUser.getId(), 
+            isAdmin(currentUser)
         );
         return ResponseEntity.ok(BookingResponseDTO.fromBooking(booking));
     }
@@ -204,13 +192,13 @@ public class BookingController {
             @PathVariable String bookingId,
             @RequestParam(required = false) String purpose,
             @RequestParam(required = false) Integer expectedAttendees,
-            Authentication authentication) {
+            @AuthenticationPrincipal User currentUser) {
         Booking booking = bookingService.updateBookingDetails(
             bookingId, 
             purpose, 
             expectedAttendees, 
-            getCurrentUserId(authentication), 
-            isAdmin(authentication)
+            currentUser.getId(), 
+            isAdmin(currentUser)
         );
         return ResponseEntity.ok(BookingResponseDTO.fromBooking(booking));
     }
@@ -222,8 +210,8 @@ public class BookingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'STUDENT')")
     public ResponseEntity<Void> cancelBooking(
             @PathVariable String bookingId,
-            Authentication authentication) {
-        bookingService.cancelBooking(bookingId, getCurrentUserId(authentication), isAdmin(authentication));
+            @AuthenticationPrincipal User currentUser) {
+        bookingService.cancelBooking(bookingId, currentUser.getId(), isAdmin(currentUser));
         return ResponseEntity.noContent().build();
     }
     
@@ -300,76 +288,7 @@ public class BookingController {
         return ResponseEntity.ok(availableResources);
     }
     
-    // ===== NEW: Export bookings to CSV (admin only) =====
-    @GetMapping("/admin/export")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<byte[]> exportBookings(
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String resourceId,
-            @RequestParam(required = false) String userId,
-            @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
-        
-        List<Booking> bookings = bookingService.getAllBookings(status, resourceId, userId, startDate, endDate);
-        byte[] csvData = bookingService.generateBookingReport(bookings);
-        
-        return ResponseEntity.ok()
-                .header("Content-Type", "text/csv")
-                .header("Content-Disposition", "attachment; filename=\"booking_report.csv\"")
-                .body(csvData);
-    }
-    
-    // ===== NEW: Get alternative resource suggestions =====
-    @GetMapping("/alternative-resources")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LECTURER', 'STUDENT')")
-    public ResponseEntity<List<Resource>> getAlternativeResources(
-            @RequestParam String unavailableResourceId,
-            @RequestParam String date,
-            @RequestParam String startTime,
-            @RequestParam String endTime,
-            @RequestParam(required = false) Integer minCapacity) {
-        
-        List<Resource> alternatives = bookingService.getAlternativeResources(
-            unavailableResourceId, date, startTime, endTime, minCapacity);
-        return ResponseEntity.ok(alternatives);
-    }
-    
-   
-      
-    private String getCurrentUserId(Authentication authentication) {
-        if (authentication == null || authentication.getPrincipal() == null) {
-            throw new UnauthorizedException("User is not authenticated");
-        }
-
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof UserPrincipal userPrincipal) {
-            return userPrincipal.getId();
-        }
-
-        String email = null;
-        if (principal instanceof OAuth2User oauth2User) {
-            Object emailAttr = oauth2User.getAttributes().get("email");
-            if (emailAttr != null) {
-                email = emailAttr.toString();
-            }
-        } else if (principal instanceof org.springframework.security.core.userdetails.UserDetails userDetails) {
-            email = userDetails.getUsername();
-        } else if (principal instanceof String principalString && !"anonymousUser".equals(principalString)) {
-            email = principalString;
-        }
-
-        if (email == null || email.isBlank()) {
-            throw new UnauthorizedException("Authenticated user details are unavailable");
-        }
-
-        User user = userRepository.findByEmail(email.toLowerCase().trim())
-            .orElseThrow(() -> new UnauthorizedException("Authenticated user was not found"));
-        return user.getId();
-    }
-
-    private boolean isAdmin(Authentication authentication) {
-        return authentication != null &&
-            authentication.getAuthorities().stream()
-                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+    private boolean isAdmin(User currentUser) {
+        return currentUser.getRoles() != null && currentUser.getRoles().stream().anyMatch(role -> role.name().equals("ADMIN"));
     }
 }

@@ -1,63 +1,83 @@
-package com.sliit.uniops.security;
+package com.sliit.uniops.service;
 
+import com.sliit.uniops.dto.request.auth.LoginRequest;
+import com.sliit.uniops.dto.request.auth.RegisterRequest;
+import com.sliit.uniops.dto.response.auth.AuthResponse;
 import com.sliit.uniops.model.Role;
 import com.sliit.uniops.model.User;
 import com.sliit.uniops.repository.UserRepository;
-import com.sliit.uniops.service.RoleMappingService;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import com.sliit.uniops.security.JwtUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
-import org.springframework.stereotype.Component;
-import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Handler for successful OAuth2 authentication.
- * Creates or updates the OAuth user and returns the same JWT shape as local auth.
- */
-@Component
+@Service
 @RequiredArgsConstructor
-public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
+public class AuthService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
     private final RoleMappingService roleMappingService;
 
-    @Value("${app.frontend.url:http://localhost:5173}")
-    private String frontendUrl;
+    public AuthResponse register(RegisterRequest request) {
+        String username = normalizeUsername(request.getUsername());
+        String email = request.getEmail().trim().toLowerCase();
 
-    @Override
-    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-        OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
-        User user = resolveOAuthUser(oAuth2User);
-        String token = jwtUtils.generateToken(user.getUsername(), buildClaims(user));
-        String redirectPath = roleMappingService.getDashboardPath(roleMappingService.getHighestPriorityRole(user.getRoles()));
-
-        String origin = request.getHeader("Origin");
-        if (origin == null || origin.isEmpty()) {
-            origin = frontendUrl;
+        if (userRepository.existsByUsername(username)) {
+            throw new IllegalArgumentException("Username is already taken");
+        }
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("Email is already registered");
         }
 
-        String targetUrl = UriComponentsBuilder.fromUriString(origin + "/auth/callback")
-                .queryParam("token", token)
-                .queryParam("redirect", redirectPath)
-                .build().toUriString();
+        User user = User.builder()
+                .name(request.getName().trim())
+                .username(username)
+                .email(email)
+                .password(passwordEncoder.encode(request.getPassword()))
+                .authProvider("LOCAL")
+                .enabled(true)
+                .roles(defaultRoles(request.getRole()))
+                .lastLoginAt(LocalDateTime.now())
+                .build();
 
-        getRedirectStrategy().sendRedirect(request, response, targetUrl);
+        user = userRepository.save(user);
+        return buildAuthResponse(user);
     }
 
-    private User resolveOAuthUser(OAuth2User oAuth2User) {
+    public AuthResponse login(LoginRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, request.getPassword())
+            );
+        } catch (DisabledException ex) {
+            throw new IllegalStateException("Your account is disabled");
+        } catch (BadCredentialsException ex) {
+            throw new IllegalArgumentException("Invalid email or password");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+        user.setLastLoginAt(LocalDateTime.now());
+        user = userRepository.save(user);
+        return buildAuthResponse(user);
+    }
+
+    public AuthResponse loginWithGoogle(OAuth2User oAuth2User) {
         String email = readAttribute(oAuth2User, "email");
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException("Google account email is required");
@@ -96,7 +116,23 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         user.setEnabled(true);
         user.setLastLoginAt(LocalDateTime.now());
 
-        return userRepository.save(user);
+        user = userRepository.save(user);
+        return buildAuthResponse(user);
+    }
+
+    public AuthResponse buildAuthResponse(User user) {
+        String token = jwtUtils.generateToken(user.getUsername(), buildClaims(user));
+        return AuthResponse.builder()
+                .token(token)
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .name(user.getName())
+                .pictureUrl(user.getPictureUrl())
+                .authProvider(user.getAuthProvider())
+                .roles(user.getRoles())
+                .redirectPath(roleMappingService.getDashboardPath(roleMappingService.getHighestPriorityRole(user.getRoles())))
+                .build();
     }
 
     private Map<String, Object> buildClaims(User user) {
@@ -120,9 +156,13 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         return roles;
     }
 
+    private String normalizeUsername(String username) {
+        return username == null ? null : username.trim().toLowerCase();
+    }
+
     private String generateUniqueUsername(String baseName) {
-        String sanitized = baseName == null ? "user" : baseName.trim().toLowerCase().replaceAll("[^a-z0-9._-]", "");
-        if (sanitized.isBlank()) {
+        String sanitized = normalizeUsername(baseName).replaceAll("[^a-z0-9._-]", "");
+        if (sanitized == null || sanitized.isBlank()) {
             sanitized = "user";
         }
 

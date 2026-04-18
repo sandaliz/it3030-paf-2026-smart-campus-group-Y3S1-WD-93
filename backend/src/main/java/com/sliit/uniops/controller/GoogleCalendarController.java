@@ -3,9 +3,6 @@ package com.sliit.uniops.controller;
 import com.google.api.services.calendar.model.Event;
 import com.sliit.uniops.model.Booking;
 import com.sliit.uniops.model.User;
-import com.sliit.uniops.exception.UnauthorizedException;
-import com.sliit.uniops.repository.UserRepository;
-import com.sliit.uniops.security.UserPrincipal;
 import com.sliit.uniops.service.BookingService;
 import com.sliit.uniops.service.GoogleCalendarService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,10 +38,9 @@ public class GoogleCalendarController {
     public ResponseEntity<?> addBookingToCalendar(
             @PathVariable String bookingId,
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            Authentication authentication) {
+            @AuthenticationPrincipal User currentUser) {
         
-        String currentUserId = getCurrentUserId(authentication);
-        Booking booking = bookingService.getBookingById(bookingId, currentUserId, isAdmin(authentication));
+        Booking booking = bookingService.getBookingById(bookingId, currentUser.getId(), isAdmin(currentUser));
         
         String eventId = calendarService.addBookingToCalendar(
             currentUserId,
@@ -66,7 +62,7 @@ public class GoogleCalendarController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> syncAllBookingsToCalendar(
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            Authentication authentication) {
+            @AuthenticationPrincipal User currentUser) {
         
         String currentUserId = getCurrentUserId(authentication);
         List<Booking> bookings = bookingService.getUserBookings(currentUserId);
@@ -87,7 +83,7 @@ public class GoogleCalendarController {
             @RequestParam String startDate,
             @RequestParam String endDate,
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            Authentication authentication) {
+            @AuthenticationPrincipal User currentUser) {
         
         LocalDateTime start = LocalDateTime.parse(startDate);
         LocalDateTime end = LocalDateTime.parse(endDate);
@@ -110,10 +106,9 @@ public class GoogleCalendarController {
     public ResponseEntity<?> removeBookingFromCalendar(
             @PathVariable String bookingId,
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            Authentication authentication) {
+            @AuthenticationPrincipal User currentUser) {
         
-        String currentUserId = getCurrentUserId(authentication);
-        Booking booking = bookingService.getBookingById(bookingId, currentUserId, isAdmin(authentication));
+        Booking booking = bookingService.getBookingById(bookingId, currentUser.getId(), isAdmin(currentUser));
         
         if (booking.getGoogleCalendarEventId() != null) {
             calendarService.deleteCalendarEvent(
@@ -134,40 +129,7 @@ public class GoogleCalendarController {
         return ResponseEntity.ok(response);
     }
 
-    private String getCurrentUserId(Authentication authentication) {
-        if (authentication == null || authentication.getPrincipal() == null) {
-            throw new UnauthorizedException("User is not authenticated");
-        }
-
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof UserPrincipal userPrincipal) {
-            return userPrincipal.getId();
-        }
-
-        String email = null;
-        if (principal instanceof OAuth2User oauth2User) {
-            Object emailAttr = oauth2User.getAttributes().get("email");
-            if (emailAttr != null) {
-                email = emailAttr.toString();
-            }
-        } else if (principal instanceof org.springframework.security.core.userdetails.UserDetails userDetails) {
-            email = userDetails.getUsername();
-        } else if (principal instanceof String principalString && !"anonymousUser".equals(principalString)) {
-            email = principalString;
-        }
-
-        if (email == null || email.isBlank()) {
-            throw new UnauthorizedException("Authenticated user details are unavailable");
-        }
-
-        User user = userRepository.findByEmail(email.toLowerCase().trim())
-            .orElseThrow(() -> new UnauthorizedException("Authenticated user was not found"));
-        return user.getId();
-    }
-
-    private boolean isAdmin(Authentication authentication) {
-        return authentication != null &&
-            authentication.getAuthorities().stream()
-                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+    private boolean isAdmin(User currentUser) {
+        return currentUser.getRoles() != null && currentUser.getRoles().stream().anyMatch(role -> role.name().equals("ADMIN"));
     }
 }

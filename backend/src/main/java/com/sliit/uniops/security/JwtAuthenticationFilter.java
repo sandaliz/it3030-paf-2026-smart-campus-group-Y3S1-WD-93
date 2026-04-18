@@ -36,7 +36,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
-        final String userEmail;
+        final String username;
 
         // 1. Check if the header contains Bearer token
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -47,12 +47,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 2. Extract JWT and Email from token
         jwt = authHeader.substring(7);
         try {
-            userEmail = jwtUtils.extractUsername(jwt);
+            username = jwtUtils.extractUsername(jwt);
 
-            // 3. If email is present and user is not yet authenticated in this context
-            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                User user = userRepository.findByEmail(userEmail).orElse(null);
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                User user = userRepository.findByUsername(username.toLowerCase()).orElse(null);
 
+<<<<<<< HEAD
                 // 4. Validate token and set security context
                 if (user != null && jwtUtils.validateToken(jwt, user.getEmail())) {
                     // Create UserPrincipal instead of using User directly
@@ -63,6 +63,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             user.getRoles().isEmpty() ? "USER" : user.getRoles().iterator().next().name()
                     );
                     
+=======
+                if (user != null && jwtUtils.validateToken(jwt, user.getUsername())) {
+>>>>>>> 0f46080d9e4dab6c3380dc5d0b9b91330220c6df
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userPrincipal,
                             null,
