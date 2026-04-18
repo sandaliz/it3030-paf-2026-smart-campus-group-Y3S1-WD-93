@@ -60,6 +60,16 @@ public class ResourceService {
         resource.setStatus(Resource.ResourceStatus.valueOf(status));
         return resourceRepository.save(resource);
     }
+
+    public Resource incrementShareCount(String id) {
+        Resource resource = getResourceById(id);
+        if (resource.getShareCount() == null) {
+            resource.setShareCount(1);
+        } else {
+            resource.setShareCount(resource.getShareCount() + 1);
+        }
+        return resourceRepository.save(resource);
+    }
     
     public void deleteResource(String id) {
         resourceRepository.deleteById(id);
