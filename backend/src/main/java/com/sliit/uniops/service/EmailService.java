@@ -87,6 +87,46 @@ public class EmailService {
         }
     }
 
+    /**
+     * Send booking status update notification to the requester.
+     */
+    public void sendBookingStatusUpdateNotification(
+            String userEmail,
+            String userName,
+            String bookingId,
+            String resourceName,
+            String bookingDate,
+            String startTime,
+            String endTime,
+            String newStatus,
+            String updatedBy,
+            String reason) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(userEmail);
+            message.setSubject("Booking Status Update - " + bookingId);
+
+            String emailBody = buildBookingStatusUpdateEmail(
+                    userName,
+                    bookingId,
+                    resourceName,
+                    bookingDate,
+                    startTime,
+                    endTime,
+                    newStatus,
+                    updatedBy,
+                    reason
+            );
+            message.setText(emailBody);
+
+            mailSender.send(message);
+            log.info("Booking status update email sent to user: {} for booking: {}", userEmail, bookingId);
+        } catch (Exception e) {
+            log.error("Failed to send booking status update email to: {} for booking: {}", userEmail, bookingId, e);
+        }
+    }
+
     private String buildTicketAssignmentEmail(String technicianName, String ticketId, String ticketTitle, 
                                        String ticketDescription, String priority, String category, String location) {
         return String.format(
@@ -134,6 +174,45 @@ public class EmailService {
             "Best regards,\n" +
             "UniOps Support Team",
             userName, ticketId, ticketTitle, resolvedBy, resolutionNotes
+        );
+    }
+
+    private String buildBookingStatusUpdateEmail(
+            String userName,
+            String bookingId,
+            String resourceName,
+            String bookingDate,
+            String startTime,
+            String endTime,
+            String newStatus,
+            String updatedBy,
+            String reason) {
+        String reasonSection = (reason == null || reason.isBlank())
+                ? ""
+                : String.format("Reason: %s%n", reason);
+
+        return String.format(
+            "Dear %s,%n%n" +
+            "Your booking status has been updated.%n%n" +
+            "Booking ID: %s%n" +
+            "Resource: %s%n" +
+            "Date: %s%n" +
+            "Time: %s - %s%n" +
+            "New Status: %s%n" +
+            "Updated By: %s%n" +
+            "%s%n" +
+            "Please log in to the system to view the latest booking details.%n%n" +
+            "Best regards,%n" +
+            "UniOps Support Team",
+            userName,
+            bookingId,
+            resourceName,
+            bookingDate,
+            startTime,
+            endTime,
+            newStatus,
+            updatedBy,
+            reasonSection
         );
     }
 }
