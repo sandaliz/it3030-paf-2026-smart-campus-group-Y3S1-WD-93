@@ -3,6 +3,12 @@ package com.sliit.uniops.dto.request;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalTimeDeserializer;
 
 public class BookingRequestDTO {
     
@@ -11,12 +17,15 @@ public class BookingRequestDTO {
     
     @NotNull(message = "Date is required")
     @FutureOrPresent(message = "Date cannot be in the past")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate date;
     
     @NotNull(message = "Start time is required")
+    @JsonFormat(pattern = "HH:mm")
     private LocalTime startTime;
     
     @NotNull(message = "End time is required")
+    @JsonFormat(pattern = "HH:mm")
     private LocalTime endTime;
     
     @NotBlank(message = "Purpose is required")

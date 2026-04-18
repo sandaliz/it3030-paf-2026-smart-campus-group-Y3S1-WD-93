@@ -35,19 +35,20 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import AuthCallback from './pages/AuthCallback';
 import GoogleCalendarCallback from './pages/calendar/GoogleCalendarCallback';
-import Home from './pages/Home';
 import ResourceDetailPage from './pages/resources/ResourceDetailPage'
 import ResourceManagementPage from './pages/resources/ResourceManagementPage'
 import ResourceListPage from './pages/resources/ResourceListPage'
 import BookingPage from './pages/bookings/BookingPage'
-import BookingManagementPage from './pages/admin/BookingManagement'
+import CreateBooking from './pages/bookings/CreateBooking'
+import BookingManagementPage from './pages/admin/BookingManagement';
+import CalendarPage from './pages/calendar/CalendarPage';
+import UserCalendarPage from './pages/calendar/UserCalendarPage';
 import TicketListPage from './pages/incidents/TicketListPage';
 import CreateTicketPage from './pages/incidents/CreateTicketPage';
 import TicketDetailPage from './pages/incidents/TicketDetailPage';
 // Role-based Dashboards
-import AdminDashboard from './pages/admin/AdminDashboard';
-import TicketAnalyticsPage from './pages/admin/TicketAnalyticsPage';
-import TicketManagemnet from './pages/admin/TicketManagemnet';
+import TicketManagementPage from './pages/admin/TicketManagemnet';
+import UserManagement from './pages/admin/UserManagement';
 import LecturerDashboard from './pages/LecturerDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import StaffDashboard from './pages/StaffDashboard';
@@ -112,8 +113,24 @@ const AppContent = () => {
           <Route 
             path="/bookings" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRoles={['ADMIN', 'LECTURER', 'STUDENT']}>
                 <BookingPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/calendar" 
+            element={
+              <ProtectedRoute requiredRoles={['ADMIN', 'LECTURER', 'STUDENT', 'NON_ACADEMIC', 'TECHNICIAN']}>
+                <UserCalendarPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/bookings/new" 
+            element={
+              <ProtectedRoute requiredRoles={['ADMIN', 'LECTURER', 'STUDENT']}>
+                <CreateBooking />
               </ProtectedRoute>
             } 
           />
@@ -122,6 +139,14 @@ const AppContent = () => {
             element={
               <ProtectedRoute requiredRoles={['ADMIN', 'BOOKING_MANAGER']}>
                 <BookingManagementPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/calendar" 
+            element={
+              <ProtectedRoute requiredRoles={['ADMIN', 'BOOKING_MANAGER']}>
+                <CalendarPage />
               </ProtectedRoute>
             } 
           />
@@ -146,17 +171,18 @@ const AppContent = () => {
           {/* Role-based Dashboard Routes */}
           <Route path="/admin/dashboard" element={
             <ProtectedRoute requiredRoles={['ADMIN']}>
-              <AdminDashboard />
+              <TicketManagementPage />
             </ProtectedRoute>
           } />
           <Route path="/admin/tickets" element={
-            <ProtectedRoute requiredRoles={['TECHNICIAN', 'TICKET_MANAGER', 'ADMIN']}>
-              <TicketManagemnet />
+            <ProtectedRoute requiredRoles={['ADMIN']}>
+              <TicketManagementPage />
             </ProtectedRoute>
           } />
-          <Route path="/admin/ticket-analytics" element={
+          
+          <Route path="/admin/users" element={
             <ProtectedRoute requiredRoles={['ADMIN']}>
-              <TicketAnalyticsPage />
+              <UserManagement />
             </ProtectedRoute>
           } />
           <Route path="/lecturer/dashboard" element={

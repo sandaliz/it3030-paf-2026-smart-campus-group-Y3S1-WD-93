@@ -4,6 +4,7 @@ import { resourceService } from '../../services/resourceService';
 import ResourceForm from '../../components/forms/ResourceForm';
 import { TableRowSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
+import ResourceAnalyticsModal from '../../components/common/ResourceAnalyticsModal';
 
 const ResourceManagementPage = () => {
   const { user, hasRole, hasAnyRole } = useAuth();
@@ -20,6 +21,7 @@ const ResourceManagementPage = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingResource, setEditingResource] = useState(null);
   const [selectedResources, setSelectedResources] = useState([]);
+  const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
   const [filters, setFilters] = useState({
     type: '',
     status: '',
@@ -310,7 +312,16 @@ const ResourceManagementPage = () => {
           <p className="text-base-content/70">Manage campus facilities and equipment</p>
         </div>
         <div className="flex gap-2">
-          <button 
+          <button
+            className="btn btn-outline"
+            onClick={() => setShowAnalyticsModal(true)}
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Share Analytics
+          </button>
+          <button
             className="btn btn-outline"
             onClick={fetchResources}
             disabled={loading}
@@ -321,7 +332,7 @@ const ResourceManagementPage = () => {
             Refresh
           </button>
           {selectedResources.length > 0 && (
-            <button 
+            <button
               className="btn btn-error"
               onClick={handleBulkDelete}
             >
@@ -329,7 +340,7 @@ const ResourceManagementPage = () => {
             </button>
           )}
           {canAddEditResources && (
-            <button 
+            <button
               className="btn btn-primary"
               onClick={handleCreateResource}
             >
@@ -710,6 +721,12 @@ const ResourceManagementPage = () => {
           <div className="modal-backdrop" onClick={() => setShowForm(false)}></div>
         </div>
       )}
+
+      {/* Analytics Modal */}
+      <ResourceAnalyticsModal
+        isOpen={showAnalyticsModal}
+        onClose={() => setShowAnalyticsModal(false)}
+      />
     </div>
   );
 };
