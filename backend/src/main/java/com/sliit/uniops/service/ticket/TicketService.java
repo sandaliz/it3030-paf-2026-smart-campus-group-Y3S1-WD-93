@@ -178,7 +178,7 @@ public class TicketService {
             ticket.setFirstResponseAt(LocalDateTime.now());
         }
 
-        if (TicketStatus.RESOLVED.equals(newStatusEnum)) {
+        if (TicketStatus.RESOLVED.equals(newStatusEnum) || TicketStatus.CLOSED.equals(newStatusEnum)) {
             ticket.setResolvedAt(LocalDateTime.now());
             ticket.setResolutionNotes(reason);
         }
