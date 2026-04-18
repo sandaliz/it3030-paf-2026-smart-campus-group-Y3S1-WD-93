@@ -24,6 +24,7 @@ public class Resource {
     private List<AvailabilityWindow> availabilityWindows;
     private List<String> amenities;
     private Integer shareCount;
+    private String createdBy; // User ID of who created this resource
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -110,6 +111,9 @@ public class Resource {
 
     public Integer getShareCount() { return shareCount; }
     public void setShareCount(Integer shareCount) { this.shareCount = shareCount; }
+
+    public String getCreatedBy() { return createdBy; }
+    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

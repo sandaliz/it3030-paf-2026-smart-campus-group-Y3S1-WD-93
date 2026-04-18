@@ -10,7 +10,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,7 +25,18 @@ public class ResourceService {
 
     @Autowired
     private MongoTemplate mongoTemplate;
-    
+
+    private boolean isAdmin(Authentication authentication) {
+        if (authentication == null) return false;
+        return authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    private String getCurrentUserId(Authentication authentication) {
+        if (authentication == null) return null;
+        return authentication.getName();
+    }
+
     public List<Resource> getAllResources() {
         Query query = new Query();
         query.fields().include("id", "name", "type", "capacity", "location", "status", "description");
@@ -34,14 +48,52 @@ public class ResourceService {
             .orElseThrow(() -> new RuntimeException("Resource not found with ID: " + id));
     }
     
+    public Resource createResource(Resource resource, Authentication authentication) {
+        resource.setCreatedBy(getCurrentUserId(authentication));
+        resource.setCreatedAt(LocalDateTime.now());
+        resource.setUpdatedAt(LocalDateTime.now());
+        return resourceRepository.save(resource);
+    }
+
+    // Overload for bulk create (admin only, no authentication needed for backward compatibility)
     public Resource createResource(Resource resource) {
+        resource.setCreatedAt(LocalDateTime.now());
+        resource.setUpdatedAt(LocalDateTime.now());
         return resourceRepository.save(resource);
     }
     
     public List<Resource> createMultipleResources(List<Resource> resources) {
         return resourceRepository.saveAll(resources);
     }
-    
+
+    public List<Resource> getResourcesByCreator(Authentication authentication) {
+        String userId = getCurrentUserId(authentication);
+        Query query = new Query(Criteria.where("createdBy").is(userId));
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "createdBy");
+        return mongoTemplate.find(query, Resource.class);
+    }
+
+    public Resource updateResource(String id, Resource resourceDetails, Authentication authentication) {
+        Resource resource = getResourceById(id);
+
+        // Check ownership: admin can update all, staff can only update their own
+        if (!isAdmin(authentication) && !resource.getCreatedBy().equals(getCurrentUserId(authentication))) {
+            throw new RuntimeException("You can only update resources you created");
+        }
+
+        resource.setName(resourceDetails.getName());
+        resource.setType(resourceDetails.getType());
+        resource.setCapacity(resourceDetails.getCapacity());
+        resource.setLocation(resourceDetails.getLocation());
+        resource.setStatus(resourceDetails.getStatus());
+        resource.setDescription(resourceDetails.getDescription());
+        resource.setAmenities(resourceDetails.getAmenities());
+        resource.setAvailabilityWindows(resourceDetails.getAvailabilityWindows());
+        resource.setUpdatedAt(LocalDateTime.now());
+        return resourceRepository.save(resource);
+    }
+
+    // Overload for backward compatibility
     public Resource updateResource(String id, Resource resourceDetails) {
         Resource resource = getResourceById(id);
         resource.setName(resourceDetails.getName());
@@ -52,12 +104,28 @@ public class ResourceService {
         resource.setDescription(resourceDetails.getDescription());
         resource.setAmenities(resourceDetails.getAmenities());
         resource.setAvailabilityWindows(resourceDetails.getAvailabilityWindows());
+        resource.setUpdatedAt(LocalDateTime.now());
         return resourceRepository.save(resource);
     }
 
+    public Resource updateResourceStatus(String id, String status, Authentication authentication) {
+        Resource resource = getResourceById(id);
+
+        // Check ownership: admin can update all, staff can only update their own
+        if (!isAdmin(authentication) && !resource.getCreatedBy().equals(getCurrentUserId(authentication))) {
+            throw new RuntimeException("You can only update status of resources you created");
+        }
+
+        resource.setStatus(Resource.ResourceStatus.valueOf(status));
+        resource.setUpdatedAt(LocalDateTime.now());
+        return resourceRepository.save(resource);
+    }
+
+    // Overload for backward compatibility
     public Resource updateResourceStatus(String id, String status) {
         Resource resource = getResourceById(id);
         resource.setStatus(Resource.ResourceStatus.valueOf(status));
+        resource.setUpdatedAt(LocalDateTime.now());
         return resourceRepository.save(resource);
     }
 
@@ -71,6 +139,18 @@ public class ResourceService {
         return resourceRepository.save(resource);
     }
     
+    public void deleteResource(String id, Authentication authentication) {
+        Resource resource = getResourceById(id);
+
+        // Check ownership: admin can delete all, staff can only delete their own
+        if (!isAdmin(authentication) && !resource.getCreatedBy().equals(getCurrentUserId(authentication))) {
+            throw new RuntimeException("You can only delete resources you created");
+        }
+
+        resourceRepository.deleteById(id);
+    }
+
+    // Overload for backward compatibility
     public void deleteResource(String id) {
         resourceRepository.deleteById(id);
     }
