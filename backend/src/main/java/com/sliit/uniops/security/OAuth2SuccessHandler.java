@@ -16,7 +16,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -24,7 +23,7 @@ import java.util.Set;
 
 /**
  * Handler for successful OAuth2 authentication.
- * Creates or updates the OAuth user and returns the same JWT shape as local auth.
+ * Creates or updates OAuth user and returns same JWT shape as local auth.
  */
 @Component
 @RequiredArgsConstructor
@@ -42,7 +41,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         User user = resolveOAuthUser(oAuth2User);
         String token = jwtUtils.generateToken(user.getUsername(), buildClaims(user));
-        String redirectPath = roleMappingService.getDashboardPath(roleMappingService.getHighestPriorityRole(user.getRoles()));
+        String redirectPath = getDashboardPath(user.getRoles());
 
         String origin = request.getHeader("Origin");
         if (origin == null || origin.isEmpty()) {
@@ -70,33 +69,36 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         User user = userRepository.findByGoogleId(googleId)
                 .or(() -> userRepository.findByEmail(normalizedEmail))
-                .orElseGet(() -> User.builder()
-                        .email(normalizedEmail)
-                        .username(generateUniqueUsername(normalizedEmail.split("@")[0]))
-                        .name(name == null || name.isBlank() ? normalizedEmail.split("@")[0] : name)
-                        .authProvider("GOOGLE")
-                        .enabled(true)
-                        .roles(defaultRoles(roleMappingService.parseRoleFromEmail(normalizedEmail)))
-                        .build());
+                .orElseGet(() -> createNewUser(normalizedEmail, name));
 
-        if (user.getUsername() == null || user.getUsername().isBlank()) {
-            user.setUsername(generateUniqueUsername(normalizedEmail.split("@")[0]));
-        }
-        if (user.getRoles() == null || user.getRoles().isEmpty()) {
-            user.setRoles(defaultRoles(roleMappingService.parseRoleFromEmail(normalizedEmail)));
-        } else if (user.getRoles().contains(Role.STUDENT) && !user.getRoles().contains(Role.USER)) {
-            user.getRoles().add(Role.USER);
-        }
-
+        // Update existing user with role mapping
         user.setGoogleId(googleId);
         user.setEmail(normalizedEmail);
         user.setName(name == null || name.isBlank() ? user.getName() : name);
         user.setPictureUrl(picture);
         user.setAuthProvider("GOOGLE");
         user.setEnabled(true);
-        user.setLastLoginAt(LocalDateTime.now());
+        user.setLastLoginAt(System.currentTimeMillis());
+        
+        // Always update roles based on email to ensure correct role assignment
+        Role primaryRole = roleMappingService.parseRoleFromEmail(normalizedEmail);
+        user.setRoles(defaultRoles(primaryRole));
 
         return userRepository.save(user);
+    }
+
+    private User createNewUser(String email, String name) {
+        User user = new User();
+        user.setEmail(email);
+        user.setUsername(generateUniqueUsername(email.split("@")[0]));
+        user.setName(name == null || name.isBlank() ? email.split("@")[0] : name);
+        user.setAuthProvider("GOOGLE");
+        user.setEnabled(true);
+        Role primaryRole = roleMappingService.parseRoleFromEmail(email);
+        user.setRoles(defaultRoles(primaryRole));
+        user.setCreatedAt(System.currentTimeMillis());
+        user.setLastLoginAt(System.currentTimeMillis());
+        return user;
     }
 
     private Map<String, Object> buildClaims(User user) {
@@ -111,13 +113,19 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         return claims;
     }
 
-    private Set<Role> defaultRoles(Role primaryRole) {
-        Set<Role> roles = new LinkedHashSet<>();
-        roles.add(primaryRole);
-        if (primaryRole == Role.STUDENT) {
-            roles.add(Role.USER);
+    private String getDashboardPath(Set<Role> roles) {
+        if (roles == null || roles.isEmpty()) {
+            return "/dashboard";
         }
-        return roles;
+
+        if (roles.contains(Role.ADMIN)) return "/admin/dashboard";
+        if (roles.contains(Role.BOOKING_MANAGER)) return "/admin/bookings";
+        if (roles.contains(Role.TICKET_MANAGER)) return "/tickets";
+        if (roles.contains(Role.RESOURCE_MANAGER)) return "/admin/resources";
+        if (roles.contains(Role.LECTURER)) return "/lecturer/dashboard";
+        if (roles.contains(Role.TECHNICIAN)) return "/technician/dashboard";
+        if (roles.contains(Role.NON_ACADEMIC)) return "/staff/dashboard";
+        return "/student/dashboard";
     }
 
     private String generateUniqueUsername(String baseName) {
@@ -132,6 +140,15 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             candidate = sanitized + suffix++;
         }
         return candidate;
+    }
+
+    private Set<Role> defaultRoles(Role primaryRole) {
+        Set<Role> roles = new LinkedHashSet<>();
+        roles.add(primaryRole);
+        if (primaryRole == Role.STUDENT) {
+            roles.add(Role.USER);
+        }
+        return roles;
     }
 
     private String readAttribute(OAuth2User user, String key) {

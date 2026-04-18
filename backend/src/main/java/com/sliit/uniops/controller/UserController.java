@@ -87,7 +87,7 @@ public class UserController {
                 .name(name)
                 .roles(roles)
                 .enabled(enabled)
-                .createdAt(java.time.LocalDateTime.now())
+                .createdAt(System.currentTimeMillis())
                 .build();
         
         User savedUser = userRepository.save(user);
