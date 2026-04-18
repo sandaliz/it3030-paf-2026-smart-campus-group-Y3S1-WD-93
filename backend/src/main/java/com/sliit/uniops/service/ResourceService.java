@@ -67,7 +67,7 @@ public class ResourceService {
             query.addCriteria(Criteria.where("createdBy").is(creator));
         }
 
-        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "shareCount");
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "shareCount", "availabilityWindows", "amenities");
         return mongoTemplate.find(query, Resource.class);
     }
     
@@ -268,7 +268,7 @@ public class ResourceService {
         }
 
         // Field projection
-        query.fields().include("id", "name", "type", "capacity", "location", "status", "description");
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "availabilityWindows", "amenities");
 
         // Sorting
         Sort sort = Sort.by(Sort.Direction.fromString(sortDir != null ? sortDir : "asc"), sortBy != null ? sortBy : "name");
