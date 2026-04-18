@@ -45,8 +45,9 @@ import TicketListPage from './pages/incidents/TicketListPage';
 import CreateTicketPage from './pages/incidents/CreateTicketPage';
 import TicketDetailPage from './pages/incidents/TicketDetailPage';
 // Role-based Dashboards
-import AdminDashboard from './pages/admin/TicketManagemnet';
+import AdminDashboard from './pages/admin/AdminDashboard';
 import TicketAnalyticsPage from './pages/admin/TicketAnalyticsPage';
+import TicketManagemnet from './pages/admin/TicketManagemnet';
 import LecturerDashboard from './pages/LecturerDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import StaffDashboard from './pages/StaffDashboard';
@@ -150,6 +151,11 @@ const AppContent = () => {
           } />
           <Route path="/admin/tickets" element={
             <ProtectedRoute requiredRoles={['TECHNICIAN', 'TICKET_MANAGER', 'ADMIN']}>
+              <TicketManagemnet />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/ticket-analytics" element={
+            <ProtectedRoute requiredRoles={['ADMIN']}>
               <TicketAnalyticsPage />
             </ProtectedRoute>
           } />

@@ -51,7 +51,7 @@ public class AuthService {
                 .authProvider("LOCAL")
                 .enabled(true)
                 .roles(defaultRoles(request.getRole()))
-                .lastLoginAt(LocalDateTime.now())
+                .lastLoginAt(System.currentTimeMillis())
                 .build();
 
         user = userRepository.save(user);
@@ -72,7 +72,7 @@ public class AuthService {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
-        user.setLastLoginAt(LocalDateTime.now());
+        user.setLastLoginAt(System.currentTimeMillis());
         user = userRepository.save(user);
         return buildAuthResponse(user);
     }
@@ -114,7 +114,7 @@ public class AuthService {
         user.setPictureUrl(picture);
         user.setAuthProvider("GOOGLE");
         user.setEnabled(true);
-        user.setLastLoginAt(LocalDateTime.now());
+        user.setLastLoginAt(System.currentTimeMillis());
 
         user = userRepository.save(user);
         return buildAuthResponse(user);
