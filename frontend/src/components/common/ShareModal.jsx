@@ -22,7 +22,7 @@ const ShareModal = ({ isOpen, onClose, resource }) => {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      
+
       // Track share analytics
       await resourceService.trackShare(resource.id);
     } catch (err) {

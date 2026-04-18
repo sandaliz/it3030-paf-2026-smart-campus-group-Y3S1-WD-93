@@ -82,7 +82,7 @@ public class AdminDashboardController {
             stats.put("openTickets", openTickets);
             
             // Resource statistics
-            long totalResources = resourceService.getAllResources().size();
+            long totalResources = resourceService.getAllResources(null, null, null, null, null, null).size();
             stats.put("totalResources", totalResources);
             
             return ResponseEntity.ok(stats);
@@ -177,7 +177,7 @@ public class AdminDashboardController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Map<String, Object>>> getAllResources() {
         try {
-            List<?> resources = resourceService.getAllResources();
+            List<?> resources = resourceService.getAllResources(null, null, null, null, null, null);
             
             List<Map<String, Object>> result = resources.stream()
                     .map(resource -> {
