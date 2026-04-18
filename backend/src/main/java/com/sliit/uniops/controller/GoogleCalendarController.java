@@ -2,7 +2,7 @@ package com.sliit.uniops.controller;
 
 import com.google.api.services.calendar.model.Event;
 import com.sliit.uniops.model.Booking;
-import com.sliit.uniops.model.User;
+import com.sliit.uniops.security.UserPrincipal;
 import com.sliit.uniops.service.BookingService;
 import com.sliit.uniops.service.GoogleCalendarService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,16 +25,15 @@ public class GoogleCalendarController {
     
     @Autowired
     private BookingService bookingService;
-    
     /**
      * Add a specific booking to Google Calendar
      */
     @PostMapping("/add-booking/{bookingId}")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> addBookingToCalendar(
             @PathVariable String bookingId,
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         
         Booking booking = bookingService.getBookingById(bookingId, currentUser.getId(), isAdmin(currentUser));
         
@@ -55,10 +54,10 @@ public class GoogleCalendarController {
      * Add current user's all approved bookings to Google Calendar
      */
     @PostMapping("/sync-all")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> syncAllBookingsToCalendar(
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         
         List<Booking> bookings = bookingService.getUserBookings(currentUser.getId());
         calendarService.syncAllBookingsToCalendar(currentUser.getId(), bookings, accessToken);
@@ -73,12 +72,12 @@ public class GoogleCalendarController {
      * Get user's calendar events for a date range
      */
     @GetMapping("/events")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<Event>> getCalendarEvents(
             @RequestParam String startDate,
             @RequestParam String endDate,
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         
         LocalDateTime start = LocalDateTime.parse(startDate);
         LocalDateTime end = LocalDateTime.parse(endDate);
@@ -97,11 +96,11 @@ public class GoogleCalendarController {
      * Remove a booking from Google Calendar
      */
     @DeleteMapping("/remove-booking/{bookingId}")
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> removeBookingFromCalendar(
             @PathVariable String bookingId,
             @RequestHeader("X-Google-Access-Token") String accessToken,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserPrincipal currentUser) {
         
         Booking booking = bookingService.getBookingById(bookingId, currentUser.getId(), isAdmin(currentUser));
         
@@ -112,6 +111,11 @@ public class GoogleCalendarController {
                 accessToken
             );
         }
+
+        booking.setGoogleCalendarEventId(null);
+        booking.setCalendarSynced(false);
+        booking.setLastCalendarSync(LocalDateTime.now());
+        bookingService.save(booking);
         
         Map<String, String> response = new HashMap<>();
         response.put("message", "Booking removed from Google Calendar");
@@ -119,7 +123,8 @@ public class GoogleCalendarController {
         return ResponseEntity.ok(response);
     }
 
-    private boolean isAdmin(User currentUser) {
-        return currentUser.getRoles() != null && currentUser.getRoles().stream().anyMatch(role -> role.name().equals("ADMIN"));
+    private boolean isAdmin(UserPrincipal currentUser) {
+        return currentUser != null && currentUser.getAuthorities().stream()
+            .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
     }
 }

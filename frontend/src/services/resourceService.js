@@ -129,6 +129,12 @@ export const resourceService = {
     const response = await api.get(`/api/resources/${id}/audit`);
     return response.data;
   },
+
+  // Track resource share
+  trackShare: async (id) => {
+    const response = await api.post(`/api/resources/${id}/share`);
+    return response.data;
+  },
 };
 
 export default resourceService;

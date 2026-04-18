@@ -10,9 +10,14 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ResourceService {
@@ -22,7 +27,18 @@ public class ResourceService {
 
     @Autowired
     private MongoTemplate mongoTemplate;
-    
+
+    private boolean isAdmin(Authentication authentication) {
+        if (authentication == null) return false;
+        return authentication.getAuthorities().stream()
+                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    private String getCurrentUserId(Authentication authentication) {
+        if (authentication == null) return null;
+        return authentication.getName();
+    }
+
     public List<Resource> getAllResources() {
         Query query = new Query();
         query.fields().include("id", "name", "type", "capacity", "location", "status", "description");
@@ -33,15 +49,69 @@ public class ResourceService {
         return resourceRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Resource not found with ID: " + id));
     }
+
+    public List<Resource> getResourcesByType(String type) {
+        return searchResources(null, type, null, null);
+    }
+
+    public List<Resource> getResourcesByStatus(String status) {
+        return searchResources(status, null, null, null);
+    }
+
+    public List<Resource> getResourcesByLocation(String location) {
+        return searchResources(null, null, null, location);
+    }
+
+    public List<Resource> getResourcesByMinCapacity(Integer minCapacity) {
+        return searchResources(null, null, minCapacity, null);
+    }
     
+    public Resource createResource(Resource resource, Authentication authentication) {
+        resource.setCreatedBy(getCurrentUserId(authentication));
+        resource.setCreatedAt(LocalDateTime.now());
+        resource.setUpdatedAt(LocalDateTime.now());
+        return resourceRepository.save(resource);
+    }
+
+    // Overload for bulk create (admin only, no authentication needed for backward compatibility)
     public Resource createResource(Resource resource) {
+        resource.setCreatedAt(LocalDateTime.now());
+        resource.setUpdatedAt(LocalDateTime.now());
         return resourceRepository.save(resource);
     }
     
     public List<Resource> createMultipleResources(List<Resource> resources) {
         return resourceRepository.saveAll(resources);
     }
-    
+
+    public List<Resource> getResourcesByCreator(Authentication authentication) {
+        String userId = getCurrentUserId(authentication);
+        Query query = new Query(Criteria.where("createdBy").is(userId));
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "createdBy");
+        return mongoTemplate.find(query, Resource.class);
+    }
+
+    public Resource updateResource(String id, Resource resourceDetails, Authentication authentication) {
+        Resource resource = getResourceById(id);
+
+        // Check ownership: admin can update all, staff can only update their own
+        if (!isAdmin(authentication) && !resource.getCreatedBy().equals(getCurrentUserId(authentication))) {
+            throw new RuntimeException("You can only update resources you created");
+        }
+
+        resource.setName(resourceDetails.getName());
+        resource.setType(resourceDetails.getType());
+        resource.setCapacity(resourceDetails.getCapacity());
+        resource.setLocation(resourceDetails.getLocation());
+        resource.setStatus(resourceDetails.getStatus());
+        resource.setDescription(resourceDetails.getDescription());
+        resource.setAmenities(resourceDetails.getAmenities());
+        resource.setAvailabilityWindows(resourceDetails.getAvailabilityWindows());
+        resource.setUpdatedAt(LocalDateTime.now());
+        return resourceRepository.save(resource);
+    }
+
+    // Overload for backward compatibility
     public Resource updateResource(String id, Resource resourceDetails) {
         Resource resource = getResourceById(id);
         resource.setName(resourceDetails.getName());
@@ -52,15 +122,53 @@ public class ResourceService {
         resource.setDescription(resourceDetails.getDescription());
         resource.setAmenities(resourceDetails.getAmenities());
         resource.setAvailabilityWindows(resourceDetails.getAvailabilityWindows());
+        resource.setUpdatedAt(LocalDateTime.now());
         return resourceRepository.save(resource);
     }
 
+    public Resource updateResourceStatus(String id, String status, Authentication authentication) {
+        Resource resource = getResourceById(id);
+
+        // Check ownership: admin can update all, staff can only update their own
+        if (!isAdmin(authentication) && !resource.getCreatedBy().equals(getCurrentUserId(authentication))) {
+            throw new RuntimeException("You can only update status of resources you created");
+        }
+
+        resource.setStatus(Resource.ResourceStatus.valueOf(status));
+        resource.setUpdatedAt(LocalDateTime.now());
+        return resourceRepository.save(resource);
+    }
+
+    // Overload for backward compatibility
     public Resource updateResourceStatus(String id, String status) {
         Resource resource = getResourceById(id);
         resource.setStatus(Resource.ResourceStatus.valueOf(status));
+        resource.setUpdatedAt(LocalDateTime.now());
+        return resourceRepository.save(resource);
+    }
+
+    public Resource incrementShareCount(String id) {
+        Resource resource = getResourceById(id);
+        if (resource.getShareCount() == null) {
+            resource.setShareCount(1);
+        } else {
+            resource.setShareCount(resource.getShareCount() + 1);
+        }
         return resourceRepository.save(resource);
     }
     
+    public void deleteResource(String id, Authentication authentication) {
+        Resource resource = getResourceById(id);
+
+        // Check ownership: admin can delete all, staff can only delete their own
+        if (!isAdmin(authentication) && !resource.getCreatedBy().equals(getCurrentUserId(authentication))) {
+            throw new RuntimeException("You can only delete resources you created");
+        }
+
+        resourceRepository.deleteById(id);
+    }
+
+    // Overload for backward compatibility
     public void deleteResource(String id) {
         resourceRepository.deleteById(id);
     }
@@ -120,6 +228,62 @@ public class ResourceService {
         availability.put("dayOfWeek", dayName);
         
         return availability;
+    }
+
+    public Map<String, Object> checkResourceAvailability(String resourceId, String date, String startTime, String endTime) {
+        Resource resource = getResourceById(resourceId);
+        Map<String, Object> availability = new HashMap<>();
+        availability.put("resourceId", resource.getId());
+        availability.put("date", date);
+        availability.put("startTime", startTime);
+        availability.put("endTime", endTime);
+
+        if (!Resource.ResourceStatus.ACTIVE.equals(resource.getStatus())) {
+            availability.put("available", false);
+            availability.put("reason", "Resource is not active");
+            return availability;
+        }
+
+        if (resource.getAvailabilityWindows() == null || resource.getAvailabilityWindows().isEmpty()) {
+            availability.put("available", true);
+            availability.put("reason", "No schedule restrictions configured");
+            return availability;
+        }
+
+        java.time.LocalDate localDate = java.time.LocalDate.parse(date);
+        String dayName = localDate.getDayOfWeek().toString();
+
+        boolean available = resource.getAvailabilityWindows().stream().anyMatch(window ->
+            window.isAvailable()
+                && dayName.equals(window.getDayOfWeek())
+                && startTime.compareTo(window.getStartTime()) >= 0
+                && endTime.compareTo(window.getEndTime()) <= 0
+        );
+
+        availability.put("available", available);
+        availability.put("reason", available ? "Within configured availability window" : "Outside configured availability window");
+        return availability;
+    }
+
+    public List<Map<String, Object>> getResourceAudit(String resourceId) {
+        Resource resource = getResourceById(resourceId);
+        List<Map<String, Object>> auditEntries = new ArrayList<>();
+
+        auditEntries.add(Map.of(
+            "resourceId", resource.getId(),
+            "action", "RESOURCE_CREATED",
+            "timestamp", resource.getCreatedAt() != null ? resource.getCreatedAt().toString() : "",
+            "details", "Resource record exists in the system"
+        ));
+
+        auditEntries.add(Map.of(
+            "resourceId", resource.getId(),
+            "action", "RESOURCE_LAST_UPDATED",
+            "timestamp", resource.getUpdatedAt() != null ? resource.getUpdatedAt().toString() : "",
+            "details", "Current status: " + String.valueOf(resource.getStatus())
+        ));
+
+        return auditEntries;
     }
     
     public Object getResourcesPaginated(int page, int size, String search, String status, String type, String sortBy, String sortDir) {

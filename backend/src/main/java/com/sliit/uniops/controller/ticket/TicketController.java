@@ -2,7 +2,7 @@ package com.sliit.uniops.controller.ticket;
 
 import com.sliit.uniops.dto.request.ticket.TicketRequestDTO;
 import com.sliit.uniops.dto.response.ticket.TicketResponseDTO;
-import com.sliit.uniops.model.User;
+import com.sliit.uniops.security.UserPrincipal;
 import com.sliit.uniops.service.ticket.TicketService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,9 +16,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import com.sliit.uniops.model.User;
-
-
 @RestController
 @RequestMapping("/api/tickets")
 @RequiredArgsConstructor
@@ -125,7 +122,7 @@ public class TicketController {
 
     private String getUserId(Authentication authentication) {
         Object principal = authentication.getPrincipal();
-        if (principal instanceof User user) {
+        if (principal instanceof UserPrincipal user) {
             return user.getId();
         }
         return authentication.getName();
@@ -133,7 +130,7 @@ public class TicketController {
 
     private String getUserName(Authentication authentication) {
         Object principal = authentication.getPrincipal();
-        if (principal instanceof User user) {
+        if (principal instanceof UserPrincipal user) {
             return user.getName() != null ? user.getName() : user.getEmail();
         }
         return authentication.getName();

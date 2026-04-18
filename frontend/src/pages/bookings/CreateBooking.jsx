@@ -5,6 +5,7 @@ import api from '../../services/api';
 const CreateBooking = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const initialResourceId = searchParams.get('resourceId') || '';
   
   const [resources, setResources] = useState([]);
   const [selectedResource, setSelectedResource] = useState(null);
@@ -15,7 +16,7 @@ const CreateBooking = () => {
   const [selectedSlot, setSelectedSlot] = useState('');
   
   const [formData, setFormData] = useState({
-    resourceId: searchParams.get('resourceId') || '',
+    resourceId: initialResourceId,
     date: '',
     startTime: '',
     endTime: '',
@@ -25,10 +26,6 @@ const CreateBooking = () => {
 
   useEffect(() => {
     fetchResources();
-    
-    if (formData.resourceId) {
-      fetchResourceDetails(formData.resourceId);
-    }
   }, []);
 
   useEffect(() => {
@@ -36,6 +33,30 @@ const CreateBooking = () => {
       fetchAvailableSlots();
     }
   }, [selectedResource, selectedDate]);
+
+  useEffect(() => {
+    const resourceId = searchParams.get('resourceId') || '';
+
+    setFormData((prev) => (
+      prev.resourceId === resourceId ? prev : { ...prev, resourceId }
+    ));
+
+    if (!resourceId) {
+      setSelectedResource(null);
+      return;
+    }
+
+    const matchingResource = resources.find(
+      (resource) => String(resource.id) === String(resourceId)
+    );
+
+    if (matchingResource) {
+      setSelectedResource(matchingResource);
+      return;
+    }
+
+    fetchResourceDetails(resourceId);
+  }, [searchParams, resources]);
 
   const fetchResources = async () => {
     try {
@@ -71,7 +92,7 @@ const CreateBooking = () => {
   };
 
   const handleResourceChange = (resourceId) => {
-    const resource = resources.find(r => r.id === resourceId);
+    const resource = resources.find((r) => String(r.id) === String(resourceId));
     setSelectedResource(resource);
     setFormData(prev => ({ ...prev, resourceId }));
     setAvailableSlots([]);
@@ -97,7 +118,16 @@ const CreateBooking = () => {
       navigate('/bookings?success=true');
     } catch (error) {
       console.error('Failed to create booking:', error);
-      alert('Failed to create booking: ' + error.message);
+      const validationErrors = error.response?.data?.validationErrors;
+      const validationMessage = validationErrors
+        ? Object.values(validationErrors).join(', ')
+        : null;
+      const message =
+        validationMessage ||
+        error.response?.data?.message ||
+        error.message ||
+        'Failed to create booking';
+      alert('Failed to create booking: ' + message);
     } finally {
       setLoading(false);
     }

@@ -2,7 +2,7 @@ package com.sliit.uniops.controller.ticket;
 
 import com.sliit.uniops.dto.request.ticket.AttachmentRequestDTO;
 import com.sliit.uniops.dto.response.ticket.AttachmentResponseDTO;
-import com.sliit.uniops.model.User;
+import com.sliit.uniops.security.UserPrincipal;
 import com.sliit.uniops.service.ticket.AttachmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -87,7 +87,7 @@ public class AttachmentController {
 
     private String getUserId(Authentication authentication) {
         Object principal = authentication.getPrincipal();
-        if (principal instanceof User user) {
+        if (principal instanceof UserPrincipal user) {
             return user.getId();
         }
         return authentication.getName();
@@ -95,7 +95,7 @@ public class AttachmentController {
 
     private String getUserName(Authentication authentication) {
         Object principal = authentication.getPrincipal();
-        if (principal instanceof User user) {
+        if (principal instanceof UserPrincipal user) {
             return user.getName() != null ? user.getName() : user.getEmail();
         }
         return authentication.getName();
