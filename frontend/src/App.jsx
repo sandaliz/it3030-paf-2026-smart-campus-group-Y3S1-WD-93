@@ -35,7 +35,6 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import AuthCallback from './pages/AuthCallback';
 import GoogleCalendarCallback from './pages/calendar/GoogleCalendarCallback';
-import Home from './pages/Home';
 import ResourceDetailPage from './pages/resources/ResourceDetailPage'
 import ResourceManagementPage from './pages/resources/ResourceManagementPage'
 import ResourceListPage from './pages/resources/ResourceListPage'
