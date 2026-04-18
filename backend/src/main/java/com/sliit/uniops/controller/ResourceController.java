@@ -164,4 +164,17 @@ public class ResourceController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
+
+    // Get resources by assigned staff ID
+    @GetMapping("/staff/{staffId}/resources")
+    public ResponseEntity<List<Resource>> getResourcesByStaffId(@PathVariable String staffId) {
+        // Get resources where staff is assigned OR resources created by staff
+        Query query = new Query();
+        query.addCriteria(new Criteria().orOperator(
+            Criteria.where("assignedStaff").in(staffId),
+            Criteria.where("createdBy").is(staffId)
+        ));
+        List<Resource> resources = mongoTemplate.find(query, Resource.class);
+        return ResponseEntity.ok(resources);
+    }
 }

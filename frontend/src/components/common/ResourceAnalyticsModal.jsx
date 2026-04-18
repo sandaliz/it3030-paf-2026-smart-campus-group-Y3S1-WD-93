@@ -19,19 +19,19 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
       setLoading(true);
       // Fetch all resources to calculate analytics
       const allResources = await resourceService.getAllResources();
-      
+
       // Calculate analytics
       const totalShares = allResources.reduce((sum, r) => sum + (r.shareCount || 0), 0);
       const sharedResources = allResources.filter(r => r.shareCount > 0);
       const mostShared = [...allResources].sort((a, b) => (b.shareCount || 0) - (a.shareCount || 0)).slice(0, 5);
-      
+
       // Group by type
       const sharesByType = {};
       allResources.forEach(r => {
         const type = r.type || 'Unknown';
         sharesByType[type] = (sharesByType[type] || 0) + (r.shareCount || 0);
       });
-      
+
       // Group by status
       const sharesByStatus = {};
       allResources.forEach(r => {
@@ -57,6 +57,28 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
         typeByStatus[type][status] = (typeByStatus[type][status] || 0) + 1;
       });
 
+      // Extract staff information from resources
+      let uniqueStaffCount = 0;
+      const staffIds = new Set();
+      allResources.forEach(r => {
+        // Add creator
+        if (r.createdBy) {
+          const staffId = typeof r.createdBy === 'string' ? r.createdBy : r.createdBy.id;
+          if (staffId && !staffIds.has(staffId)) {
+            staffIds.add(staffId);
+            uniqueStaffCount++;
+          }
+        }
+        // Add assigned staff
+        (r.assignedStaff || []).forEach(staff => {
+          const staffId = typeof staff === 'string' ? staff : staff.id;
+          if (staffId && !staffIds.has(staffId)) {
+            staffIds.add(staffId);
+            uniqueStaffCount++;
+          }
+        });
+      });
+
       setAnalytics({
         totalResources: allResources.length,
         totalShares,
@@ -66,7 +88,8 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
         sharesByStatus,
         resourceByStatus,
         typeByStatus,
-        avgSharesPerResource: totalShares / allResources.length || 0
+        avgSharesPerResource: totalShares / allResources.length || 0,
+        uniqueStaffCount
       });
       setError(null);
     } catch (err) {
@@ -138,6 +161,7 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
 
       const overviewData = [
         ['Total Resources', analytics.totalResources.toString()],
+        ['Total Staff', (analytics.uniqueStaffCount || 0).toString()],
         ['Total Shares', analytics.totalShares.toString()],
         ['Shared Resources', analytics.sharedResourcesCount.toString()],
         ['Avg Shares/Resource', analytics.avgSharesPerResource.toFixed(1)]
@@ -235,7 +259,7 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
 
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.text('Page 2 of 2', pageWidth / 2, 19, { align: 'center' });
+      doc.text('Page 2 of 3', pageWidth / 2, 19, { align: 'center' });
 
       doc.setTextColor(0, 0, 0);
 

@@ -21,6 +21,9 @@ const ResourceManagement = () => {
   const [pageSize] = useState(10);
   const [sortBy, setSortBy] = useState('name');
   const [sortDir, setSortDir] = useState('asc');
+  const [showStaffResourcesModal, setShowStaffResourcesModal] = useState(false);
+  const [staffList, setStaffList] = useState([]);
+  const [staffResourcesMap, setStaffResourcesMap] = useState({});
 
   useEffect(() => {
     fetchResources();
@@ -176,6 +179,37 @@ const ResourceManagement = () => {
     }
   };
 
+  const handleViewStaffResources = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      // Fetch all staff users
+      const staffResponse = await api.axios.get('/api/resources/staff', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const staffData = staffResponse.data;
+      setStaffList(staffData);
+
+      // Fetch resources for each staff member
+      const resourcesMap = {};
+      for (const staff of staffData) {
+        try {
+          const resourcesResponse = await api.axios.get(`/api/resources/staff/${staff.id}/resources`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          resourcesMap[staff.id] = resourcesResponse.data || [];
+        } catch (error) {
+          console.error(`Error fetching resources for staff ${staff.id}:`, error);
+          resourcesMap[staff.id] = [];
+        }
+      }
+      setStaffResourcesMap(resourcesMap);
+      setShowStaffResourcesModal(true);
+    } catch (error) {
+      console.error('Error fetching staff data:', error);
+      alert('Failed to load staff data');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -190,6 +224,9 @@ const ResourceManagement = () => {
         <h1 className="text-3xl font-bold">📚 Resource Management</h1>
         
         <div className="flex gap-2">
+          <button className="btn btn-info text-white" onClick={handleViewStaffResources}>
+            👥 Staff Resources
+          </button>
           <button className="btn btn-primary" onClick={openCreateModal}>
             ➕ Add Resource
           </button>
@@ -415,6 +452,99 @@ const ResourceManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Staff Resources Modal */}
+      {showStaffResourcesModal && (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-6xl max-h-[90vh] overflow-y-auto">
+            <h3 className="font-bold text-2xl mb-6 flex items-center gap-3">
+              👥 Staff Resources Overview
+            </h3>
+            {staffList.length > 0 ? (
+              <div className="space-y-6">
+                {staffList.map((staff) => (
+                  <div key={staff.id} className="card bg-base-200 border border-base-300">
+                    <div className="card-body p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-4">
+                          <div className="avatar">
+                            <div className="w-12 rounded-full bg-info text-white flex items-center justify-center font-bold text-lg">
+                              {staff.name.charAt(0).toUpperCase()}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-lg">{staff.name}</h4>
+                            <p className="text-sm opacity-60">{staff.email}</p>
+                            <div className="flex gap-2 mt-1">
+                              {staff.roles.map((role) => (
+                                <span key={role} className="badge badge-info badge-sm">
+                                  {role}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-black text-info">
+                            {staffResourcesMap[staff.id]?.length || 0}
+                          </p>
+                          <p className="text-xs font-bold opacity-60 uppercase">Resources</p>
+                        </div>
+                      </div>
+                      {staffResourcesMap[staff.id] && staffResourcesMap[staff.id].length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <table className="table table-sm">
+                            <thead>
+                              <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Location</th>
+                                <th>Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {staffResourcesMap[staff.id].map((resource) => (
+                                <tr key={resource.id} className="hover">
+                                  <td className="font-bold">{resource.name}</td>
+                                  <td>
+                                    <span className="badge badge-outline">{resource.type?.replace('_', ' ')}</span>
+                                  </td>
+                                  <td>{resource.location}</td>
+                                  <td>
+                                    <span className={`badge ${resource.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'}`}>
+                                      {resource.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div className="text-center py-4 opacity-50">
+                          <p className="text-sm">No resources assigned to this staff member</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="font-bold opacity-50">No staff members found</p>
+              </div>
+            )}
+            <div className="modal-action">
+              <button
+                className="btn"
+                onClick={() => setShowStaffResourcesModal(false)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

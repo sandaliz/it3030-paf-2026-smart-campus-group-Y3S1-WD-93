@@ -36,6 +36,10 @@ const ResourceManagementPage = () => {
   const [debouncedLocation, setDebouncedLocation] = useState('');
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [selectedType, setSelectedType] = useState(null);
+  const [showStaffResourcesModal, setShowStaffResourcesModal] = useState(false);
+  const [staffList, setStaffList] = useState([]);
+  const [staffResourcesMap, setStaffResourcesMap] = useState({});
+  const [loadingStaffResources, setLoadingStaffResources] = useState(false);
   const [pagination, setPagination] = useState({
     page: 0,
     size: 10,
@@ -211,7 +215,7 @@ const ResourceManagementPage = () => {
 
   const handleBulkDelete = async () => {
     if (selectedResources.length === 0) return;
-    
+
     if (!window.confirm(`Are you sure you want to delete ${selectedResources.length} resources?`)) {
       return;
     }
@@ -228,6 +232,43 @@ const ResourceManagementPage = () => {
       setError('Failed to delete resources');
       setSuccess(null);
       console.error('Error bulk deleting:', err);
+    }
+  };
+
+  const handleViewStaffResources = async () => {
+    if (loadingStaffResources) return;
+    setLoadingStaffResources(true);
+    try {
+      const token = localStorage.getItem('token');
+      // Fetch all staff users
+      const staffResponse = await axios.get('http://localhost:8080/api/resources/staff', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const staffData = staffResponse.data;
+      console.log('Staff data:', staffData);
+      setStaffList(staffData);
+
+      // Fetch resources for each staff member
+      const resourcesMap = {};
+      for (const staff of staffData) {
+        try {
+          const resourcesResponse = await axios.get(`http://localhost:8080/api/resources/staff/${staff.id}/resources`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          console.log(`Resources for staff ${staff.name} (${staff.id}):`, resourcesResponse.data);
+          resourcesMap[staff.id] = resourcesResponse.data || [];
+        } catch (error) {
+          console.error(`Error fetching resources for staff ${staff.id}:`, error);
+          resourcesMap[staff.id] = [];
+        }
+      }
+      setStaffResourcesMap(resourcesMap);
+      setShowStaffResourcesModal(true);
+    } catch (error) {
+      console.error('Error fetching staff data:', error);
+      alert('Failed to load staff data');
+    } finally {
+      setLoadingStaffResources(false);
     }
   };
 
@@ -356,6 +397,20 @@ const ResourceManagementPage = () => {
           <p className="text-base-content/70">Manage campus facilities and equipment</p>
         </div>
         <div className="flex gap-2">
+          <button
+            className="btn btn-info text-white"
+            onClick={handleViewStaffResources}
+            disabled={loadingStaffResources}
+          >
+            {loadingStaffResources ? (
+              <>
+                <span className="loading loading-spinner loading-sm"></span>
+                Loading...
+              </>
+            ) : (
+              'Staff Resources'
+            )}
+          </button>
           <button
             className="btn btn-outline"
             onClick={() => setShowAnalyticsModal(true)}
@@ -708,8 +763,30 @@ const ResourceManagementPage = () => {
                           {hasRole('ADMIN') && (
                             <button
                               className="btn btn-sm btn-info text-white"
-                              onClick={() => {
+                              onClick={async () => {
+                                await fetchAllStaff();
                                 setSelectedResource(resource);
+                                // Include both assignedStaff and createdBy as assigned
+                                const assignedStaffIds = resource.assignedStaff || [];
+                                const createdBy = resource.createdBy;
+                                console.log('Resource assignedStaff (IDs):', assignedStaffIds);
+                                console.log('Resource createdBy:', createdBy);
+                                console.log('All staff:', allStaff.map(s => ({ id: s.id, username: s.username })));
+
+                                // Combine assignedStaff and createdBy
+                                let allAssignedIds = [...assignedStaffIds];
+                                if (createdBy && !allAssignedIds.includes(createdBy)) {
+                                  allAssignedIds.push(createdBy);
+                                }
+
+                                // Try to match by username first
+                                const matchedStaffIds = allStaff
+                                  .filter(staff => allAssignedIds.includes(staff.username) || allAssignedIds.includes(staff.id))
+                                  .map(staff => staff.id);
+
+                                console.log('Combined assigned IDs:', allAssignedIds);
+                                console.log('Matched staff IDs:', matchedStaffIds);
+                                setSelectedStaffIds(matchedStaffIds.length > 0 ? matchedStaffIds : allAssignedIds);
                                 setShowAssignStaffModal(true);
                               }}
                             >
@@ -788,20 +865,57 @@ const ResourceManagementPage = () => {
 
       {/* Assign Staff Modal */}
       {showAssignStaffModal && (
-        <div className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="font-bold text-lg mb-4">
+        <div className="modal modal-open" onClick={() => setShowAssignStaffModal(false)}>
+          <div className="modal-box max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-xl mb-6 flex items-center gap-3">
+              <span className="text-2xl">👥</span>
               Assign Staff to {selectedResource?.name}
             </h3>
-            <div className="space-y-4">
-              <div className="form-control">
-                <label className="label">Select Staff</label>
-                <div className="max-h-60 overflow-y-auto space-y-2 border border-base-300 rounded p-2">
-                  {allStaff.length === 0 ? (
-                    <p className="text-sm opacity-60">No staff available</p>
-                  ) : (
-                    allStaff.map((staff) => (
-                      <label key={staff.id} className="flex items-center gap-2 cursor-pointer">
+
+            {/* Currently Assigned Staff */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <label className="label font-bold">Currently Assigned Staff</label>
+                <span className="badge badge-info badge-sm">
+                  {selectedStaffIds.length} assigned
+                </span>
+              </div>
+              {selectedStaffIds.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {selectedStaffIds.map(staffId => {
+                    const staff = allStaff.find(s => s.id === staffId);
+                    return staff ? (
+                      <div key={staffId} className="badge badge-lg badge-success gap-2 pl-3 pr-1">
+                        <span>{staff.username || staff.name}</span>
+                        <button
+                          onClick={() => setSelectedStaffIds(selectedStaffIds.filter(id => id !== staffId))}
+                          className="btn btn-xs btn-ghost text-white hover:bg-white/20"
+                          title="Revoke assignment"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : null;
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-4 border border-dashed border-base-300 rounded-lg opacity-50">
+                  <p className="text-sm">No staff assigned yet</p>
+                </div>
+              )}
+            </div>
+
+            {/* Assign More Staff */}
+            <div className="form-control">
+              <label className="label font-bold">Assign More Staff</label>
+              <div className="max-h-48 overflow-y-auto space-y-2 border border-base-300 rounded-lg p-3">
+                {allStaff.length === 0 ? (
+                  <p className="text-sm opacity-60 text-center py-4">No staff available</p>
+                ) : (
+                  allStaff
+                    .filter(staff => !selectedStaffIds.includes(staff.id))
+                    .map((staff) => (
+                      <label key={staff.id} className="flex items-center gap-3 cursor-pointer p-2 hover:bg-base-200 rounded-lg transition-colors">
                         <input
                           type="checkbox"
                           checked={selectedStaffIds.includes(staff.id)}
@@ -812,33 +926,192 @@ const ResourceManagementPage = () => {
                               setSelectedStaffIds(selectedStaffIds.filter(id => id !== staff.id));
                             }
                           }}
-                          className="checkbox checkbox-sm"
+                          className="checkbox checkbox-sm checkbox-info"
                         />
-                        <span className="text-sm">{staff.username}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="avatar placeholder">
+                            <div className="bg-neutral text-neutral-content rounded-full w-8">
+                              <span className="text-xs">{staff.username?.charAt(0)?.toUpperCase() || staff.name?.charAt(0)?.toUpperCase() || '?'}</span>
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium">{staff.username || staff.name}</span>
+                            <div className="text-xs opacity-60">{staff.email}</div>
+                          </div>
+                        </div>
                       </label>
                     ))
-                  )}
+                )}
+                {allStaff.length > 0 && allStaff.filter(staff => !selectedStaffIds.includes(staff.id)).length === 0 && (
+                  <p className="text-sm opacity-60 text-center py-4">All staff already assigned</p>
+                )}
+              </div>
+            </div>
+            <div className="modal-action">
+              <button
+                className="btn btn-ghost"
+                onClick={() => {
+                  setShowAssignStaffModal(false);
+                  setSelectedResource(null);
+                  setSelectedStaffIds([]);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleAssignStaff}
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Staff Resources Modal */}
+      {showStaffResourcesModal && (
+        <div className="modal modal-open" onClick={() => setShowStaffResourcesModal(false)}>
+          <div className="modal-box max-w-6xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-2xl mb-6 flex items-center gap-3">
+              Staff Resources Overview
+            </h3>
+
+            {/* Overview Stats */}
+            {staffList.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="stats stats-vertical shadow bg-base-200">
+                  <div className="stat">
+                    <div className="stat-title text-base-content/70">Total Staff</div>
+                    <div className="stat-value text-primary text-4xl">{staffList.length}</div>
+                    <div className="stat-desc text-base-content/60">Active staff members</div>
+                  </div>
+                </div>
+                <div className="stats stats-vertical shadow bg-base-200">
+                  <div className="stat">
+                    <div className="stat-title text-base-content/70">Total Assigned Resources</div>
+                    <div className="stat-value text-info text-4xl">
+                      {Object.values(staffResourcesMap).reduce((sum, resources) => sum + (resources?.length || 0), 0)}
+                    </div>
+                    <div className="stat-desc text-base-content/60">Across all staff</div>
+                  </div>
+                </div>
+                <div className="stats stats-vertical shadow bg-base-200">
+                  <div className="stat">
+                    <div className="stat-title text-base-content/70">Top Staff Member</div>
+                    <div className="stat-value text-success text-2xl">
+                      {[...staffList].sort((a, b) => (staffResourcesMap[b.id]?.length || 0) - (staffResourcesMap[a.id]?.length || 0))[0]?.name || 'N/A'}
+                    </div>
+                    <div className="stat-desc text-base-content/60">
+                      {staffResourcesMap[[...staffList].sort((a, b) => (staffResourcesMap[b.id]?.length || 0) - (staffResourcesMap[a.id]?.length || 0))[0]?.id]?.length || 0} resources
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="modal-action">
-                <button
-                  className="btn btn-ghost"
-                  onClick={() => {
-                    setShowAssignStaffModal(false);
-                    setSelectedResource(null);
-                    setSelectedStaffIds([]);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={handleAssignStaff}
-                  disabled={selectedStaffIds.length === 0}
-                >
-                  Assign ({selectedStaffIds.length})
-                </button>
+            )}
+
+            {staffList.length > 0 ? (
+              <div className="space-y-6">
+                {[...staffList]
+                  .sort((a, b) => (staffResourcesMap[b.id]?.length || 0) - (staffResourcesMap[a.id]?.length || 0))
+                  .map((staff, index) => (
+                  <div key={staff.id} className={`card bg-base-200 border border-base-300 ${index === 0 ? 'ring-2 ring-info ring-offset-2' : ''}`}>
+                    <div className="card-body p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-4">
+                          <div className="avatar">
+                            <div className={`w-14 rounded-full ${index === 0 ? 'bg-gradient-to-br from-info to-primary' : 'bg-info'} text-white flex items-center justify-center font-bold text-xl shadow-lg`}>
+                              {staff.name.charAt(0).toUpperCase()}
+                              {index === 0 && <span className="absolute -top-1 -right-1 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-0.5 rounded-full">👑</span>}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-lg flex items-center gap-2">
+                              {staff.name}
+                              {index === 0 && <span className="badge badge-warning badge-sm">Top Handler</span>}
+                            </h4>
+                            <p className="text-sm opacity-60">{staff.email}</p>
+                            <div className="flex gap-2 mt-1">
+                              {staff.roles.map((role) => (
+                                <span key={role} className="badge badge-info badge-sm">
+                                  {role}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-3xl font-black text-info">
+                            {staffResourcesMap[staff.id]?.length || 0}
+                          </p>
+                          <p className="text-xs font-bold opacity-60 uppercase">Resources</p>
+                        </div>
+                      </div>
+                      {staffResourcesMap[staff.id] && staffResourcesMap[staff.id].length > 0 ? (
+                        <>
+                          <div className="overflow-x-auto">
+                            <table className="table table-sm">
+                              <thead>
+                                <tr>
+                                  <th>Name</th>
+                                  <th>Type</th>
+                                  <th>Location</th>
+                                  <th>Capacity</th>
+                                  <th>Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {staffResourcesMap[staff.id].map((resource) => (
+                                  <tr key={resource.id} className="hover">
+                                    <td className="font-bold">{resource.name}</td>
+                                    <td>
+                                      <span className="badge badge-outline">{resource.type?.replace('_', ' ')}</span>
+                                    </td>
+                                    <td>{resource.location}</td>
+                                    <td>{resource.capacity || '-'}</td>
+                                    <td>
+                                      <span className={`badge ${resource.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'}`}>
+                                        {resource.status}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-base-300 flex justify-between items-center text-sm">
+                            <span className="opacity-60">
+                              {staffResourcesMap[staff.id].filter(r => r.status === 'ACTIVE').length} active, 
+                              {staffResourcesMap[staff.id].filter(r => r.status === 'UNDER_MAINTENANCE').length} under maintenance
+                            </span>
+                            <span className="font-bold text-info">
+                              {Math.round((staffResourcesMap[staff.id].filter(r => r.status === 'ACTIVE').length / staffResourcesMap[staff.id].length) * 100)}% utilization
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-center py-6 opacity-50">
+                          <div className="text-4xl mb-2">📭</div>
+                          <p className="text-sm">No resources assigned to this staff member</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-6xl mb-4">👥</div>
+                <p className="font-bold opacity-50">No staff members found</p>
+              </div>
+            )}
+            <div className="modal-action">
+              <button
+                className="btn"
+                onClick={() => setShowStaffResourcesModal(false)}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

@@ -44,7 +44,7 @@ public class ResourceService {
 
     public List<Resource> getAllResources() {
         Query query = new Query();
-        query.fields().include("id", "name", "type", "capacity", "location", "status", "description");
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "createdBy", "assignedStaff");
         return mongoTemplate.find(query, Resource.class);
     }
     
@@ -180,7 +180,7 @@ public class ResourceService {
             query.addCriteria(Criteria.where("location").regex(location, "i"));
         }
 
-        query.fields().include("id", "name", "type", "capacity", "location", "status", "description");
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "createdBy", "assignedStaff");
         return mongoTemplate.find(query, Resource.class);
     }
     
@@ -242,7 +242,7 @@ public class ResourceService {
         }
 
         // Field projection
-        query.fields().include("id", "name", "type", "capacity", "location", "status", "description");
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "createdBy", "assignedStaff");
 
         // Sorting
         Sort sort = Sort.by(Sort.Direction.fromString(sortDir != null ? sortDir : "asc"), sortBy != null ? sortBy : "name");
