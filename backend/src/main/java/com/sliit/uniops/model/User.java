@@ -44,9 +44,9 @@ public class User {
     private boolean enabled = true;
 
     @Builder.Default
-    private java.time.LocalDateTime createdAt = java.time.LocalDateTime.now();
+    private Long createdAt = System.currentTimeMillis();
 
-    private java.time.LocalDateTime lastLoginAt;
+    private Long lastLoginAt;
 
     @Builder.Default
     private Set<Role> roles = new HashSet<>();
