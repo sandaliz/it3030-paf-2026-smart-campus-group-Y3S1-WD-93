@@ -10,6 +10,7 @@ import com.sliit.uniops.dto.request.BookingRequestDTO;
 import com.sliit.uniops.dto.request.BookingUpdateRequestDTO;
 import com.sliit.uniops.exception.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
