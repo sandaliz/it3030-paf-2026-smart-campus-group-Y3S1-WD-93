@@ -34,7 +34,6 @@ import Footer from './components/layout/Footer';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import AuthCallback from './pages/AuthCallback';
-import GoogleCalendarCallback from './pages/calendar/GoogleCalendarCallback';
 import ResourceDetailPage from './pages/resources/ResourceDetailPage'
 import ResourceManagementPage from './pages/resources/ResourceManagementPage'
 import ResourceListPage from './pages/resources/ResourceListPage'
@@ -91,7 +90,6 @@ const AppContent = () => {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route path="/auth/calendar/callback" element={<GoogleCalendarCallback />} />
 
           {/* Root route - redirect based on auth status */}
           <Route path="/" element={<RootRedirect />} />
