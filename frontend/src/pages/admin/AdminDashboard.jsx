@@ -2,6 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import apiInstance from '../../services/axiosInstance';
+import { userService } from '../../services/userService';
+
+const normalizeRole = (role) => {
+  if (!role) {
+    return '';
+  }
+
+  return role.startsWith('ROLE_') ? role : `ROLE_${role}`;
+};
+
+const normalizeUser = (user) => ({
+  ...user,
+  roles: Array.isArray(user.roles) ? user.roles.map(normalizeRole) : []
+});
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -84,8 +98,8 @@ const AdminDashboard = () => {
   // Fetch all users
   const fetchAllUsers = async () => {
     try {
-      const response = await apiInstance.get('/api/admin/dashboard/users');
-      setAllUsers(Array.isArray(response.data) ? response.data : []);
+      const data = await userService.getAllUsers();
+      setAllUsers(Array.isArray(data) ? data.map(normalizeUser) : []);
     } catch (error) {
       console.error('Error fetching users:', error);
       setAllUsers([]);
@@ -149,7 +163,12 @@ const AdminDashboard = () => {
   // Toggle user status
   const handleToggleUserStatus = async (userId) => {
     try {
-      await apiInstance.put(`/api/admin/dashboard/users/${userId}/toggle-status`);
+      const targetUser = allUsers.find((listedUser) => listedUser.id === userId);
+      if (!targetUser) {
+        throw new Error('User not found');
+      }
+
+      await userService.updateUserStatus(userId, !targetUser.enabled);
       fetchAllUsers();
       fetchStats();
     } catch (error) {
@@ -169,7 +188,9 @@ const AdminDashboard = () => {
     if (!selectedUser) return;
     
     try {
-      await apiInstance.put(`/api/admin/dashboard/users/${selectedUser.id}/role`, { role: selectedUser.roles[0] });
+      await userService.updateUserRoles(selectedUser.id, {
+        roles: selectedUser.roles.map((role) => role.replace('ROLE_', ''))
+      });
       setShowEditUserModal(false);
       setSelectedUser(null);
       fetchAllUsers();
@@ -192,7 +213,7 @@ const AdminDashboard = () => {
     }
 
     try {
-      await apiInstance.delete(`/api/admin/dashboard/users/${user.id}`);
+      await userService.deleteUser(user.id);
       fetchAllUsers();
       fetchStats();
     } catch (error) {
@@ -209,7 +230,12 @@ const AdminDashboard = () => {
     }
 
     try {
-      await apiInstance.post('/api/admin/dashboard/users', newUser);
+      await userService.createUser({
+        name: newUser.name,
+        email: newUser.email,
+        password: newUser.username,
+        roles: newUser.roles.map((role) => role.replace('ROLE_', ''))
+      });
       setShowCreateUserModal(false);
       setNewUser({ name: '', email: '', username: '', roles: ['ROLE_STUDENT'] });
       fetchAllUsers();
