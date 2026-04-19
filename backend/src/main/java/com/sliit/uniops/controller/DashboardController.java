@@ -296,13 +296,15 @@ public class DashboardController {
     @GetMapping("/user/bookings")
     public ResponseEntity<List<Map<String, Object>>> getUserBookings(Authentication authentication) {
         try {
-            String userId = authentication.getName();
+            String userId = getUserId(authentication);
             List<Booking> userBookings = bookingService.getAllBookings(null, null, userId, null, null);
             
             List<Map<String, Object>> result = userBookings.stream()
                     .map(booking -> {
                         Map<String, Object> bookingData = new HashMap<>();
                         bookingData.put("id", booking.getId());
+                        bookingData.put("resourceId", booking.getResourceId());
+                        bookingData.put("resource", getResourceName(booking.getResourceId()));
                         bookingData.put("startTime", booking.getStartTime());
                         bookingData.put("endTime", booking.getEndTime());
                         bookingData.put("status", booking.getStatus());
@@ -316,6 +318,19 @@ public class DashboardController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body(List.of(Map.of("error", "Failed to fetch user bookings: " + e.getMessage())));
         }
+    }
+
+    private String getResourceName(String resourceId) {
+        try {
+            var resource = resourceService.getResourceById(resourceId);
+            if (resource != null) {
+                Object name = resource.getClass().getMethod("getName").invoke(resource);
+                return name != null ? name.toString() : "Unknown Resource";
+            }
+        } catch (Exception e) {
+            // Ignore and return placeholder
+        }
+        return "Resource Name";
     }
 
     /**
