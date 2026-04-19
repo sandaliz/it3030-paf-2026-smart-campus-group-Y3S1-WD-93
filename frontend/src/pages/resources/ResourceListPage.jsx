@@ -325,7 +325,10 @@ const ResourceListPage = () => {
       <div className="bg-primary/90 text-primary-content">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl md:text-5xl font-bold mb-12">What Resources Are You Looking For?</h1>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">What Resources Are You Looking For?</h1>
+            <p className="text-base md:text-lg text-primary-content/80 mb-8">
+              Browse and book from available resource types including lecture halls, laboratories, meeting rooms, equipment, offices, and auditoriums.
+            </p>
 
             {/* Search and Type Filter */}
             <div className="flex gap-4 mb-4">
