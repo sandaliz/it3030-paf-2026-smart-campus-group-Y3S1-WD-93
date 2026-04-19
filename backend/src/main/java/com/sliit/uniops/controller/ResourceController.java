@@ -57,6 +57,7 @@ public class ResourceController {
             @Parameter(description = "Filter by creator user ID")
             @RequestParam(required = false) String creator) {
         return ResponseEntity.ok()
+                .cacheControl(CacheControl.noCache())
                 .body(resourceService.getAllResources(type, status, location, minCapacity, search, creator));
     }
     
@@ -85,7 +86,7 @@ public class ResourceController {
             @Parameter(description = "Sort direction (asc or desc)")
             @RequestParam(required = false) String sortDir) {
         return ResponseEntity.ok()
-                .cacheControl(CacheControl.maxAge(2, TimeUnit.MINUTES))
+                .cacheControl(CacheControl.noCache())
                 .body(resourceService.getResourcesPaginated(page, size, search, status, type, sortBy, sortDir));
     }
     
@@ -101,7 +102,7 @@ public class ResourceController {
             @Parameter(description = "Resource ID")
             @PathVariable String id) {
         return ResponseEntity.ok()
-                .cacheControl(CacheControl.maxAge(10, TimeUnit.MINUTES))
+                .cacheControl(CacheControl.noCache())
                 .body(resourceService.getResourceById(id));
     }
 

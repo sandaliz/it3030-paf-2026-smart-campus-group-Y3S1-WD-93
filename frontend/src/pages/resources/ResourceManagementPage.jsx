@@ -180,10 +180,14 @@ const ResourceManagementPage = () => {
   const handleFormSubmit = async () => {
     setShowForm(false);
     setEditingResource(null);
-    setSuccess(editingResource ? 'Resource updated successfully' : 'Resource created successfully');
     setError(null);
-    fetchResources();
-    fetchAllResources();
+    
+    // Fetch updated data first
+    await fetchResources();
+    await fetchAllResources();
+    
+    // Then show success message
+    setSuccess(editingResource ? 'Resource updated successfully' : 'Resource created successfully');
     setTimeout(() => setSuccess(null), 3000);
   };
 

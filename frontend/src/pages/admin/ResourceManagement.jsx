@@ -67,7 +67,7 @@ const ResourceManagement = () => {
       setShowModal(false);
       setEditingResource(null);
       resetForm();
-      fetchResources();
+      await fetchResources();
     } catch (error) {
       console.error('Failed to update resource:', error);
       alert('Failed to update resource: ' + error.message);
