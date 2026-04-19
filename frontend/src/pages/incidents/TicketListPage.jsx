@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import StatusBadge from '../../components/ui/StatusBadge';
 import PriorityBadge from '../../components/ui/PriorityBadge';
 import { PageLoader, CardSkeleton } from '../../components/ui/LoadingSkeleton';
+import { formatAssignedTechnicians, getAssignedTechnicianNames } from '../../utils/ticketAssignments';
 
 const TicketListPage = () => {
   const navigate = useNavigate();
@@ -173,7 +174,11 @@ const TicketListPage = () => {
             <Link to="/tickets/create" className="btn btn-primary">Create Ticket</Link>
           </div>
         ) : (
-          tickets.map((ticket) => (
+          tickets.map((ticket) => {
+            const assignedTechnicianNames = getAssignedTechnicianNames(ticket);
+            const assignedTechnicianSummary = formatAssignedTechnicians(ticket, 'Not assigned');
+
+            return (
             <div 
               key={ticket.id} 
               className="card bg-base-100 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group"
@@ -208,8 +213,10 @@ const TicketListPage = () => {
                 {/* Show technician details for in-progress tickets */}
                 {ticket.status === 'IN_PROGRESS' && (
                   <div className="mt-2 p-2 bg-info/10 rounded text-xs">
-                    <span className="font-semibold text-info">Assigned Technician:</span> {ticket.assignedToName || 'Not assigned'}
-                    {ticket.assignedToName && ticket.contactDetails && (
+                    <span className="font-semibold text-info">
+                      {assignedTechnicianNames.length > 1 ? 'Assigned Technicians:' : 'Assigned Technician:'}
+                    </span> {assignedTechnicianSummary}
+                    {assignedTechnicianNames.length > 0 && ticket.contactDetails && (
                       <div className="mt-1">
                         <span className="font-semibold text-info">Contact:</span> {ticket.contactDetails}
                       </div>
@@ -230,17 +237,18 @@ const TicketListPage = () => {
                   <span>{ticket.location}</span>
                 </div>
                 
-                {ticket.assignedToName && (
+                {assignedTechnicianNames.length > 0 && (
                   <div className="text-xs text-base-content/50 mt-1 flex items-center gap-1">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    {ticket.assignedToName}
+                    {assignedTechnicianSummary}
                   </div>
                 )}
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

@@ -43,7 +43,7 @@ public class TicketCommentService {
         if (request.isInternal()) {
             boolean canAddInternal = userRole.equals("ADMIN") || 
                                     userRole.equals("TECHNICIAN") ||
-                                    (ticket.getAssignedTo() != null && ticket.getAssignedTo().equals(userId));
+                                    isAssignedTechnician(ticket, userId);
             
             if (!canAddInternal) {
                 throw new SecurityException("Only admins, technicians, or assigned technician can add internal notes");
@@ -81,7 +81,7 @@ public class TicketCommentService {
         
         boolean canViewInternal = userRole.equals("ADMIN") || 
                                   userRole.equals("TECHNICIAN") ||
-                                  (ticket.getAssignedTo() != null && ticket.getAssignedTo().equals(userId));
+                                  isAssignedTechnician(ticket, userId);
         
         List<CommentModel> comments;
         
@@ -191,6 +191,18 @@ public class TicketCommentService {
     
     public long getInternalCommentCount(String ticketId) {
         return commentRepository.countByTicketIdAndIsInternalTrueAndIsDeletedFalse(ticketId);
+    }
+
+    private boolean isAssignedTechnician(TicketModel ticket, String userId) {
+        if (userId == null || userId.isBlank()) {
+            return false;
+        }
+
+        if (ticket.getAssignedTechnicianIds() != null && ticket.getAssignedTechnicianIds().contains(userId)) {
+            return true;
+        }
+
+        return ticket.getAssignedTo() != null && ticket.getAssignedTo().equals(userId);
     }
     
     private CommentResponseDTO convertToResponseDTO(CommentModel comment) {

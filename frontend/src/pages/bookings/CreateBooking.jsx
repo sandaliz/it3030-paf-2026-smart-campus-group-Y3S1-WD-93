@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
+import { useRealTimeValidation } from '../../utils/validation';
 
 const CreateBooking = () => {
   const [searchParams] = useSearchParams();
@@ -14,8 +15,22 @@ const CreateBooking = () => {
   const [fetchingSlots, setFetchingSlots] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedSlot, setSelectedSlot] = useState('');
+
+  const getResourceCapacity = (resource) => {
+    const capacity = Number(resource?.capacity);
+    return Number.isFinite(capacity) && capacity > 0 ? capacity : null;
+  };
   
-  const [formData, setFormData] = useState({
+  const {
+    values: formData,
+    errors,
+    touched,
+    setValues: setFormData,
+    handleChange,
+    handleBlur,
+    validateAll,
+    isFormValid
+  } = useRealTimeValidation({
     resourceId: initialResourceId,
     date: '',
     startTime: '',
@@ -33,6 +48,23 @@ const CreateBooking = () => {
       fetchAvailableSlots();
     }
   }, [selectedResource, selectedDate]);
+
+  useEffect(() => {
+    const capacity = getResourceCapacity(selectedResource);
+
+    if (!capacity) {
+      return;
+    }
+
+    setFormData((prev) => {
+      const currentAttendees = Number(prev.expectedAttendees) || 1;
+      const nextAttendees = Math.min(Math.max(currentAttendees, 1), capacity);
+
+      return nextAttendees === prev.expectedAttendees
+        ? prev
+        : { ...prev, expectedAttendees: nextAttendees };
+    });
+  }, [selectedResource, setFormData]);
 
   useEffect(() => {
     const resourceId = searchParams.get('resourceId') || '';
@@ -93,8 +125,17 @@ const CreateBooking = () => {
 
   const handleResourceChange = (resourceId) => {
     const resource = resources.find((r) => String(r.id) === String(resourceId));
+    const capacity = getResourceCapacity(resource);
     setSelectedResource(resource);
-    setFormData(prev => ({ ...prev, resourceId }));
+    setFormData((prev) => ({
+      ...prev,
+      resourceId,
+      startTime: '',
+      endTime: '',
+      expectedAttendees: capacity
+        ? Math.min(Math.max(Number(prev.expectedAttendees) || 1, 1), capacity)
+        : Number(prev.expectedAttendees) || 1,
+    }));
     setAvailableSlots([]);
     setSelectedSlot('');
   };
@@ -111,6 +152,17 @@ const CreateBooking = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const capacity = getResourceCapacity(selectedResource);
+
+    if (capacity && Number(formData.expectedAttendees) > capacity) {
+      return;
+    }
+    
+    // Validate all fields before submission
+    if (!validateAll()) {
+      return;
+    }
+    
     setLoading(true);
     
     try {
@@ -147,6 +199,8 @@ const CreateBooking = () => {
     const today = new Date();
     return today.toISOString().split('T')[0];
   };
+
+  const selectedResourceCapacity = getResourceCapacity(selectedResource);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -201,13 +255,29 @@ const CreateBooking = () => {
                 type="date"
                 value={selectedDate}
                 onChange={(e) => {
-                  setSelectedDate(e.target.value);
-                  setFormData(prev => ({ ...prev, date: e.target.value }));
+                  const nextDate = e.target.value;
+                  setSelectedDate(nextDate);
+                  setSelectedSlot('');
+                  setAvailableSlots([]);
+                  setFormData((prev) => ({
+                    ...prev,
+                    date: nextDate,
+                    startTime: '',
+                    endTime: '',
+                  }));
                 }}
-                className="input input-bordered"
+                onBlur={() => handleBlur('date')}
+                className={`input input-bordered ${
+                  touched.date && errors.date ? 'input-error' : ''
+                }`}
                 min={getMinDate()}
                 required
               />
+              {touched.date && errors.date && (
+                <label className="label">
+                  <span className="label-text-alt text-error text-xs">{errors.date}</span>
+                </label>
+              )}
             </div>
 
             {/* Available Slots */}
@@ -248,39 +318,61 @@ const CreateBooking = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text font-medium">Purpose *</span>
-                </label>
-                <textarea
-                  value={formData.purpose}
-                  onChange={(e) => setFormData(prev => ({ ...prev, purpose: e.target.value }))}
-                  placeholder="Describe the purpose of this booking..."
-                  className="textarea textarea-bordered"
-                  rows={3}
-                  required
-                />
-              </div>
-
-              <div className="form-control">
-                <label className="label">
                   <span className="label-text font-medium">Expected Attendees *</span>
                 </label>
                 <input
                   type="number"
                   value={formData.expectedAttendees}
-                  onChange={(e) => setFormData(prev => ({ 
-                    ...prev, 
-                    expectedAttendees: parseInt(e.target.value) || 1 
-                  }))}
+                  onChange={(e) => {
+                    const rawValue = parseInt(e.target.value, 10);
+                    const normalizedValue = Number.isNaN(rawValue) ? 1 : Math.max(rawValue, 1);
+                    const boundedValue = selectedResourceCapacity
+                      ? Math.min(normalizedValue, selectedResourceCapacity)
+                      : normalizedValue;
+
+                    handleChange('expectedAttendees', boundedValue);
+                  }}
+                  onBlur={() => handleBlur('expectedAttendees')}
                   min="1"
-                  max={selectedResource?.capacity || 999}
-                  className="input input-bordered"
+                  max={selectedResourceCapacity ?? undefined}
+                  className={`input input-bordered ${
+                    touched.expectedAttendees && errors.expectedAttendees ? 'input-error' : ''
+                  }`}
                   required
                 />
+                {touched.expectedAttendees && errors.expectedAttendees && (
+                  <label className="label">
+                    <span className="label-text-alt text-error text-xs">{errors.expectedAttendees}</span>
+                  </label>
+                )}
                 {selectedResource && (
                   <label className="label">
                     <span className="label-text-alt">
-                      Max capacity: {selectedResource.capacity} people
+                      Max capacity: {selectedResourceCapacity ?? selectedResource.capacity} people
                     </span>
+                  </label>
+                )}
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-medium">Purpose *</span>
+                </label>
+                <textarea
+                  value={formData.purpose}
+                  onChange={(e) => {
+                    handleChange('purpose', e.target.value);
+                  }}
+                  onBlur={() => handleBlur('purpose')}
+                  className={`textarea textarea-bordered ${
+                    touched.purpose && errors.purpose ? 'input-error' : ''
+                  }`}
+                  placeholder="Describe purpose of this booking..."
+                  rows={3}
+                  required
+                />
+                {touched.purpose && errors.purpose && (
+                  <label className="label">
+                    <span className="label-text-alt text-error text-xs">{errors.purpose}</span>
                   </label>
                 )}
               </div>
@@ -295,7 +387,7 @@ const CreateBooking = () => {
               <button
                 type="submit"
                 className={`btn btn-primary ${loading ? 'loading' : ''}`}
-                disabled={loading || !formData.resourceId || !selectedSlot || !formData.purpose}
+                disabled={loading || !isFormValid || !selectedSlot}
               >
                 {loading ? 'Creating Booking...' : '📅 Create Booking'}
               </button>

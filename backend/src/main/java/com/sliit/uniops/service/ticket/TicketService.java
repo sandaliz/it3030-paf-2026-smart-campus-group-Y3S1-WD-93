@@ -3,9 +3,12 @@ package com.sliit.uniops.service.ticket;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -154,7 +157,7 @@ public class TicketService {
 
     // ✅ GET TECHNICIAN TICKETS
     public Page<TicketResponseDTO> getTicketsByTechnician(String technicianId, Pageable pageable) {
-        return ticketRepository.findByAssignedTo(technicianId, pageable)
+        return ticketRepository.findByAssignedTechnician(technicianId, pageable)
                 .map(this::mapToResponseDTO);
     }
 
@@ -169,12 +172,19 @@ public class TicketService {
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
 
         Set<String> desiredSkills = deriveDesiredSkills(ticket);
+        Set<String> alreadyAssignedIds = new LinkedHashSet<>(getAssignedTechnicianIds(ticket));
 
         return userRepository.findAll().stream()
                 .filter(this::isActiveTechnician)
-                .map(technician -> toTechnicianRecommendation(technician, desiredSkills))
+                .filter(technician -> alreadyAssignedIds.contains(technician.getId())
+                        || !hasActiveAssignmentsForOtherTickets(technician.getId(), ticketId))
+                .map(technician -> toTechnicianRecommendation(
+                        technician,
+                        desiredSkills,
+                        alreadyAssignedIds.contains(technician.getId())))
                 .sorted(Comparator
-                        .comparingInt(TechnicianRecommendationDTO::getMatchScore).reversed()
+                        .comparing(TechnicianRecommendationDTO::isAlreadyAssigned).reversed()
+                        .thenComparing(Comparator.comparingInt(TechnicianRecommendationDTO::getMatchScore).reversed())
                         .thenComparingInt(TechnicianRecommendationDTO::getActiveTicketCount)
                         .thenComparing(TechnicianRecommendationDTO::getName, String.CASE_INSENSITIVE_ORDER))
                 .collect(Collectors.toList());
@@ -233,25 +243,47 @@ public class TicketService {
 
     // ✅ ASSIGN TECHNICIAN
     @Transactional
-    public TicketResponseDTO assignTechnician(String ticketId, String technicianId, String assignedBy) {
+    public TicketResponseDTO assignTechnicians(String ticketId, List<String> technicianIds, String assignedBy) {
 
         TicketModel ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
-
-        User technician = userRepository.findById(technicianId)
-                .orElseThrow(() -> new TicketNotFoundException("Technician not found"));
-
-        if (!isActiveTechnician(technician)) {
-            throw new AccessDeniedException("Selected user is not an active technician");
-        }
 
         if (TicketStatus.CLOSED.equals(ticket.getStatus())
                 || TicketStatus.REJECTED.equals(ticket.getStatus())) {
             throw new InvalidTicketStatusException("Cannot assign technician to a closed or rejected ticket");
         }
 
-        ticket.setAssignedTo(technicianId);
-        ticket.setAssignedToName(resolveDisplayName(technician));
+        List<String> requestedTechnicianIds = normalizeTechnicianIds(technicianIds);
+        if (requestedTechnicianIds.isEmpty()) {
+            throw new IllegalArgumentException("At least one technician must be selected");
+        }
+
+        Set<String> alreadyAssignedIds = new LinkedHashSet<>(getAssignedTechnicianIds(ticket));
+        LinkedHashMap<String, String> mergedAssignments = getAssignedTechnicianMap(ticket);
+        List<User> newlyAssignedTechnicians = new ArrayList<>();
+
+        for (String technicianId : requestedTechnicianIds) {
+            User technician = userRepository.findById(technicianId)
+                    .orElseThrow(() -> new TicketNotFoundException("Technician not found"));
+
+            if (!isActiveTechnician(technician)) {
+                throw new AccessDeniedException("Selected user is not an active technician");
+            }
+
+            if (!alreadyAssignedIds.contains(technicianId)
+                    && hasActiveAssignmentsForOtherTickets(technicianId, ticketId)) {
+                throw new AccessDeniedException("Technician " + resolveDisplayName(technician)
+                        + " is already assigned to another active ticket");
+            }
+
+            mergedAssignments.put(technicianId, resolveDisplayName(technician));
+
+            if (!alreadyAssignedIds.contains(technicianId)) {
+                newlyAssignedTechnicians.add(technician);
+            }
+        }
+
+        syncAssignedTechnicians(ticket, mergedAssignments);
         ticket.setUpdatedAt(LocalDateTime.now());
 
         if (TicketStatus.OPEN.equals(ticket.getStatus())) {
@@ -259,8 +291,10 @@ public class TicketService {
         }
 
         TicketModel updated = ticketRepository.save(ticket);
-        
-        notificationService.notifyTicketAssigned(updated, technician, resolveAssignedByLabel(assignedBy));
+
+        String assignedByLabel = resolveAssignedByLabel(assignedBy);
+        newlyAssignedTechnicians.forEach(technician ->
+                notificationService.notifyTicketAssigned(updated, technician, assignedByLabel));
 
         return mapToResponseDTO(updated);
     }
@@ -311,8 +345,7 @@ public class TicketService {
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
         
         // Only admins or assigned technician can do this
-        boolean isAuthorized = userRole.equals("ADMIN") || 
-                              (ticket.getAssignedTo() != null && ticket.getAssignedTo().equals(userId));
+        boolean isAuthorized = userRole.equals("ADMIN") || isAssignedTechnician(ticket, userId);
         
         if (!isAuthorized) {
             throw new AccessDeniedException("Only admins or assigned technician can move ticket to pending confirmation");
@@ -347,7 +380,10 @@ public class TicketService {
                 .collect(Collectors.toList());
     }
 
-    private TechnicianRecommendationDTO toTechnicianRecommendation(User technician, Set<String> desiredSkills) {
+    private TechnicianRecommendationDTO toTechnicianRecommendation(
+            User technician,
+            Set<String> desiredSkills,
+            boolean alreadyAssigned) {
         Set<String> technicianSkills = normalizeSkills(technician.getTechnicianSkills());
         List<String> matchedSkills = technicianSkills.stream()
                 .filter(desiredSkills::contains)
@@ -357,6 +393,9 @@ public class TicketService {
         int score = (matchedSkills.size() * 100) - (activeTicketCount * 10);
 
         List<String> reasons = new ArrayList<>();
+        if (alreadyAssigned) {
+            reasons.add("Already assigned to this ticket");
+        }
         if (!matchedSkills.isEmpty()) {
             reasons.add("Skills match: " + String.join(", ", matchedSkills));
         }
@@ -376,7 +415,9 @@ public class TicketService {
                 .skills(new LinkedHashSet<>(technicianSkills))
                 .activeTicketCount(activeTicketCount)
                 .matchScore(score)
-                .recommended(!matchedSkills.isEmpty())
+                .recommended(alreadyAssigned || !matchedSkills.isEmpty())
+                .alreadyAssigned(alreadyAssigned)
+                .available(true)
                 .reasons(reasons)
                 .build();
     }
@@ -403,10 +444,8 @@ public class TicketService {
     }
 
     private int countActiveAssignments(String technicianId) {
-        return (int) ticketRepository.findByAssignedTo(technicianId).stream()
-                .filter(ticket -> TicketStatus.OPEN.equals(ticket.getStatus())
-                        || TicketStatus.IN_PROGRESS.equals(ticket.getStatus())
-                        || TicketStatus.PENDING_CONFIRMATION.equals(ticket.getStatus()))
+        return (int) ticketRepository.findByAssignedTechnician(technicianId).stream()
+                .filter(ticket -> isBlockingAssignmentStatus(ticket.getStatus()))
                 .count();
     }
 
@@ -457,16 +496,12 @@ public class TicketService {
             return true;
         }
 
-        return isTechnician(userRole)
-                && ticket.getAssignedTo() != null
-                && userId.equals(ticket.getAssignedTo());
+        return isTechnician(userRole) && isAssignedTechnician(ticket, userId);
     }
 
     private boolean canManageTicket(TicketModel ticket, String userId, String userRole) {
         return isAdmin(userRole)
-                || (isTechnician(userRole)
-                && ticket.getAssignedTo() != null
-                && ticket.getAssignedTo().equals(userId));
+                || (isTechnician(userRole) && isAssignedTechnician(ticket, userId));
     }
 
     private boolean isAdmin(String userRole) {
@@ -508,6 +543,11 @@ public class TicketService {
     // ✅ MAPPER
     private TicketResponseDTO mapToResponseDTO(TicketModel ticket) {
         long commentCount = commentRepository.countByTicketIdAndIsDeletedFalse(ticket.getId());
+        List<String> assignedTechnicianIds = getAssignedTechnicianIds(ticket);
+        List<String> assignedTechnicianNames = getAssignedTechnicianNames(ticket);
+        String assignedTechnicianSummary = assignedTechnicianNames.isEmpty()
+                ? null
+                : String.join(", ", assignedTechnicianNames);
 
         TicketResponseDTO dto = new TicketResponseDTO();
         dto.setId(ticket.getId());
@@ -519,20 +559,127 @@ public class TicketService {
         dto.setLocation(ticket.getLocation());
         dto.setResourceId(ticket.getResourceId());
         dto.setCreatedBy(ticket.getCreatedBy());
-        dto.setCreatedByName(ticket.getCreatedByName()); // Add this field to DTO
-        dto.setAssignedTo(ticket.getAssignedTo());
-        dto.setAssignedToName(ticket.getAssignedToName()); // Add this field to DTO
+        dto.setCreatedByName(ticket.getCreatedByName());
+        dto.setAssignedTo(assignedTechnicianSummary);
+        dto.setAssignedToName(assignedTechnicianSummary);
+        dto.setAssignedTechnicianIds(assignedTechnicianIds);
+        dto.setAssignedTechnicianNames(assignedTechnicianNames);
         dto.setAttachmentUrls(ticket.getAttachmentIds());
         dto.setResolutionNotes(ticket.getResolutionNotes());
         dto.setRejectionReason(ticket.getRejectionReason());
-        dto.setUserFeedback(ticket.getUserFeedback()); // Add this field to DTO
+        dto.setUserFeedback(ticket.getUserFeedback());
         dto.setCreatedAt(ticket.getCreatedAt());
         dto.setUpdatedAt(ticket.getUpdatedAt());
         dto.setResolvedAt(ticket.getResolvedAt());
         dto.setClosedAt(ticket.getClosedAt());
         dto.setFirstResponseAt(ticket.getFirstResponseAt());
         dto.setCommentCount(commentCount);
-        
+
         return dto;
+    }
+
+    private boolean hasActiveAssignmentsForOtherTickets(String technicianId, String currentTicketId) {
+        return ticketRepository.findByAssignedTechnician(technicianId).stream()
+                .filter(ticket -> !Objects.equals(ticket.getId(), currentTicketId))
+                .anyMatch(ticket -> isBlockingAssignmentStatus(ticket.getStatus()));
+    }
+
+    private boolean isBlockingAssignmentStatus(TicketStatus status) {
+        return status != null
+                && !TicketStatus.CLOSED.equals(status)
+                && !TicketStatus.REJECTED.equals(status);
+    }
+
+    private boolean isAssignedTechnician(TicketModel ticket, String userId) {
+        return userId != null
+                && !userId.isBlank()
+                && getAssignedTechnicianIds(ticket).contains(userId);
+    }
+
+    private List<String> normalizeTechnicianIds(List<String> technicianIds) {
+        if (technicianIds == null) {
+            return List.of();
+        }
+
+        return technicianIds.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(id -> !id.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    private LinkedHashMap<String, String> getAssignedTechnicianMap(TicketModel ticket) {
+        List<String> technicianIds = getAssignedTechnicianIds(ticket);
+        List<String> technicianNames = getAssignedTechnicianNames(ticket);
+        LinkedHashMap<String, String> assignments = new LinkedHashMap<>();
+
+        for (int index = 0; index < technicianIds.size(); index++) {
+            String technicianId = technicianIds.get(index);
+            String technicianName = index < technicianNames.size()
+                    ? technicianNames.get(index)
+                    : userRepository.findById(technicianId)
+                            .map(this::resolveDisplayName)
+                            .orElse(technicianId);
+            assignments.put(technicianId, technicianName);
+        }
+
+        return assignments;
+    }
+
+    private void syncAssignedTechnicians(TicketModel ticket, Map<String, String> assignments) {
+        List<String> technicianIds = new ArrayList<>(assignments.keySet());
+        List<String> technicianNames = new ArrayList<>(assignments.values());
+
+        ticket.setAssignedTechnicianIds(technicianIds);
+        ticket.setAssignedTechnicianNames(technicianNames);
+        ticket.setAssignedTo(technicianIds.isEmpty() ? null : technicianIds.get(0));
+        ticket.setAssignedToName(technicianNames.isEmpty() ? null : String.join(", ", technicianNames));
+    }
+
+    private List<String> getAssignedTechnicianIds(TicketModel ticket) {
+        LinkedHashSet<String> technicianIds = new LinkedHashSet<>();
+
+        if (ticket.getAssignedTechnicianIds() != null) {
+            ticket.getAssignedTechnicianIds().stream()
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(id -> !id.isBlank())
+                    .forEach(technicianIds::add);
+        }
+
+        if (technicianIds.isEmpty()
+                && ticket.getAssignedTo() != null
+                && !ticket.getAssignedTo().isBlank()) {
+            technicianIds.add(ticket.getAssignedTo().trim());
+        }
+
+        return new ArrayList<>(technicianIds);
+    }
+
+    private List<String> getAssignedTechnicianNames(TicketModel ticket) {
+        LinkedHashSet<String> technicianNames = new LinkedHashSet<>();
+
+        if (ticket.getAssignedTechnicianNames() != null) {
+            ticket.getAssignedTechnicianNames().stream()
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(name -> !name.isBlank())
+                    .forEach(technicianNames::add);
+        }
+
+        if (technicianNames.isEmpty()
+                && ticket.getAssignedToName() != null
+                && !ticket.getAssignedToName().isBlank()) {
+            String[] legacyNames = ticket.getAssignedToName().split(",");
+            for (String legacyName : legacyNames) {
+                String normalizedName = legacyName.trim();
+                if (!normalizedName.isBlank()) {
+                    technicianNames.add(normalizedName);
+                }
+            }
+        }
+
+        return new ArrayList<>(technicianNames);
     }
 }

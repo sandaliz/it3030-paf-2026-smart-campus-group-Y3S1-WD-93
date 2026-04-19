@@ -40,6 +40,8 @@ public class TicketModel {
     private String createdByName;
     private String assignedTo;
     private String assignedToName;
+    private List<String> assignedTechnicianIds = new ArrayList<>();
+    private List<String> assignedTechnicianNames = new ArrayList<>();
     private List<String> attachmentIds = new ArrayList<>();
     private String resolutionNotes;
     private String rejectionReason;

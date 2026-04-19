@@ -23,6 +23,10 @@ public interface TicketRepository extends MongoRepository<TicketModel, String> {
     // Find by assigned technician
     List<TicketModel> findByAssignedTo(String technicianId);
     Page<TicketModel> findByAssignedTo(String technicianId, Pageable pageable);
+    @Query(value = "{'$or': [{'assignedTo': ?0}, {'assignedTechnicianIds': ?0}], 'isDeleted': false}")
+    List<TicketModel> findByAssignedTechnician(String technicianId);
+    @Query(value = "{'$or': [{'assignedTo': ?0}, {'assignedTechnicianIds': ?0}], 'isDeleted': false}")
+    Page<TicketModel> findByAssignedTechnician(String technicianId, Pageable pageable);
 
     // Find by status
       Page<TicketModel> findByStatus(TicketStatus status, Pageable pageable);
