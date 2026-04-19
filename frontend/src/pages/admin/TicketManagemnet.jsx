@@ -3,6 +3,7 @@ import { ticketAPI } from '../../services/ticketService';
 import { commentService } from '../../services/ticketService';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import AssignTechnicianModal from '../incidents/AssignTechnicianModal';
+import TicketNotifications from '../../components/tickets/TicketNotifications';
 import { formatAssignedTechnicians, getAssignedTechnicianNames } from '../../utils/ticketAssignments';
 
 // ── Icon helper ───────────────────────────────────────────────────────────────
@@ -264,7 +265,33 @@ const TicketManagementPage = () => {
     }
   };
 
-  useEffect(() => { fetchTickets(); fetchStatsAndAll(); }, []);
+  useEffect(() => { 
+    fetchTickets(); 
+    fetchStatsAndAll();
+    
+    // Check for assign parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const assignTicketId = urlParams.get('assign');
+    if (assignTicketId) {
+      // Find the ticket and open assign modal
+      const findAndAssignTicket = async () => {
+        try {
+          const ticketData = await ticketAPI.getAllTickets();
+          const allTickets = ticketData.data.content || ticketData.data;
+          const ticketToAssign = allTickets.find(t => t.id === parseInt(assignTicketId));
+          if (ticketToAssign) {
+            setSelectedTicket(ticketToAssign);
+            setShowAssignModal(true);
+            // Clean up URL
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        } catch (error) {
+          console.error('Error finding ticket for assignment:', error);
+        }
+      };
+      findAndAssignTicket();
+    }
+  }, []);
   useEffect(() => { if (allTickets.length) runAnalytics(allTickets); }, [timeRange, allTickets]);
 
   const refresh = () => { fetchTickets(); fetchStatsAndAll(); };
@@ -426,6 +453,7 @@ const TicketManagementPage = () => {
                 <Icon d={icons.chart} size={13} /> Analytics
               </button>
             </div>
+            <TicketNotifications />
             <button className="btn btn-ghost btn-sm gap-2 text-base-content/60 hover:text-base-content" onClick={refresh}>
               <Icon d={icons.refresh} size={14} /> Refresh
             </button>

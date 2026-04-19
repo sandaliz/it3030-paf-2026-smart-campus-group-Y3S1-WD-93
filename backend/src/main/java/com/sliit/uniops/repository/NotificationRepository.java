@@ -4,6 +4,7 @@ import com.sliit.uniops.model.Notification;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -41,4 +42,9 @@ public interface NotificationRepository extends MongoRepository<Notification, St
      * Find notifications by user ID and related entity ID (for migration)
      */
     List<Notification> findByUserIdAndRelatedEntityId(String userId, String relatedEntityId);
+
+    /**
+     * Find notifications within date range for analytics
+     */
+    List<Notification> findByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
 }

@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.sliit.uniops.service.ResourceService;
 import com.sliit.uniops.service.ticket.TicketNotificationService;
+import com.sliit.uniops.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -50,6 +51,7 @@ public class TicketService {
     private final TicketNotificationService notificationService;
     private final ResourceService resourceService;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     // ✅ CREATE TICKET (FIXED)
     @Transactional
@@ -133,6 +135,33 @@ public class TicketService {
 
         // ✅ Send notification
         notificationService.notifyTicketCreated(savedTicket, userName);
+
+        // ✅ Send email notification to ticket management admin
+        try {
+            String resourceName = "";
+            if (savedTicket.getResourceId() != null && !savedTicket.getResourceId().isEmpty()) {
+                try {
+                    Resource resource = resourceService.getResourceById(savedTicket.getResourceId());
+                    if (resource != null) {
+                        resourceName = resource.getName();
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to get resource name for ticket notification: {}", e.getMessage());
+                }
+            }
+
+            emailService.sendTicketManagementNotification(
+                savedTicket.getId(),
+                savedTicket.getTitle(),
+                savedTicket.getDescription(),
+                savedTicket.getPriority().toString(),
+                savedTicket.getCategory().toString(),
+                userName
+            );
+        } catch (Exception e) {
+            // Log error but don't fail ticket creation
+            log.error("Failed to send ticket management notification: {}", e.getMessage());
+        }
 
         return mapToResponseDTO(savedTicket);
     }

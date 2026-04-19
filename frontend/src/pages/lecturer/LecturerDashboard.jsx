@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { dashboardService } from '../../services/dashboardService';
+import NotificationBell from '../../components/notifications/NotificationBell';
 
 const LecturerDashboard = () => {
   const { user } = useAuth();
@@ -70,8 +71,11 @@ const LecturerDashboard = () => {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Lecturer Dashboard</h1>
             <p className="text-gray-600">Welcome back, {user?.name || 'Lecturer'}!</p>
           </div>
-          <div className="text-sm text-gray-500">
-            Last updated: {lastUpdated.toLocaleTimeString()}
+          <div className="flex items-center gap-4">
+            <NotificationBell />
+            <div className="text-sm text-gray-500">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </div>
           </div>
         </div>
       </div>

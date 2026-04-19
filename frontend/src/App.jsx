@@ -61,6 +61,9 @@ import NetworkTest from './components/NetworkTest';
 import ConsoleErrorCapture from './components/ConsoleErrorCapture';
 import RoleSwitcher from './components/RoleSwitcher';
 import UserManagementDebug from './components/UserManagementDebug';
+import UserProfile from './components/UserProfile';
+import NotificationAnalytics from './components/admin/NotificationAnalytics';
+import NotificationsPage from './pages/NotificationsPage';
 
 const AppContent = () => {
   const location = useLocation();
@@ -265,6 +268,27 @@ const AppContent = () => {
           <Route path="/user-management-debug" element={
             <ProtectedRoute>
               <UserManagementDebug />
+            </ProtectedRoute>
+          } />
+          
+          {/* User Profile - Available to all authenticated users */}
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <UserProfile />
+            </ProtectedRoute>
+          } />
+          
+          {/* Notifications - Available to all authenticated users */}
+          <Route path="/notifications" element={
+            <ProtectedRoute>
+              <NotificationsPage />
+            </ProtectedRoute>
+          } />
+          
+          {/* Notification Analytics - Admin only */}
+          <Route path="/admin/notification-analytics" element={
+            <ProtectedRoute requiredRoles={['ADMIN']}>
+              <NotificationAnalytics />
             </ProtectedRoute>
           } />
           

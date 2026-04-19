@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ResourceForm from '../components/forms/ResourceForm';
+import { useNotifications } from '../hooks/useNotifications';
 
 const StaffDashboard = () => {
     const [stats, setStats] = useState({
@@ -19,6 +20,14 @@ const StaffDashboard = () => {
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [showAllInventory, setShowAllInventory] = useState(false);
     const [editingResource, setEditingResource] = useState(null);
+    const { 
+        userBookings, 
+        userTickets, 
+        markAsRead, 
+        markAllAsRead, 
+        isNotificationRead,
+        getTotalUnreadCount 
+    } = useNotifications();
 
     const deptBookings = [
         { id: 1, resource: 'Conference Room', date: 'Apr 15', time: '10 AM - 12 PM', details: 'Equipment: Projector x2', status: 'ACTIVE' },
@@ -176,6 +185,88 @@ const StaffDashboard = () => {
                             </div>
                         </div>
                     ))}
+                </div>
+
+                {/* Recent Notifications Section */}
+                <div className="card bg-base-100 shadow-xl border border-base-300 overflow-hidden">
+                    <div className="p-8 border-b border-base-200 bg-warning/5">
+                        <h3 className="text-xl font-black flex items-center gap-4 uppercase tracking-tighter">
+                            <span className="w-2 h-8 bg-warning rounded-full"></span>
+                            &#x1f514; RECENT NOTIFICATIONS
+                            {getTotalUnreadCount() > 0 && (
+                                <span className="badge badge-warning badge-md text-white font-black ml-auto">
+                                    {getTotalUnreadCount()} NEW
+                                </span>
+                            )}
+                        </h3>
+                    </div>
+                    <div className="card-body p-6 space-y-4">
+                        {(() => {
+                            const allNotifications = [
+                                ...userBookings.slice(0, 3).map(b => ({
+                                    id: `booking-${b.id}`,
+                                    type: 'USER_BOOKING',
+                                    title: `Booking: ${b.resourceName || b.facilityName}`,
+                                    message: `${b.date} - ${b.startTime} to ${b.endTime}`,
+                                    createdAt: b.createdAt || new Date().toISOString(),
+                                    icon: '&#x1f4c5;'
+                                })),
+                                ...userTickets.slice(0, 3).map(t => ({
+                                    id: `ticket-${t.id}`,
+                                    type: 'USER_TICKET',
+                                    title: `Ticket: ${t.title}`,
+                                    message: `Status: ${t.status} | Priority: ${t.priority}`,
+                                    createdAt: t.createdAt || new Date().toISOString(),
+                                    icon: '&#x1f39f;'
+                                }))
+                            ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+                            return allNotifications.length > 0 ? (
+                                allNotifications.map((n) => (
+                                    <div 
+                                        key={n.id} 
+                                        className={`flex gap-4 p-5 bg-base-200 rounded-2xl border border-base-300 items-start hover:bg-base-100 transition-colors cursor-pointer ${
+                                            isNotificationRead(n.id) ? 'opacity-60' : ''
+                                        }`}
+                                        onClick={() => markAsRead(n.id)}
+                                    >
+                                        <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center text-xl shadow-inner border border-warning/20">
+                                            {n.icon}
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-bold text-sm flex justify-between">
+                                                {n.title}
+                                                <span className="text-[10px] opacity-40 font-mono italic">
+                                                    {new Date(n.createdAt).toLocaleTimeString()}
+                                                </span>
+                                            </h4>
+                                            <p className="text-xs opacity-60 mt-1">{n.message}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-8 opacity-50">
+                                    <p className="font-bold">No notifications found</p>
+                                </div>
+                            );
+                        })()}
+                        <div className="flex gap-2 mt-4">
+                            <button 
+                                onClick={() => {
+                                    markAllAsRead();
+                                }}
+                                className="btn btn-sm btn-warning text-white flex-1 font-black"
+                            >
+                                Mark All as Read
+                            </button>
+                            <button 
+                                onClick={() => window.location.href = '/notifications'}
+                                className="btn btn-sm btn-outline flex-1 font-black"
+                            >
+                                View All
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Equipment Inventory Equipment Inventory */}
