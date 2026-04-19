@@ -116,7 +116,21 @@ public class NotificationController {
     private String getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated()) {
-            return authentication.getName(); // This should be the email/user ID
+            String username = authentication.getName();
+            System.out.println("DEBUG: NotificationController - authentication.getName(): " + username);
+            
+            // If subject is null, try to get username from authentication details
+            if (username == null || username.trim().isEmpty()) {
+                System.out.println("DEBUG: NotificationController - subject is null, checking authentication details");
+                // Try to get user from authentication details
+                if (authentication.getDetails() instanceof org.springframework.security.oauth2.core.user.OAuth2User) {
+                    org.springframework.security.oauth2.core.user.OAuth2User oauthUser = (org.springframework.security.oauth2.core.user.OAuth2User) authentication.getDetails();
+                    username = oauthUser.getAttribute("email");
+                    System.out.println("DEBUG: NotificationController - username from OAuth2User: " + username);
+                }
+            }
+            
+            return username;
         }
         return null;
     }

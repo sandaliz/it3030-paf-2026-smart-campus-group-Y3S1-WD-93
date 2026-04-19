@@ -35,7 +35,24 @@ public class JwtUtils {
     }
 
     public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
+        try {
+            Claims claims = extractAllClaims(token);
+            System.out.println("DEBUG: JWT Claims: " + claims.toString());
+            String subject = claims.getSubject();
+            System.out.println("DEBUG: JWT Subject: " + subject);
+            
+            // If subject is null, try to get username from claims
+            if (subject == null) {
+                subject = (String) claims.get("username");
+                System.out.println("DEBUG: Username from claims: " + subject);
+            }
+            
+            return subject;
+        } catch (Exception e) {
+            System.out.println("DEBUG: Error extracting username from JWT: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
     }
 
     public Date extractExpiration(String token) {
@@ -60,17 +77,32 @@ public class JwtUtils {
     }
 
     public String generateToken(String subject, Map<String, Object> extraClaims) {
-        return Jwts.builder()
+        // Ensure username is included in claims
+        if (extraClaims != null && !extraClaims.containsKey("username")) {
+            extraClaims.put("username", subject);
+        }
+        
+        System.out.println("DEBUG: JWT Generation - subject: " + subject);
+        System.out.println("DEBUG: JWT Generation - extraClaims: " + extraClaims);
+        
+        String token = Jwts.builder()
                 .setClaims(extraClaims)
                 .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(signingKey, SignatureAlgorithm.HS512)
                 .compact();
+                
+        System.out.println("DEBUG: JWT Generation - token generated successfully");
+        return token;
     }
 
     public Boolean validateToken(String token, String expectedUsername) {
         final String tokenUsername = extractUsername(token);
         return (tokenUsername.equalsIgnoreCase(expectedUsername) && !isTokenExpired(token));
+    }
+
+    public Key getSigningKey() {
+        return signingKey;
     }
 }

@@ -10,11 +10,9 @@ const normalizeUrl = (baseURL, requestUrl) => {
   const normalizedBase = baseURL.replace(/\/+$/, '');
   const normalizedRequest = requestUrl.startsWith('/') ? requestUrl : `/${requestUrl}`;
 
-  if (normalizedBase.endsWith('/api') && normalizedRequest.startsWith('/api/')) {
-    return normalizedRequest.slice(4);
-  }
-
-  return requestUrl;
+  // Fixed: Don't remove /api from request URLs
+  // The previous logic was incorrectly removing /api from requests
+  return normalizedRequest;
 };
 
 const apiInstance = axios.create({

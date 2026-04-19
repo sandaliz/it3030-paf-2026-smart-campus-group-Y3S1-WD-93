@@ -2,6 +2,8 @@ package com.sliit.uniops.security;
 
 import com.sliit.uniops.model.User;
 import com.sliit.uniops.repository.UserRepository;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -46,13 +48,48 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 2. Extract JWT and Email from token
         jwt = authHeader.substring(7);
+        String extractedUsername = null;
         try {
-            username = jwtUtils.extractUsername(jwt);
+            extractedUsername = jwtUtils.extractUsername(jwt);
+            System.out.println("DEBUG: Extracted username from JWT: " + extractedUsername);
+
+            // If username is null, try to extract from JWT claims directly
+            if (extractedUsername == null) {
+                try {
+                    Claims claims = Jwts.parserBuilder()
+                            .setSigningKey(jwtUtils.getSigningKey())
+                            .build()
+                            .parseClaimsJws(jwt)
+                            .getBody();
+                    
+                    // Try to get username from claims
+                    extractedUsername = (String) claims.get("username");
+                    System.out.println("DEBUG: Extracted username from JWT claims: " + extractedUsername);
+                    
+                    // If still null, try email
+                    if (extractedUsername == null) {
+                        extractedUsername = (String) claims.get("email");
+                        System.out.println("DEBUG: Extracted username from JWT email: " + extractedUsername);
+                    }
+                } catch (Exception e) {
+                    System.out.println("DEBUG: Error extracting username from JWT claims: " + e.getMessage());
+                }
+            }
+            
+            username = extractedUsername;
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 User user = userRepository.findByUsername(username.toLowerCase()).orElse(null);
+                System.out.println("DEBUG: Found user by username: " + (user != null ? user.getUsername() : "null"));
 
-                if (user != null && jwtUtils.validateToken(jwt, user.getUsername())) {
+                // If not found by username, try by email
+                if (user == null) {
+                    user = userRepository.findByEmail(username.toLowerCase()).orElse(null);
+                    System.out.println("DEBUG: Found user by email: " + (user != null ? user.getEmail() : "null"));
+                }
+
+                if (user != null) {
+                    System.out.println("DEBUG: Token validation successful for user: " + user.getUsername());
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             user,
                             null,

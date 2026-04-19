@@ -40,6 +40,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         User user = resolveOAuthUser(oAuth2User);
+        System.out.println("DEBUG: OAuth2SuccessHandler - user.getUsername(): " + user.getUsername());
+        System.out.println("DEBUG: OAuth2SuccessHandler - buildClaims: " + buildClaims(user));
         String token = jwtUtils.generateToken(user.getUsername(), buildClaims(user));
         String redirectPath = getDashboardPath(user.getRoles());
 
