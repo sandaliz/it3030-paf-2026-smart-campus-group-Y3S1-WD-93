@@ -339,7 +339,7 @@ const ResourceManagement = () => {
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="modal modal-open">
-          <div className="modal-box">
+          <div className="modal-box max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-lg mb-4">
               {editingResource ? '✏️ Edit Resource' : '➕ Create Resource'}
             </h3>

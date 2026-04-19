@@ -749,7 +749,7 @@ const ResourceManagementPage = () => {
       {/* Resource Form Modal */}
       {showForm && (
         <div className="modal modal-open">
-          <div className="modal-box w-11/12 max-w-2xl">
+          <div className="modal-box w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-lg">
               {editingResource ? 'Edit Resource' : 'Add New Resource'}
             </h3>
