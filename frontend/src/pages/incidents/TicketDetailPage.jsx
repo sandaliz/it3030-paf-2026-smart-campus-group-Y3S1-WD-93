@@ -70,10 +70,41 @@ const TicketDetailPage = () => {
   const [posting, setPosting]     = useState(false);
   const [resolutionModal, setResolutionModal] = useState(false);
   const [resolutionNote, setResolutionNote]   = useState('');
+  
+  // Comment edit/delete state
+  const [editingComment, setEditingComment] = useState(null);
+  const [editContent, setEditContent] = useState('');
+  const [updatingComment, setUpdatingComment] = useState(false);
+  const [isInternalComment, setIsInternalComment] = useState(false);
 
   const isAdmin      = hasRole('ADMIN');
   const isTechnician = hasRole('TECHNICIAN');
   const canUpdate    = isAdmin || isTechnician;
+  const canViewInternal = isAdmin || isTechnician;
+  const canAddInternal = isAdmin || isTechnician;
+  
+  // Permission helpers
+  const isAssignedTechnician = (ticket) => {
+    if (!ticket || !user) return false;
+    return ticket.assignedTechnicians?.some(tech => tech.id === user.id);
+  };
+  const canAddInternalToTicket = (ticket) => {
+    return canAddInternal || isAssignedTechnician(ticket);
+  };
+  
+  const canEditComment = (comment) => {
+    // Owner can edit within 30 minutes, admin can edit anytime
+    if (isAdmin) return true;
+    if (comment.authorId !== user?.id) return false;
+    const createdAt = new Date(comment.createdAt);
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    return createdAt > thirtyMinutesAgo;
+  };
+  
+  const canDeleteComment = (comment) => {
+    // Owner or admin can delete
+    return isAdmin || comment.authorId === user?.id;
+  };
 
   useEffect(() => { fetchTicketData(); }, [id]);
 
@@ -109,15 +140,53 @@ const TicketDetailPage = () => {
 
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
+    
+    // Check permissions for internal comments
+    if (isInternalComment && !canAddInternalToTicket(ticket)) {
+      alert('Only admins, technicians, or assigned technicians can add internal comments');
+      return;
+    }
+    
     setPosting(true);
     try {
-      await commentService.addComment(id, newComment, false);
+      await commentService.addComment(id, {
+        content: newComment,
+        isInternal: isInternalComment
+      });
       setNewComment('');
+      setIsInternalComment(false);
       fetchTicketData();
     } catch (err) {
-      alert('Failed to add comment');
+      alert('Failed to add comment: ' + (err.response?.data?.message || 'Unknown error'));
     } finally {
       setPosting(false);
+    }
+  };
+  
+  const handleEditComment = async (commentId) => {
+    if (!editContent.trim()) return;
+    
+    setUpdatingComment(true);
+    try {
+      await commentService.updateComment(id, commentId, editContent);
+      setEditingComment(null);
+      setEditContent('');
+      fetchTicketData();
+    } catch (err) {
+      alert('Failed to edit comment: ' + (err.response?.data?.message || 'Unknown error'));
+    } finally {
+      setUpdatingComment(false);
+    }
+  };
+  
+  const handleDeleteComment = async (commentId) => {
+    if (!confirm('Are you sure you want to delete this comment?')) return;
+    
+    try {
+      await commentService.deleteComment(id, commentId);
+      fetchTicketData();
+    } catch (err) {
+      alert('Failed to delete comment: ' + (err.response?.data?.message || 'Unknown error'));
     }
   };
 
@@ -307,6 +376,24 @@ const TicketDetailPage = () => {
               onChange={(e) => setNewComment(e.target.value)}
               rows={3}
             />
+            
+            {/* Internal Comment Toggle */}
+            {canAddInternalToTicket(ticket) && (
+              <div className="px-3 py-2 border-t border-base-200">
+                <label className="label cursor-pointer justify-start gap-2">
+                  <input
+                    type="checkbox"
+                    className="checkbox checkbox-sm"
+                    checked={isInternalComment}
+                    onChange={(e) => setIsInternalComment(e.target.checked)}
+                  />
+                  <span className="label-text text-xs font-medium">
+                    {isInternalComment ? '🔒 Internal Note' : '💬 Public Comment'}
+                  </span>
+                </label>
+              </div>
+            )}
+            
             <div className="flex items-center justify-end px-3 py-2 border-t border-base-200 bg-base-200/40 rounded-b-xl">
               <button
                 className="btn btn-primary btn-sm rounded-lg gap-1.5 px-4"
@@ -320,7 +407,7 @@ const TicketDetailPage = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                 )}
-                Post
+                {isInternalComment ? 'Add Internal' : 'Post'}
               </button>
             </div>
           </div>
@@ -335,25 +422,118 @@ const TicketDetailPage = () => {
             </div>
           ) : (
             <div className="flex flex-col gap-1">
-              {comments.map((comment) => (
-                <div
-                  key={comment.id}
-                  className="flex gap-3 p-3 rounded-xl hover:bg-base-200/50 transition-colors duration-150"
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 select-none ${getAvatarColor(comment.authorName)}`}>
-                    {getInitials(comment.authorName)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-sm font-semibold text-base-content">{comment.authorName}</span>
-                      <span className="text-xs text-base-content/40">{timeAgo(comment.createdAt)}</span>
+              {comments.map((comment) => {
+                // Filter comments based on user role and permissions
+                if (comment.isInternal && !canViewInternal) {
+                  return null;
+                }
+                
+                const isEditing = editingComment === comment.id;
+                const canEdit = canEditComment(comment);
+                const canDelete = canDeleteComment(comment);
+                
+                return (
+                  <div
+                    key={comment.id}
+                    className={`flex gap-3 p-3 rounded-xl hover:bg-base-200/50 transition-colors duration-150 ${
+                      comment.isInternal ? 'bg-warning/10 border border-warning/30' : ''
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5 select-none ${getAvatarColor(comment.authorName)}`}>
+                      {getInitials(comment.authorName)}
                     </div>
-                    <p className="text-sm text-base-content/80 whitespace-pre-wrap leading-relaxed">
-                      {comment.content}
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-sm font-semibold text-base-content">{comment.authorName}</span>
+                        {comment.isInternal && (
+                          <span className="badge badge-warning badge-xs gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" />
+                            </svg>
+                            Internal
+                          </span>
+                        )}
+                        {comment.isEdited && (
+                          <span className="text-xs text-base-content/40">(edited)</span>
+                        )}
+                        <span className="text-xs text-base-content/40">{timeAgo(comment.createdAt)}</span>
+                      </div>
+                      
+                      {isEditing ? (
+                        <textarea
+                          className="textarea textarea-bordered w-full text-sm"
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          rows={2}
+                          autoFocus
+                        />
+                      ) : (
+                        <p className="text-sm text-base-content/80 whitespace-pre-wrap leading-relaxed">
+                          {comment.content}
+                        </p>
+                      )}
+                    </div>
+                    
+                    {/* Action Buttons */}
+                    <div className="flex gap-1">
+                      {isEditing ? (
+                        <>
+                          <button
+                            className="btn btn-success btn-xs"
+                            onClick={() => handleEditComment(comment.id)}
+                            disabled={!editContent.trim() || updatingComment}
+                          >
+                            {updatingComment ? (
+                              <span className="loading loading-spinner loading-xs" />
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                          <button
+                            className="btn btn-ghost btn-xs"
+                            onClick={() => {
+                              setEditingComment(null);
+                              setEditContent('');
+                            }}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          {canEdit && (
+                            <button
+                              className="btn btn-ghost btn-xs"
+                              onClick={() => {
+                                setEditingComment(comment.id);
+                                setEditContent(comment.content);
+                              }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              className="btn btn-ghost btn-xs text-error"
+                              onClick={() => handleDeleteComment(comment.id)}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
