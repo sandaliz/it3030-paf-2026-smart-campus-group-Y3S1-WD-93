@@ -21,7 +21,10 @@ export const ticketService = {
 
   // Get tickets assigned to technician
   getAssignedTickets: async (params = {}) => {
-    const response = await api.get('/api/tickets/assigned-to-me', { params });
+    const { page = 0, size = 10, ...filters } = params;
+    const response = await api.get('/api/tickets/assigned-to-me', { 
+      params: { page, size, ...filters }
+    });
     return response.data;
   },
 
