@@ -40,11 +40,6 @@ public class Booking {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
-    // Google Calendar fields
-    private String googleCalendarEventId;
-    private boolean calendarSynced;
-    private LocalDateTime lastCalendarSync;
-    
     // Constructor
     public Booking() {
         this.createdAt = LocalDateTime.now();
@@ -97,20 +92,4 @@ public class Booking {
     
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
-    
-    // Google Calendar getters and setters
-    public String getGoogleCalendarEventId() { return googleCalendarEventId; }
-    public void setGoogleCalendarEventId(String googleCalendarEventId) { 
-        this.googleCalendarEventId = googleCalendarEventId; 
-    }
-    
-    public boolean isCalendarSynced() { return calendarSynced; }
-    public void setCalendarSynced(boolean calendarSynced) { 
-        this.calendarSynced = calendarSynced; 
-    }
-    
-    public LocalDateTime getLastCalendarSync() { return lastCalendarSync; }
-    public void setLastCalendarSync(LocalDateTime lastCalendarSync) { 
-        this.lastCalendarSync = lastCalendarSync; 
-    }
 }
