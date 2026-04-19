@@ -51,8 +51,8 @@ export const useNotifications = () => {
             const unreadResponse = await axios.get('/api/notifications/unread-count');
             if (unreadResponse.data && unreadResponse.data.count !== undefined) {
                 // Calculate actual unread count considering local read state
-                const bookingUnread = bookings.filter(b => !readNotifications.has(`booking-${b.id}`)).length;
-                const ticketUnread = tickets.filter(t => !readNotifications.has(`ticket-${t.id}`)).length;
+                const bookingUnread = (Array.isArray(bookings) ? bookings : []).filter(b => !readNotifications.has(`booking-${b.id}`)).length;
+                const ticketUnread = (Array.isArray(tickets) ? tickets : []).filter(t => !readNotifications.has(`ticket-${t.id}`)).length;
                 const actualCount = unreadResponse.data.count + bookingUnread + ticketUnread;
                 setUnreadCount(actualCount);
             }
@@ -68,8 +68,8 @@ export const useNotifications = () => {
             const response = await axios.get('/api/notifications/unread-count');
             if (response.data && response.data.count !== undefined) {
                 // Calculate actual unread count considering local read state
-                const bookingUnread = userBookings.filter(b => !readNotifications.has(`booking-${b.id}`)).length;
-                const ticketUnread = userTickets.filter(t => !readNotifications.has(`ticket-${t.id}`)).length;
+                const bookingUnread = (Array.isArray(userBookings) ? userBookings : []).filter(b => !readNotifications.has(`booking-${b.id}`)).length;
+                const ticketUnread = (Array.isArray(userTickets) ? userTickets : []).filter(t => !readNotifications.has(`ticket-${t.id}`)).length;
                 const actualCount = response.data.count + bookingUnread + ticketUnread;
                 setUnreadCount(actualCount);
             }
@@ -106,8 +106,8 @@ export const useNotifications = () => {
     };
 
     const getTotalUnreadCount = () => {
-        const bookingUnread = userBookings.filter(b => !readNotifications.has(`booking-${b.id}`)).length;
-        const ticketUnread = userTickets.filter(t => !readNotifications.has(`ticket-${t.id}`)).length;
+        const bookingUnread = (Array.isArray(userBookings) ? userBookings : []).filter(b => !readNotifications.has(`booking-${b.id}`)).length;
+        const ticketUnread = (Array.isArray(userTickets) ? userTickets : []).filter(t => !readNotifications.has(`ticket-${t.id}`)).length;
         return unreadCount + bookingUnread + ticketUnread;
     };
 
@@ -115,8 +115,8 @@ export const useNotifications = () => {
     const [reactiveCount, setReactiveCount] = useState(0);
     
     useEffect(() => {
-        const bookingUnread = userBookings.filter(b => !readNotifications.has(`booking-${b.id}`)).length;
-        const ticketUnread = userTickets.filter(t => !readNotifications.has(`ticket-${t.id}`)).length;
+        const bookingUnread = (Array.isArray(userBookings) ? userBookings : []).filter(b => !readNotifications.has(`booking-${b.id}`)).length;
+        const ticketUnread = (Array.isArray(userTickets) ? userTickets : []).filter(t => !readNotifications.has(`ticket-${t.id}`)).length;
         const totalCount = unreadCount + bookingUnread + ticketUnread;
         setReactiveCount(totalCount);
     }, [unreadCount, userBookings, userTickets, readNotifications]);

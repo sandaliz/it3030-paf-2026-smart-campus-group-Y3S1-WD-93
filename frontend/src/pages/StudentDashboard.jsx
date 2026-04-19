@@ -16,10 +16,12 @@ const StudentDashboard = () => {
     const [facilities, setFacilities] = useState([]);
     const [myTickets, setMyTickets] = useState([]);
     const [savedResources, setSavedResources] = useState([]);
+    const [notifications, setNotifications] = useState([]);
     const [noteModalOpen, setNoteModalOpen] = useState(false);
     const [selectedResource, setSelectedResource] = useState(null);
     const [noteText, setNoteText] = useState('');
     const { user } = useAuth();
+    const { userBookings, userTickets, markAsRead, markAllAsRead, isNotificationRead, getTotalUnreadCount } = useNotifications();
 
     // Helper function to extract data from Page response
     const extractData = (response) => response?.data?.content || response?.data || [];
@@ -326,10 +328,9 @@ const StudentDashboard = () => {
                                     allNotifications.map((n) => (
                                         <div 
                                             key={n.id} 
-                                            className={`flex gap-4 p-5 bg-base-200 rounded-2xl border border-base-300 items-start hover:bg-base-100 transition-colors cursor-pointer ${
+                                            className={`flex gap-4 p-5 bg-base-200 rounded-2xl border border-base-300 items-start hover:bg-base-100 transition-colors ${
                                                 isNotificationRead(n.id) ? 'opacity-60' : ''
                                             }`}
-                                            onClick={() => markAsRead(n.id)}
                                         >
                                             <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center text-xl shadow-inner border border-secondary/20">
                                                 {n.icon}
@@ -343,6 +344,17 @@ const StudentDashboard = () => {
                                                 </h4>
                                                 <p className="text-xs opacity-60 mt-1">{n.message}</p>
                                             </div>
+                                            {!isNotificationRead(n.id) && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        markAsRead(n.id);
+                                                    }}
+                                                    className="btn btn-xs btn-secondary text-white"
+                                                >
+                                                    Mark read
+                                                </button>
+                                            )}
                                         </div>
                                     ))
                                 ) : (
