@@ -54,6 +54,13 @@ import LecturerDashboard from './pages/LecturerDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import StaffDashboard from './pages/StaffDashboard';
 import TechnicianDashboard from './pages/technician/TechnicianDashboard';
+import NotificationSettings from './components/NotificationSettings';
+import TestAuth from './components/TestAuth';
+import SimpleAuthTest from './components/SimpleAuthTest';
+import AuthDebug from './components/AuthDebug';
+import NetworkTest from './components/NetworkTest';
+import ConsoleErrorCapture from './components/ConsoleErrorCapture';
+import RoleSwitcher from './components/RoleSwitcher';
 
 const AppContent = () => {
   const location = useLocation();
@@ -203,6 +210,55 @@ const AppContent = () => {
           <Route path="/technician/dashboard" element={
             <ProtectedRoute requiredRoles={['TECHNICIAN']}>
               <TechnicianDashboard />
+            </ProtectedRoute>
+          } />
+          
+          {/* Notification Settings - Available to all authenticated users */}
+          <Route path="/settings/notifications" element={
+            <ProtectedRoute>
+              <NotificationSettings />
+            </ProtectedRoute>
+          } />
+          
+          {/* Test Auth - Debug authentication issues */}
+          <Route path="/test-auth" element={
+            <ProtectedRoute>
+              <TestAuth />
+            </ProtectedRoute>
+          } />
+          
+          {/* Simple Auth Test - More focused debugging */}
+          <Route path="/simple-auth-test" element={
+            <ProtectedRoute>
+              <SimpleAuthTest />
+            </ProtectedRoute>
+          } />
+          
+          {/* Auth Debug - Comprehensive authentication debugging */}
+          <Route path="/auth-debug" element={
+            <ProtectedRoute>
+              <AuthDebug />
+            </ProtectedRoute>
+          } />
+          
+          {/* Network Test - Fix network connectivity issues */}
+          <Route path="/network-test" element={
+            <ProtectedRoute>
+              <NetworkTest />
+            </ProtectedRoute>
+          } />
+          
+          {/* Console Error Capture - Capture exact console errors */}
+          <Route path="/error-capture" element={
+            <ProtectedRoute>
+              <ConsoleErrorCapture />
+            </ProtectedRoute>
+          } />
+          
+          {/* Role Switcher - Test different roles */}
+          <Route path="/role-switcher" element={
+            <ProtectedRoute>
+              <RoleSwitcher />
             </ProtectedRoute>
           } />
           
