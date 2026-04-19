@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { resourceService } from '../../services/resourceService';
+import { userService } from '../../services/userService';
 import ResourceForm from '../../components/forms/ResourceForm';
 import { TableRowSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import ResourceAnalyticsModal from '../../components/common/ResourceAnalyticsModal';
 import AdminSidebar from '../../components/admin/AdminSidebar';
+import AssignResourceStaffModal from '../../components/resources/AssignResourceStaffModal';
 
 const ResourceManagementPage = () => {
   const { user, hasRole, hasAnyRole } = useAuth();
@@ -23,6 +25,10 @@ const ResourceManagementPage = () => {
   const [editingResource, setEditingResource] = useState(null);
   const [selectedResources, setSelectedResources] = useState([]);
   const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assigningResource, setAssigningResource] = useState(null);
+  const [viewMode, setViewMode] = useState('all'); // 'all', 'my', 'assigned'
+  const [staffUsers, setStaffUsers] = useState({});
   const [filters, setFilters] = useState({
     type: '',
     status: '',
@@ -41,11 +47,29 @@ const ResourceManagementPage = () => {
 
   useEffect(() => {
     fetchResources();
-  }, [filters.type, filters.status, filters.minCapacity, debouncedLocation, pagination.page]);
+  }, [viewMode, filters.type, filters.status, filters.minCapacity, debouncedLocation, pagination.page]);
 
   useEffect(() => {
     fetchAllResources();
   }, []);
+
+  useEffect(() => {
+    const fetchStaffUsers = async () => {
+      if (hasRole('ADMIN')) {
+        try {
+          const staff = await userService.getStaff();
+          const staffMap = {};
+          staff.forEach(s => {
+            staffMap[s.id] = { name: s.name, email: s.email };
+          });
+          setStaffUsers(staffMap);
+        } catch (err) {
+          console.error('Error fetching staff users:', err);
+        }
+      }
+    };
+    fetchStaffUsers();
+  }, [hasRole]);
 
   const fetchAllResources = async () => {
     try {
@@ -74,11 +98,33 @@ const ResourceManagementPage = () => {
       } else {
         setLoading(true);
       }
-      
+
       let data;
-      
+
+      // Staff viewing assigned resources
+      if (viewMode === 'assigned' && hasAnyRole(['STAFF', 'RESOURCE_MANAGER'])) {
+        const assignedData = await resourceService.getResourcesAssignedToMe();
+        data = {
+          content: assignedData,
+          totalElements: assignedData.length,
+          totalPages: 1,
+          size: assignedData.length,
+          number: 0
+        };
+      }
+      // Viewing my resources (created by me)
+      else if (viewMode === 'my') {
+        const myData = await resourceService.searchResources({ creator: user?.id });
+        data = {
+          content: myData,
+          totalElements: myData.length,
+          totalPages: 1,
+          size: myData.length,
+          number: 0
+        };
+      }
       // Use search if filters are applied, otherwise get paginated results
-      if (hasFilters) {
+      else if (hasFilters) {
         const searchFilters = {
           ...filters,
           location: debouncedLocation
@@ -139,6 +185,31 @@ const ResourceManagementPage = () => {
   const handleEditResource = (resource) => {
     setEditingResource(resource);
     setShowForm(true);
+  };
+
+  const handleAssignStaff = (resource) => {
+    setAssigningResource(resource);
+    setShowAssignModal(true);
+  };
+
+  const handleAssignStaffSubmit = async (staffIds) => {
+    try {
+      await resourceService.assignStaffToResource(assigningResource.id, staffIds);
+      setSuccess('Staff assigned successfully');
+      setError(null);
+      setShowAssignModal(false);
+      setAssigningResource(null);
+      await fetchResources();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError('Failed to assign staff');
+      setSuccess(null);
+      console.error('Error assigning staff:', err);
+    }
+  };
+
+  const handleUnassignStaff = async () => {
+    await fetchResources();
   };
 
   const handleDeleteResource = async (resourceId) => {
@@ -343,6 +414,40 @@ const ResourceManagementPage = () => {
               <div>
                 <h1 className="text-3xl font-bold">Resource Management</h1>
                 <p className="text-base-content/70">Manage campus facilities and equipment</p>
+                {hasAnyRole(['STAFF', 'RESOURCE_MANAGER']) && (
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      className={`btn btn-sm ${viewMode === 'all' ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => {
+                        setViewMode('all');
+                        setFilters({ type: '', status: '', location: '', minCapacity: '' });
+                        setPagination(prev => ({ ...prev, page: 0 }));
+                      }}
+                    >
+                      All Resources
+                    </button>
+                    <button
+                      className={`btn btn-sm ${viewMode === 'my' ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => {
+                        setViewMode('my');
+                        setFilters({ type: '', status: '', location: '', minCapacity: '' });
+                        setPagination(prev => ({ ...prev, page: 0 }));
+                      }}
+                    >
+                      My Resources
+                    </button>
+                    <button
+                      className={`btn btn-sm ${viewMode === 'assigned' ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => {
+                        setViewMode('assigned');
+                        setFilters({ type: '', status: '', location: '', minCapacity: '' });
+                        setPagination(prev => ({ ...prev, page: 0 }));
+                      }}
+                    >
+                      Assigned to Me
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="flex gap-2">
                 <button
@@ -618,6 +723,7 @@ const ResourceManagementPage = () => {
                   <th>Location</th>
                   <th>Capacity</th>
                   <th className="w-48">Status</th>
+                  <th>Assigned Staff</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -629,14 +735,14 @@ const ResourceManagementPage = () => {
                   ))
                 ) : resources.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="text-center py-8">
+                    <td colSpan="8" className="text-center py-8">
                       <div className="flex flex-col items-center gap-2">
                         <svg className="w-12 h-12 text-base-content/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <p className="text-base-content/60">No resources found</p>
                         {Object.values(filters).some(value => value !== '') && (
-                          <button 
+                          <button
                             className="btn btn-sm btn-outline"
                             onClick={handleClearFilters}
                           >
@@ -685,7 +791,31 @@ const ResourceManagementPage = () => {
                         </span>
                       </td>
                       <td>
+                        {resource.assignedStaff && resource.assignedStaff.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {resource.assignedStaff.map((staffId) => {
+                              const staff = staffUsers[staffId];
+                              return (
+                                <span key={staffId} className="badge badge-outline badge-xs" title={staff?.email || staffId}>
+                                  {staff?.name || staffId}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-base-content/50">Unassigned</span>
+                        )}
+                      </td>
+                      <td>
                         <div className="flex gap-2">
+                          {hasRole('ADMIN') && (
+                            <button
+                              className="btn btn-sm btn-info"
+                              onClick={() => handleAssignStaff(resource)}
+                            >
+                              Assign
+                            </button>
+                          )}
                           {canAddEditResources && (
                             <button
                               className="btn btn-sm btn-outline"
@@ -767,6 +897,18 @@ const ResourceManagementPage = () => {
       <ResourceAnalyticsModal
         isOpen={showAnalyticsModal}
         onClose={() => setShowAnalyticsModal(false)}
+      />
+
+      {/* Assign Staff Modal */}
+      <AssignResourceStaffModal
+        isOpen={showAssignModal}
+        resource={assigningResource}
+        onClose={() => {
+          setShowAssignModal(false);
+          setAssigningResource(null);
+        }}
+        onAssign={handleAssignStaffSubmit}
+        onUnassign={handleUnassignStaff}
       />
         </div>
       </div>

@@ -59,7 +59,7 @@ const ResourceListPage = () => {
   // Handle booking
   const handleBookResource = (resource) => {
     if (!isResourceAvailable(resource)) {
-      alert('This resource is not available at the current time. Please check the availability schedule.');
+      alert('This resource is not available at the current time. Please check the availability schedule in the details.');
       return;
     }
     
