@@ -28,6 +28,19 @@ const AdminDashboard = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
+  // User management states
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [showUserDetailsModal, setShowUserDetailsModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    username: '',
+    roles: ['ROLE_STUDENT']
+  });
+
   // Fetch dashboard stats
   const fetchStats = async () => {
     try {
@@ -135,7 +148,7 @@ const AdminDashboard = () => {
   // Toggle user status
   const handleToggleUserStatus = async (userId) => {
     try {
-      await axios.put(`/api/admin/dashboard/users/${userId}/toggle-status`);
+      await apiInstance.put(`/api/admin/dashboard/users/${userId}/toggle-status`);
       fetchAllUsers();
       fetchStats();
     } catch (error) {
@@ -143,6 +156,76 @@ const AdminDashboard = () => {
       alert('Failed to update user status');
     }
   };
+
+  // Edit user role
+  const handleEditUserRole = (user) => {
+    setSelectedUser(user);
+    setShowEditUserModal(true);
+  };
+
+  // Update user role
+  const handleUpdateUserRole = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      await apiInstance.put(`/api/admin/dashboard/users/${selectedUser.id}/role`, { role: selectedUser.roles[0] });
+      setShowEditUserModal(false);
+      setSelectedUser(null);
+      fetchAllUsers();
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      alert('Failed to update user role');
+    }
+  };
+
+  // View user details
+  const handleViewUserDetails = (user) => {
+    setSelectedUser(user);
+    setShowUserDetailsModal(true);
+  };
+
+  // Delete user
+  const handleDeleteUser = async (user) => {
+    if (!confirm(`Are you sure you want to delete user "${user.name}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await apiInstance.delete(`/api/admin/dashboard/users/${user.id}`);
+      fetchAllUsers();
+      fetchStats();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('Failed to delete user');
+    }
+  };
+
+  // Create new user
+  const handleCreateUser = async () => {
+    if (!newUser.name || !newUser.email || !newUser.username) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      await apiInstance.post('/api/admin/dashboard/users', newUser);
+      setShowCreateUserModal(false);
+      setNewUser({ name: '', email: '', username: '', roles: ['ROLE_STUDENT'] });
+      fetchAllUsers();
+      fetchStats();
+    } catch (error) {
+      console.error('Error creating user:', error);
+      alert('Failed to create user');
+    }
+  };
+
+  // Filter users based on search term
+  const filteredUsers = allUsers.filter(user => 
+    user.name?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+    user.email?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+    user.username?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+    user.roles?.some(role => role.toLowerCase().includes(userSearchTerm.toLowerCase()))
+  );
 
   // Format date
   const formatDate = (dateString) => {
@@ -261,7 +344,7 @@ const AdminDashboard = () => {
             {/* Pending Bookings */}
             <div className="bg-base-100 shadow-sm rounded-lg p-6">
               <h2 className="text-xl font-bold mb-4 flex items-center">
-                📝 PENDING BOOKINGS
+                &#x1f4dd; PENDING BOOKINGS
               </h2>
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {pendingBookings.length === 0 ? (
@@ -310,7 +393,7 @@ const AdminDashboard = () => {
             {/* Open Tickets */}
             <div className="bg-base-100 shadow-sm rounded-lg p-6">
               <h2 className="text-xl font-bold mb-4 flex items-center">
-                🎫 OPEN TICKETS
+                &#x1f9ab; OPEN TICKETS
               </h2>
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {openTickets.length === 0 ? (
@@ -344,11 +427,141 @@ const AdminDashboard = () => {
             </div>
           </div>
 
+          {/* User Management CRUD */}
+          <div className="bg-base-100 shadow-sm rounded-lg p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold flex items-center">
+                &#x1f465; USER MANAGEMENT
+              </h2>
+              <div className="flex gap-2">
+                <button 
+                  className="btn btn-sm btn-primary"
+                  onClick={() => setShowCreateUserModal(true)}
+                >
+                  Add New User
+                </button>
+                <input 
+                  type="text" 
+                  placeholder="Search users..." 
+                  className="input input-sm input-bordered w-48"
+                  value={userSearchTerm}
+                  onChange={(e) => setUserSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="table table-zebra w-full">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Roles</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Last Login</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => (
+                    <tr key={user.id}>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <div className="avatar">
+                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                              <span className="text-primary text-sm font-semibold">
+                                {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-semibold">{user.name || 'Unknown'}</div>
+                            <div className="text-xs text-base-content/60">{user.username}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="text-sm">{user.email}</td>
+                      <td>
+                        <div className="flex gap-1 flex-wrap">
+                          {user.roles.map((role, index) => (
+                            <span key={index} className={`badge badge-xs ${
+                              role === 'ROLE_ADMIN' ? 'badge-error' :
+                              role === 'ROLE_LECTURER' ? 'badge-info' :
+                              role === 'ROLE_TECHNICIAN' ? 'badge-warning' :
+                              role === 'ROLE_STUDENT' ? 'badge-success' : 'badge-outline'
+                            }`}>
+                              {role.replace('ROLE_', '')}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`badge badge-sm ${user.enabled ? 'badge-success' : 'badge-error'}`}>
+                          {user.enabled ? 'Active' : 'Disabled'}
+                        </span>
+                      </td>
+                      <td className="text-sm">
+                        {user.createdAt ? formatDate(user.createdAt) : 'N/A'}
+                      </td>
+                      <td className="text-sm">
+                        {user.lastLoginAt ? formatDate(user.lastLoginAt) : 'Never'}
+                      </td>
+                      <td>
+                        <div className="dropdown dropdown-left">
+                          <label tabIndex={0} className="btn btn-xs btn-ghost btn-circle">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
+                            </svg>
+                          </label>
+                          <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                            <li>
+                              <button 
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => handleEditUserRole(user)}
+                              >
+                                Edit Role
+                              </button>
+                            </li>
+                            <li>
+                              <button 
+                                className={`btn btn-ghost btn-sm ${user.enabled ? 'text-warning' : 'text-success'}`}
+                                onClick={() => handleToggleUserStatus(user.id)}
+                              >
+                                {user.enabled ? 'Disable User' : 'Enable User'}
+                              </button>
+                            </li>
+                            <li>
+                              <button 
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => handleViewUserDetails(user)}
+                              >
+                                View Details
+                              </button>
+                            </li>
+                            <li>
+                              <button 
+                                className="btn btn-ghost btn-sm text-error"
+                                onClick={() => handleDeleteUser(user)}
+                              >
+                                Delete User
+                              </button>
+                            </li>
+                          </ul>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           {/* All Resources */}
           <div className="bg-base-100 shadow-sm rounded-lg p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold flex items-center">
-                🏢 ALL RESOURCES
+                &#x1f3e2; ALL RESOURCES
               </h2>
               <div className="flex gap-2">
                 <button className="btn btn-sm btn-primary">Add New Resource</button>
@@ -391,82 +604,39 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* All Users */}
-            <div className="bg-base-100 shadow-sm rounded-lg p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold flex items-center">
-                  👥 ALL USERS
-                </h2>
-                <div className="flex gap-2">
-                  <button className="btn btn-sm btn-primary">Add User</button>
-                  <button className="btn btn-sm btn-outline">Filter by Role</button>
-                </div>
-              </div>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {allUsers.slice(0, 5).map((user) => (
-                  <div key={user.id} className="border border-base-300 rounded-lg p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="font-semibold">{user.name}</h3>
-                        <p className="text-sm text-base-content/70">{user.email}</p>
-                        <div className="flex gap-1 mt-1">
-                          {user.roles.map((role, index) => (
-                            <span key={index} className="badge badge-xs badge-outline">
-                              {role}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button className="btn btn-xs btn-outline">Edit Role</button>
-                        <button
-                          className={`btn btn-xs ${user.enabled ? 'btn-warning' : 'btn-success'}`}
-                          onClick={() => handleToggleUserStatus(user.id)}
-                        >
-                          {user.enabled ? 'Disable' : 'Enable'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+          {/* All Bookings */}
+          <div className="bg-base-100 shadow-sm rounded-lg p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold flex items-center">
+                &#x1f4c5; ALL BOOKINGS
+              </h2>
+              <div className="flex gap-2">
+                <button className="btn btn-sm btn-outline">Filter by Date</button>
+                <button className="btn btn-sm btn-outline">Export</button>
               </div>
             </div>
-
-            {/* All Bookings */}
-            <div className="bg-base-100 shadow-sm rounded-lg p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold flex items-center">
-                  📅 ALL BOOKINGS
-                </h2>
-                <div className="flex gap-2">
-                  <button className="btn btn-sm btn-outline">Filter by Date</button>
-                  <button className="btn btn-sm btn-outline">Export</button>
-                </div>
-              </div>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {allBookings.slice(0, 5).map((booking) => (
-                  <div key={booking.id} className="border border-base-300 rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-semibold">{booking.resource}</h3>
-                        <p className="text-sm text-base-content/70">{booking.user}</p>
-                        <p className="text-xs text-base-content/60">
-                          {formatDateTime(booking.startTime)} - {formatDateTime(booking.endTime)}
-                        </p>
-                      </div>
-                      <div>
-                        <span className={`badge badge-sm ${
-                          booking.status === 'APPROVED' ? 'badge-success' :
-                          booking.status === 'PENDING' ? 'badge-warning' : 'badge-error'
-                        }`}>
-                          {booking.status}
-                        </span>
-                      </div>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {allBookings.slice(0, 5).map((booking) => (
+                <div key={booking.id} className="border border-base-300 rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-semibold">{booking.resource}</h3>
+                      <p className="text-sm text-base-content/70">{booking.user}</p>
+                      <p className="text-xs text-base-content/60">
+                        {formatDateTime(booking.startTime)} - {formatDateTime(booking.endTime)}
+                      </p>
+                    </div>
+                    <div>
+                      <span className={`badge badge-sm ${
+                        booking.status === 'APPROVED' ? 'badge-success' :
+                        booking.status === 'PENDING' ? 'badge-warning' : 'badge-error'
+                      }`}>
+                        {booking.status}
+                      </span>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -474,7 +644,7 @@ const AdminDashboard = () => {
           <div className="bg-base-100 shadow-sm rounded-lg p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold flex items-center">
-                🎫 ALL TICKETS
+                &#x1f9ab; ALL TICKETS
               </h2>
               <div className="flex gap-2">
                 <button className="btn btn-sm btn-outline">Filter by Status</button>
@@ -544,6 +714,176 @@ const AdminDashboard = () => {
               >
                 Reject Booking
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create User Modal */}
+      {showCreateUserModal && (
+        <div className="modal modal-open">
+          <div className="modal-box w-11/12 max-w-md">
+            <h3 className="font-bold text-lg mb-4">Create New User</h3>
+            <div className="space-y-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Name</span>
+                </label>
+                <input
+                  type="text"
+                  className="input input-bordered"
+                  placeholder="Enter user name"
+                  value={newUser.name}
+                  onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                />
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Email</span>
+                </label>
+                <input
+                  type="email"
+                  className="input input-bordered"
+                  placeholder="Enter email address"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                />
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Username</span>
+                </label>
+                <input
+                  type="text"
+                  className="input input-bordered"
+                  placeholder="Enter username"
+                  value={newUser.username}
+                  onChange={(e) => setNewUser({...newUser, username: e.target.value})}
+                />
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Role</span>
+                </label>
+                <select
+                  className="select select-bordered"
+                  value={newUser.roles[0]}
+                  onChange={(e) => setNewUser({...newUser, roles: [e.target.value]})}
+                >
+                  <option value="ROLE_STUDENT">Student</option>
+                  <option value="ROLE_LECTURER">Lecturer</option>
+                  <option value="ROLE_TECHNICIAN">Technician</option>
+                  <option value="ROLE_NON_ACADEMIC">Non-Academic</option>
+                  <option value="ROLE_ADMIN">Admin</option>
+                </select>
+              </div>
+            </div>
+            <div className="modal-action">
+              <button className="btn" onClick={() => setShowCreateUserModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleCreateUser}>
+                Create User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {showEditUserModal && selectedUser && (
+        <div className="modal modal-open">
+          <div className="modal-box w-11/12 max-w-md">
+            <h3 className="font-bold text-lg mb-4">Edit User Role</h3>
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Edit role for <strong>{selectedUser.name}</strong>
+              </p>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Role</span>
+                </label>
+                <select
+                  className="select select-bordered"
+                  value={selectedUser.roles[0]}
+                  onChange={(e) => setSelectedUser({...selectedUser, roles: [e.target.value]})}
+                >
+                  <option value="ROLE_STUDENT">Student</option>
+                  <option value="ROLE_LECTURER">Lecturer</option>
+                  <option value="ROLE_TECHNICIAN">Technician</option>
+                  <option value="ROLE_NON_ACADEMIC">Non-Academic</option>
+                  <option value="ROLE_ADMIN">Admin</option>
+                </select>
+              </div>
+            </div>
+            <div className="modal-action">
+              <button className="btn" onClick={() => setShowEditUserModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleUpdateUserRole}>
+                Update Role
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Details Modal */}
+      {showUserDetailsModal && selectedUser && (
+        <div className="modal modal-open">
+          <div className="modal-box w-11/12 max-w-md">
+            <h3 className="font-bold text-lg mb-4">User Details</h3>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="avatar">
+                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                    <span className="text-primary text-lg font-semibold">
+                      {selectedUser.name ? selectedUser.name.charAt(0).toUpperCase() : 'U'}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <div className="font-semibold">{selectedUser.name || 'Unknown'}</div>
+                  <div className="text-sm text-base-content/60">@{selectedUser.username}</div>
+                </div>
+              </div>
+              
+              <div className="divider"></div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Email:</span>
+                  <span className="text-sm">{selectedUser.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Status:</span>
+                  <span className={`badge badge-sm ${selectedUser.enabled ? 'badge-success' : 'badge-error'}`}>
+                    {selectedUser.enabled ? 'Active' : 'Disabled'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Roles:</span>
+                  <div className="flex gap-1">
+                    {selectedUser.roles.map((role, index) => (
+                      <span key={index} className={`badge badge-xs ${
+                        role === 'ROLE_ADMIN' ? 'badge-error' :
+                        role === 'ROLE_LECTURER' ? 'badge-info' :
+                        role === 'ROLE_TECHNICIAN' ? 'badge-warning' :
+                        role === 'ROLE_STUDENT' ? 'badge-success' : 'badge-outline'
+                      }`}>
+                        {role.replace('ROLE_', '')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Created:</span>
+                  <span className="text-sm">{selectedUser.createdAt ? formatDate(selectedUser.createdAt) : 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Last Login:</span>
+                  <span className="text-sm">{selectedUser.lastLoginAt ? formatDate(selectedUser.lastLoginAt) : 'Never'}</span>
+                </div>
+              </div>
+            </div>
+            <div className="modal-action">
+              <button className="btn" onClick={() => setShowUserDetailsModal(false)}>Close</button>
             </div>
           </div>
         </div>
