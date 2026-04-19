@@ -222,19 +222,19 @@ public class DashboardController {
      * Get staff dashboard statistics
      */
     @GetMapping("/staff/dashboard/stats")
-    @PreAuthorize("hasRole('STAFF')")
+    @PreAuthorize("hasRole('NON_ACADEMIC')")
     public ResponseEntity<Map<String, Object>> getStaffDashboardStats(Authentication authentication) {
         try {
             String staffId = authentication.getName();
             Map<String, Object> stats = new HashMap<>();
             
-            // Get staff's managed resources
+            // Get staff's created resources
             long myResources = resourceService.getAllResources(null, null, null, null, null, null).stream()
                     .filter(resource -> {
                         try {
-                            // Filter resources that staff might manage
-                            Object type = resource.getClass().getMethod("getType").invoke(resource);
-                            return type.toString().contains("EQUIPMENT") || type.toString().contains("FACILITY");
+                            // Filter resources created by current user
+                            Object createdBy = resource.getClass().getMethod("getCreatedBy").invoke(resource);
+                            return createdBy != null && createdBy.toString().equals(staffId);
                         } catch (Exception e) {
                             return false;
                         }
@@ -246,8 +246,9 @@ public class DashboardController {
             List<Booking> pendingBookings = bookingService.getAllBookings("PENDING", null);
             stats.put("resourceRequests", pendingBookings.size());
             
-            // Get pending approvals (same as resource requests for staff)
-            stats.put("pendingApprovals", pendingBookings.size());
+            // Get maintenance tickets count
+            var allTickets = ticketService.getAllTickets(org.springframework.data.domain.PageRequest.of(0, 1000));
+            stats.put("pendingApprovals", allTickets.getTotalElements());
             
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
@@ -261,7 +262,7 @@ public class DashboardController {
      * Get staff recent activity
      */
     @GetMapping("/staff/dashboard/activity")
-    @PreAuthorize("hasRole('STAFF')")
+    @PreAuthorize("hasRole('NON_ACADEMIC')")
     public ResponseEntity<List<Map<String, Object>>> getStaffActivity(Authentication authentication) {
         try {
             List<Map<String, Object>> activities = new ArrayList<>();
