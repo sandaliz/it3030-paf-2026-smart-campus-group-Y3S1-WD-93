@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import apiInstance from '../../services/axiosInstance';
 import { userService } from '../../services/userService';
+import BookingNotifications from '../../components/bookings/BookingNotifications';
 
 const normalizeRole = (role) => {
   if (!role) {
@@ -19,6 +21,7 @@ const normalizeUser = (user) => ({
 
 const AdminDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -343,8 +346,18 @@ const AdminDashboard = () => {
       <div className="flex-1 flex flex-col overflow-auto">
         {/* Header */}
         <div className="bg-base-100 shadow-sm border-b border-base-300 p-6">
-          <h1 className="text-3xl font-bold text-base-content">ADMIN DASHBOARD</h1>
-          <p className="text-base-content/70 mt-1">Complete System Overview</p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-base-content">ADMIN DASHBOARD</h1>
+              <p className="text-base-content/70 mt-1">Complete System Overview</p>
+            </div>
+            <button 
+              onClick={() => navigate('/admin/notification-analytics')}
+              className="btn btn-primary flex items-center gap-2"
+            >
+              📊 Notification Analytics
+            </button>
+          </div>
         </div>
 
         <div className="p-6 space-y-6">

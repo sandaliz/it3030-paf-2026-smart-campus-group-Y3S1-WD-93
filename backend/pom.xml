@@ -131,6 +131,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Spring Boot Mail for email functionality -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+
 		<!-- SpringDoc OpenAPI for Swagger Documentation -->
 		<dependency>
 			<groupId>org.springdoc</groupId>

@@ -1,9 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import NotificationPanel from './components/NotificationPanel';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
+    const navigate = useNavigate();
 
     if (!user) return null;
 
@@ -22,7 +24,7 @@ const Navbar = () => {
                     </label>
                     <ul tabIndex={0} className="mt-3 z-[1] p-2 shadow-2xl menu menu-sm dropdown-content bg-base-100 rounded-box w-52 border border-base-200">
                         <li className="menu-title px-4 py-2 text-xs opacity-50">{user.name}</li>
-                        <li><a>Profile</a></li>
+                        <li><a onClick={() => navigate('/profile')}>Profile</a></li>
                         <li><a>Settings</a></li>
                         <div className="divider my-0"></div>
                         <li><a onClick={logout} className="text-error">Logout</a></li>

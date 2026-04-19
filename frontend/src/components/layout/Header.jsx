@@ -131,7 +131,7 @@ const Header = () => {
                         )}
                         
                         <div className="flex items-center gap-4 ml-8">
-                            {/* Notification Bell */}
+                            {/* Notification Bell - Available for all authenticated users */}
                             {user && (
                                 <div className="dropdown dropdown-end">
                                     <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../hooks/useNotifications';
 
 const LecturerDashboard = () => {
     const [stats, setStats] = useState({
@@ -21,6 +22,14 @@ const LecturerDashboard = () => {
     const [noteText, setNoteText] = useState('');
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { 
+        userBookings, 
+        userTickets, 
+        markAsRead, 
+        markAllAsRead, 
+        isNotificationRead,
+        getTotalUnreadCount 
+    } = useNotifications();
 
     useEffect(() => {
         const fetchDashboardData = async () => {

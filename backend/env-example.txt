@@ -19,6 +19,11 @@ EMAIL_PASSWORD=your-app-password
 # 3. Generate App Password for this application
 # 4. Use the App Password here instead of your regular password
 
+# Email Notification Recipients (Hardcoded in EmailService)
+# Booking Management Notifications: sachiniadmin@gmail.com
+# Ticket Management Notifications: achiniadmin@gmail.com
+# These emails are sent automatically when new bookings/tickets are created
+
 # Database Configuration
 MONGO_URI=mongodb://localhost:27017/uniops
 
