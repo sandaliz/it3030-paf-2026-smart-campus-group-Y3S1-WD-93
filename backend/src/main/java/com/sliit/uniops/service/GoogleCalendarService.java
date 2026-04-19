@@ -35,6 +35,9 @@ public class GoogleCalendarService {
     
     @Autowired(required = false)
     private ResourceService resourceService;
+
+    @Autowired(required = false)
+    private BookingService bookingService;
     
     /**
      * Add a booking to user's Google Calendar
@@ -91,6 +94,13 @@ public class GoogleCalendarService {
             // Insert event
             String calendarId = "primary";
             Event createdEvent = service.events().insert(calendarId, event).execute();
+
+            if (bookingService != null) {
+                booking.setGoogleCalendarEventId(createdEvent.getId());
+                booking.setCalendarSynced(true);
+                booking.setLastCalendarSync(LocalDateTime.now());
+                bookingService.save(booking);
+            }
             
             return createdEvent.getId();
             
@@ -132,6 +142,12 @@ public class GoogleCalendarService {
             
             // Update event
             service.events().update(calendarId, booking.getGoogleCalendarEventId(), event).execute();
+
+            if (bookingService != null) {
+                booking.setCalendarSynced(true);
+                booking.setLastCalendarSync(LocalDateTime.now());
+                bookingService.save(booking);
+            }
             
         } catch (Exception e) {
             e.printStackTrace();

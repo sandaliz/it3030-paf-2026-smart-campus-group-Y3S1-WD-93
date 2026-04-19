@@ -2,8 +2,10 @@ package com.sliit.uniops.service;
 
 import com.sliit.uniops.model.Booking;
 import com.sliit.uniops.model.Resource;
+import com.sliit.uniops.model.User;
 import com.sliit.uniops.repository.BookingRepository;
 import com.sliit.uniops.repository.ResourceRepository;
+import com.sliit.uniops.repository.UserRepository;
 import com.sliit.uniops.dto.request.BookingRequestDTO;
 import com.sliit.uniops.dto.request.BookingUpdateRequestDTO;
 import com.sliit.uniops.exception.*;
@@ -15,7 +17,10 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -28,6 +33,8 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final ResourceRepository resourceRepository;
     private final BookingNotificationService notificationService;
+    private final UserRepository userRepository;
+    private final EmailService emailService;
     
     // Create a new booking request with conflict checking
     public Booking createBooking(BookingRequestDTO request, String userId) {
@@ -35,7 +42,7 @@ public class BookingService {
         Resource resource = resourceRepository.findById(request.getResourceId())
             .orElseThrow(() -> new ResourceNotFoundException("Resource not found with ID: " + request.getResourceId()));
         
-        if (!"ACTIVE".equals(resource.getStatus())) {
+        if (!Resource.ResourceStatus.ACTIVE.equals(resource.getStatus())) {
             throw new ResourceUnavailableException("Resource is not available for booking. Status: " + resource.getStatus());
         }
         
@@ -108,6 +115,11 @@ public class BookingService {
         
         return booking;
     }
+
+    public Booking save(Booking booking) {
+        booking.setUpdatedAt(LocalDateTime.now());
+        return bookingRepository.save(booking);
+    }
     
     // Approve a booking (admin only)
     public Booking approveBooking(String bookingId, String reason, String adminId) {
@@ -153,6 +165,8 @@ public class BookingService {
             bookingId,
             booking.getResourceName()
         );
+
+        sendBookingStatusEmail(approvedBooking, "APPROVED", adminId, reason);
         
         return approvedBooking;
     }
@@ -326,27 +340,152 @@ public int deleteAllCancelledBookings() {
 
 // Get bookings with advanced filters
 public List<Booking> getAllBookings(String status, String resourceId, String userId, String startDate, String endDate) {
-    // Build dynamic query based on provided filters
-    if (status != null && resourceId != null && userId != null) {
-        // Complex filtering - you may need to implement custom query
-        return bookingRepository.findByStatusAndResourceIdAndUserId(status, resourceId, userId);
-    } else if (status != null && resourceId != null) {
-        return bookingRepository.findByResourceIdAndStatus(resourceId, status);
-    } else if (status != null && userId != null) {
-        return bookingRepository.findByUserIdAndStatus(userId, status);
-    } else if (resourceId != null && userId != null) {
-        return bookingRepository.findByResourceIdAndUserId(resourceId, userId);
-    } else if (status != null) {
-        return bookingRepository.findByStatus(status);
-    } else if (resourceId != null) {
-        return bookingRepository.findByResourceId(resourceId);
-    } else if (userId != null) {
-        return bookingRepository.findByUserId(userId);
-    } else if (startDate != null && endDate != null) {
-        return bookingRepository.findByDateBetween(LocalDate.parse(startDate), LocalDate.parse(endDate));
-    } else {
-        return bookingRepository.findAll();
+    List<Booking> bookings = bookingRepository.findAll();
+
+    if (status != null && !status.isBlank()) {
+        bookings = bookings.stream()
+            .filter(booking -> status.equals(booking.getStatus()))
+            .collect(Collectors.toList());
     }
+
+    if (resourceId != null && !resourceId.isBlank()) {
+        bookings = bookings.stream()
+            .filter(booking -> resourceId.equals(booking.getResourceId()))
+            .collect(Collectors.toList());
+    }
+
+    if (userId != null && !userId.isBlank()) {
+        bookings = bookings.stream()
+            .filter(booking -> userId.equals(booking.getUserId()))
+            .collect(Collectors.toList());
+    }
+
+    if (startDate != null && !startDate.isBlank() && endDate != null && !endDate.isBlank()) {
+        LocalDate start = LocalDate.parse(startDate);
+        LocalDate end = LocalDate.parse(endDate);
+        bookings = bookings.stream()
+            .filter(booking -> booking.getDate() != null
+                && !booking.getDate().isBefore(start)
+                && !booking.getDate().isAfter(end))
+            .collect(Collectors.toList());
+    }
+
+    return bookings;
+}
+
+public Map<String, Object> getBookingStatistics() {
+    List<Booking> bookings = bookingRepository.findAll();
+    Map<String, Long> countsByStatus = bookings.stream()
+        .collect(Collectors.groupingBy(Booking::getStatus, Collectors.counting()));
+
+    Map<String, Object> stats = new HashMap<>();
+    stats.put("total", bookings.size());
+    stats.put("pending", countsByStatus.getOrDefault("PENDING", 0L));
+    stats.put("approved", countsByStatus.getOrDefault("APPROVED", 0L));
+    stats.put("rejected", countsByStatus.getOrDefault("REJECTED", 0L));
+    stats.put("cancelled", countsByStatus.getOrDefault("CANCELLED", 0L));
+    return stats;
+}
+
+public Map<String, Object> getPaginatedBookings(int page, int size, String status, String resourceId, String userId, String startDate, String endDate) {
+    List<Booking> filtered = getAllBookings(status, resourceId, userId, startDate, endDate).stream()
+        .sorted(Comparator.comparing(Booking::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+        .collect(Collectors.toList());
+
+    int startIndex = Math.max(0, page * size);
+    int endIndex = Math.min(filtered.size(), startIndex + size);
+    List<Booking> pageContent = startIndex >= filtered.size() ? new ArrayList<>() : filtered.subList(startIndex, endIndex);
+
+    Map<String, Object> response = new HashMap<>();
+    response.put("content", pageContent);
+    response.put("totalElements", filtered.size());
+    response.put("totalPages", size <= 0 ? 1 : (int) Math.ceil((double) filtered.size() / size));
+    response.put("size", size);
+    response.put("number", page);
+    return response;
+}
+
+public List<Booking> bulkUpdateBookingStatus(List<String> bookingIds, String status, String reason, String adminId) {
+    List<Booking> updatedBookings = new ArrayList<>();
+    for (String bookingId : bookingIds) {
+        if ("APPROVED".equals(status)) {
+            updatedBookings.add(approveBooking(bookingId, reason, adminId));
+        } else if ("REJECTED".equals(status)) {
+            updatedBookings.add(rejectBooking(bookingId, reason, adminId));
+        }
+    }
+    return updatedBookings;
+}
+
+public List<Map<String, Object>> getBookingConflicts(String startDate, String endDate) {
+    List<Booking> bookings = getAllBookings(null, null, null, startDate, endDate).stream()
+        .filter(booking -> "APPROVED".equals(booking.getStatus()) || "PENDING".equals(booking.getStatus()))
+        .collect(Collectors.toList());
+
+    List<Map<String, Object>> conflicts = new ArrayList<>();
+    for (int i = 0; i < bookings.size(); i++) {
+        for (int j = i + 1; j < bookings.size(); j++) {
+            Booking first = bookings.get(i);
+            Booking second = bookings.get(j);
+            if (!first.getResourceId().equals(second.getResourceId()) || !first.getDate().equals(second.getDate())) {
+                continue;
+            }
+            boolean overlaps = !(first.getEndTime().compareTo(second.getStartTime()) <= 0
+                || first.getStartTime().compareTo(second.getEndTime()) >= 0);
+            if (overlaps) {
+                Map<String, Object> conflictMap = new HashMap<>();
+                conflictMap.put("resourceId", first.getResourceId());
+                conflictMap.put("resourceName", first.getResourceName());
+                conflictMap.put("date", first.getDate().toString());
+                conflictMap.put("bookingIds", List.of(first.getId(), second.getId()));
+                conflicts.add(conflictMap);
+            }
+        }
+    }
+    return conflicts;
+}
+
+public List<Map<String, Object>> getResourceUtilization(String startDate, String endDate) {
+    List<Booking> bookings = getAllBookings("APPROVED", null, null, startDate, endDate);
+    return bookings.stream()
+        .collect(Collectors.groupingBy(Booking::getResourceId))
+        .entrySet()
+        .stream()
+        .map(entry -> {
+            Booking sample = entry.getValue().get(0);
+            long totalHours = entry.getValue().stream()
+                .mapToLong(booking -> java.time.Duration.between(booking.getStartTime(), booking.getEndTime()).toHours())
+                .sum();
+            Map<String, Object> utilizationMap = new HashMap<>();
+            utilizationMap.put("resourceId", entry.getKey());
+            utilizationMap.put("resourceName", sample.getResourceName());
+            utilizationMap.put("bookingCount", entry.getValue().size());
+            utilizationMap.put("scheduledHours", totalHours);
+            return utilizationMap;
+        })
+        .collect(Collectors.toList());
+}
+
+public Map<String, Object> getUserBookingHistory(String userId, int page, int size) {
+    List<Booking> bookings = bookingRepository.findByUserId(userId).stream()
+        .sorted(Comparator.comparing(Booking::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())))
+        .collect(Collectors.toList());
+
+    int startIndex = Math.max(0, page * size);
+    int endIndex = Math.min(bookings.size(), startIndex + size);
+    List<Booking> pageContent = startIndex >= bookings.size() ? new ArrayList<>() : bookings.subList(startIndex, endIndex);
+
+    Map<String, Object> response = new HashMap<>();
+    response.put("content", pageContent);
+    response.put("totalElements", bookings.size());
+    response.put("totalPages", size <= 0 ? 1 : (int) Math.ceil((double) bookings.size() / size));
+    response.put("size", size);
+    response.put("number", page);
+    return response;
+}
+
+public List<Booking> createRecurringBookings(List<BookingRequestDTO> requests, String userId) {
+    return createMultipleBookings(requests, userId);
 }
 
 // Get bookings by date range with authorization
@@ -376,7 +515,7 @@ public List<Booking> getBookingsByDateRange(String startDate, String endDate, St
             .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
         
         // Check if resource is active
-        if (!"ACTIVE".equals(resource.getStatus())) {
+        if (!Resource.ResourceStatus.ACTIVE.equals(resource.getStatus())) {
             return false;
         }
         
@@ -452,12 +591,14 @@ public List<Booking> getBookingsByDateRange(String startDate, String endDate, St
         LocalTime end = LocalTime.parse(endTime);
         
         // Get all active resources
-        List<Resource> allResources = resourceRepository.findByStatus("ACTIVE");
+        List<Resource> allResources = resourceRepository.findAll().stream()
+            .filter(resource -> Resource.ResourceStatus.ACTIVE.equals(resource.getStatus()))
+            .collect(Collectors.toList());
         
         // Filter by type if specified
         if (type != null && !type.isEmpty()) {
             allResources = allResources.stream()
-                .filter(r -> r.getType().equals(type))
+                .filter(r -> r.getType() != null && r.getType().name().equalsIgnoreCase(type))
                 .collect(Collectors.toList());
         }
         
@@ -480,6 +621,146 @@ public List<Booking> getBookingsByDateRange(String startDate, String endDate, St
         }
         
         return availableResources;
+    }
+
+    private void sendBookingStatusEmail(Booking booking, String status, String adminId, String reason) {
+        userRepository.findById(booking.getUserId()).ifPresent(user -> {
+            if (user.getEmail() == null || user.getEmail().isBlank()) {
+                return;
+            }
+
+            emailService.sendBookingStatusUpdateNotification(
+                user.getEmail(),
+                resolveUserDisplayName(user),
+                booking.getId(),
+                booking.getResourceName(),
+                booking.getDate() != null ? booking.getDate().toString() : "-",
+                booking.getStartTime() != null ? booking.getStartTime().toString() : "-",
+                booking.getEndTime() != null ? booking.getEndTime().toString() : "-",
+                status,
+                resolveAdminLabel(adminId),
+                reason
+            );
+        });
+    }
+
+    private String resolveAdminLabel(String adminId) {
+        if (adminId == null || adminId.isBlank()) {
+            return "Admin";
+        }
+
+        return userRepository.findById(adminId)
+            .map(this::resolveUserDisplayName)
+            .orElse("Admin");
+    }
+
+    private String resolveUserDisplayName(User user) {
+        if (user.getName() != null && !user.getName().isBlank()) {
+            return user.getName();
+        }
+
+        if (user.getEmail() != null && !user.getEmail().isBlank()) {
+            return user.getEmail();
+        }
+
+        return "User";
+    }
+
+    // Generate CSV report for bookings
+    public byte[] generateBookingReport(List<Booking> bookings) {
+        StringBuilder csvContent = new StringBuilder();
+        
+        // CSV Header
+        csvContent.append("Booking ID,Resource Name,Resource Type,User ID,Date,Start Time,End Time,Purpose,Expected Attendees,Status,Created At,Updated At\n");
+        
+        // CSV Data
+        for (Booking booking : bookings) {
+            csvContent.append(escapeCsvField(booking.getId())).append(",");
+            csvContent.append(escapeCsvField(booking.getResourceName())).append(",");
+            csvContent.append(escapeCsvField(booking.getResourceType())).append(",");
+            csvContent.append(escapeCsvField(booking.getUserId())).append(",");
+            csvContent.append(escapeCsvField(booking.getDate() != null ? booking.getDate().toString() : "")).append(",");
+            csvContent.append(escapeCsvField(booking.getStartTime() != null ? booking.getStartTime().toString() : "")).append(",");
+            csvContent.append(escapeCsvField(booking.getEndTime() != null ? booking.getEndTime().toString() : "")).append(",");
+            csvContent.append(escapeCsvField(booking.getPurpose())).append(",");
+            csvContent.append(booking.getExpectedAttendees() != null ? booking.getExpectedAttendees() : "").append(",");
+            csvContent.append(escapeCsvField(booking.getStatus())).append(",");
+            csvContent.append(escapeCsvField(booking.getCreatedAt() != null ? booking.getCreatedAt().toString() : "")).append(",");
+            csvContent.append(escapeCsvField(booking.getUpdatedAt() != null ? booking.getUpdatedAt().toString() : ""));
+            csvContent.append("\n");
+        }
+        
+        return csvContent.toString().getBytes();
+    }
+    
+    // Helper method to escape CSV fields
+    private String escapeCsvField(String field) {
+        if (field == null) {
+            return "";
+        }
+        
+        // If field contains comma, quote, or newline, wrap in quotes and escape quotes
+        if (field.contains(",") || field.contains("\"") || field.contains("\n")) {
+            return "\"" + field.replace("\"", "\"\"") + "\"";
+        }
+        
+        return field;
+    }
+
+    // Get alternative resource suggestions when requested resource is unavailable
+    public List<Resource> getAlternativeResources(String unavailableResourceId, String date, String startTime, String endTime, Integer minCapacity) {
+        // Get the unavailable resource to find similar ones
+        Resource unavailableResource = resourceRepository.findById(unavailableResourceId)
+            .orElseThrow(() -> new ResourceNotFoundException("Resource not found with ID: " + unavailableResourceId));
+        
+        // Get all active resources except the unavailable one
+        List<Resource> allActiveResources = resourceRepository.findAll().stream()
+            .filter(resource -> Resource.ResourceStatus.ACTIVE.equals(resource.getStatus()))
+            .filter(resource -> !resource.getId().equals(unavailableResourceId))
+            .collect(Collectors.toList());
+        
+        // Filter resources that are available at the requested time
+        List<Resource> availableAlternatives = new ArrayList<>();
+        
+        for (Resource resource : allActiveResources) {
+            // Check capacity requirement
+            if (minCapacity != null && resource.getCapacity() < minCapacity) {
+                continue;
+            }
+            
+            // Check if resource is available at the requested time
+            List<Booking> conflicts = bookingRepository.findConflictingBookings(
+                resource.getId(),
+                LocalDate.parse(date),
+                LocalTime.parse(startTime),
+                LocalTime.parse(endTime)
+            );
+            
+            if (conflicts.isEmpty()) {
+                availableAlternatives.add(resource);
+            }
+        }
+        
+        // Sort by similarity to the original resource (same type first, then by capacity)
+        availableAlternatives.sort((r1, r2) -> {
+            // Same type gets priority
+            if (r1.getType() == unavailableResource.getType() && r2.getType() != unavailableResource.getType()) {
+                return -1;
+            }
+            if (r1.getType() != unavailableResource.getType() && r2.getType() == unavailableResource.getType()) {
+                return 1;
+            }
+            
+            // Then sort by capacity (closest to original capacity first)
+            int capacityDiff1 = Math.abs(r1.getCapacity() - unavailableResource.getCapacity());
+            int capacityDiff2 = Math.abs(r2.getCapacity() - unavailableResource.getCapacity());
+            return Integer.compare(capacityDiff1, capacityDiff2);
+        });
+        
+        // Return top 5 alternatives
+        return availableAlternatives.stream()
+            .limit(5)
+            .collect(Collectors.toList());
     }
 
 }

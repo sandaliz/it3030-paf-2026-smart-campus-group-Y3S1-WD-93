@@ -1,11 +1,20 @@
 package com.sliit.uniops.model;
 
+import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Document(collection = "resources")
 public class Resource {
     @Id
@@ -23,6 +32,8 @@ public class Resource {
     private String description;
     private List<AvailabilityWindow> availabilityWindows;
     private List<String> amenities;
+    private Integer shareCount;
+    private String createdBy; // User ID of who created this resource
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -36,9 +47,18 @@ public class Resource {
     }
 
     public static class AvailabilityWindow {
+        @NotBlank(message = "Day of week is required")
+        @Pattern(regexp = "MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY", message = "Invalid day of week")
         private String dayOfWeek;
+        
+        @NotBlank(message = "Start time is required")
+        @Pattern(regexp = "^([01]?[0-9]|2[0-3]):[0-5][0-9]$", message = "Invalid time format, use HH:MM")
         private String startTime;
+        
+        @NotBlank(message = "End time is required")
+        @Pattern(regexp = "^([01]?[0-9]|2[0-3]):[0-5][0-9]$", message = "Invalid time format, use HH:MM")
         private String endTime;
+        
         private boolean available;
         private String[] availableDays;
 
@@ -68,48 +88,4 @@ public class Resource {
         public void setAvailableDays(String[] availableDays) { this.availableDays = availableDays; }
     }
     
-    public Resource() {}
-    
-    public Resource(String id, String name, ResourceType type, Integer capacity, String location, ResourceStatus status) {
-        this.id = id;
-        this.name = name;
-        this.type = type;
-        this.capacity = capacity;
-        this.location = location;
-        this.status = status;
-    }
-    
-    // Getters and Setters
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-    
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    
-    public ResourceType getType() { return type; }
-    public void setType(ResourceType type) { this.type = type; }
-    
-    public Integer getCapacity() { return capacity; }
-    public void setCapacity(Integer capacity) { this.capacity = capacity; }
-    
-    public String getLocation() { return location; }
-    public void setLocation(String location) { this.location = location; }
-    
-    public ResourceStatus getStatus() { return status; }
-    public void setStatus(ResourceStatus status) { this.status = status; }
-    
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    
-    public List<AvailabilityWindow> getAvailabilityWindows() { return availabilityWindows; }
-    public void setAvailabilityWindows(List<AvailabilityWindow> availabilityWindows) { this.availabilityWindows = availabilityWindows; }
-    
-    public List<String> getAmenities() { return amenities; }
-    public void setAmenities(List<String> amenities) { this.amenities = amenities; }
-    
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

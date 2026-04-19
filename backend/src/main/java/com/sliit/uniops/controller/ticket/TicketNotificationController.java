@@ -1,9 +1,8 @@
 package com.sliit.uniops.controller.ticket;
 
-import com.sliit.uniops.model.User;
 import java.util.List;
 
-import com.sliit.uniops.model.User;
+import com.sliit.uniops.security.UserPrincipal;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -52,7 +51,7 @@ public class TicketNotificationController {
 
     private String getUserId(Authentication authentication) {
         Object principal = authentication.getPrincipal();
-        if (principal instanceof User user) {
+        if (principal instanceof UserPrincipal user) {
             return user.getId();
         }
         return authentication.getName();

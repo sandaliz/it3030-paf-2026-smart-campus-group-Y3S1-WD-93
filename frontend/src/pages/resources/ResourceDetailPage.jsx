@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { resourceService } from '../../services/resourceService';
 import ResourceCard from '../../components/cards/ResourceCard';
 import { DetailSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
+import ShareModal from '../../components/common/ShareModal';
 
 const ResourceDetailPage = () => {
   const { id } = useParams();
@@ -11,7 +12,8 @@ const ResourceDetailPage = () => {
   const [error, setError] = useState(null);
   const [availability, setAvailability] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  
+  const [showShareModal, setShowShareModal] = useState(false);
+
     const [similarResources, setSimilarResources] = useState([]);
 
   useEffect(() => {
@@ -173,13 +175,22 @@ const ResourceDetailPage = () => {
             {/* Action buttons */}
             <div className="flex gap-2">
               {resource.status === 'ACTIVE' && (
-                <Link 
+                <Link
                   to={`/bookings/new?resourceId=${resource.id}`}
                   className="btn btn-primary"
                 >
                   Book This Resource
                 </Link>
               )}
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="btn btn-outline"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                Share
+              </button>
               <Link to="/resources" className="btn btn-outline">
                 Back to List
               </Link>
@@ -307,6 +318,13 @@ const ResourceDetailPage = () => {
           </div>
         </div>
       )}
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        resource={resource}
+      />
     </div>
   );
 };

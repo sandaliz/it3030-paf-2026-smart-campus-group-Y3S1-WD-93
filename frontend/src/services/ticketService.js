@@ -1,5 +1,7 @@
 import api, { API_BASE_URL } from './axiosInstance';
 
+const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, '');
+
 // ============================================
 // TICKET SERVICE
 // ============================================
@@ -223,7 +225,7 @@ export const authService = {
   },
 
   loginWithGoogle: () => {
-    window.location.href = `${API_BASE_URL}/oauth2/authorization/google?prompt=select_account`;
+    window.location.href = `${BACKEND_BASE_URL}/oauth2/authorization/google`;
   },
 
   getCurrentUser: async () => {

@@ -24,13 +24,17 @@ export const resourceService = {
 
   // Get resources by type
   getResourcesByType: async (type) => {
-    const response = await api.get(`/api/resources/type/${type}`);
+    const response = await api.get('/api/resources', {
+      params: { type }
+    });
     return response.data;
   },
 
   // Get resources by status
   getResourcesByStatus: async (status) => {
-    const response = await api.get(`/api/resources/status/${status}`);
+    const response = await api.get('/api/resources', {
+      params: { status }
+    });
     return response.data;
   },
 
@@ -52,7 +56,7 @@ export const resourceService = {
 
   // Search resources with filters
   searchResources: async (filters = {}) => {
-    const response = await api.get('/api/resources/search', {
+    const response = await api.get('/api/resources', {
       params: filters
     });
     return response.data;
@@ -127,6 +131,12 @@ export const resourceService = {
   // Get resource audit log
   getResourceAudit: async (id) => {
     const response = await api.get(`/api/resources/${id}/audit`);
+    return response.data;
+  },
+
+  // Track resource share
+  trackShare: async (id) => {
+    const response = await api.patch(`/api/resources/${id}/share`);
     return response.data;
   },
 };

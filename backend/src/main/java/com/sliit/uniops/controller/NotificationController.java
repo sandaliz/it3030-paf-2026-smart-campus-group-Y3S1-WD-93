@@ -1,7 +1,7 @@
 package com.sliit.uniops.controller;
 
 import com.sliit.uniops.model.Notification;
-import com.sliit.uniops.model.User;
+import com.sliit.uniops.security.UserPrincipal;
 import com.sliit.uniops.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +55,11 @@ public class NotificationController {
         return ResponseEntity.ok().body(Map.of("count", unreadCount));
     }
 
+    @GetMapping("/unread/count")
+    public ResponseEntity<?> getUnreadCountAlias() {
+        return getUnreadCount();
+    }
+
     /**
      * 3. PUT /api/notifications/{id}/read → mark as read
      */
@@ -73,6 +78,11 @@ public class NotificationController {
             log.warn("Failed to mark notification {} as read for user: {}", id, userId);
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @PatchMapping("/{id}/read")
+    public ResponseEntity<Notification> markAsReadPatch(@PathVariable String id) {
+        return markAsRead(id);
     }
 
     /**
@@ -110,27 +120,22 @@ public class NotificationController {
         return ResponseEntity.ok(markedCount);
     }
 
+    @PatchMapping("/read-all")
+    public ResponseEntity<Integer> markAllAsReadPatch() {
+        return markAllAsRead();
+    }
+
     /**
      * Get current authenticated user ID from security context
      */
     private String getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.isAuthenticated()) {
-            String username = authentication.getName();
-            System.out.println("DEBUG: NotificationController - authentication.getName(): " + username);
-            
-            // If subject is null, try to get username from authentication details
-            if (username == null || username.trim().isEmpty()) {
-                System.out.println("DEBUG: NotificationController - subject is null, checking authentication details");
-                // Try to get user from authentication details
-                if (authentication.getDetails() instanceof org.springframework.security.oauth2.core.user.OAuth2User) {
-                    org.springframework.security.oauth2.core.user.OAuth2User oauthUser = (org.springframework.security.oauth2.core.user.OAuth2User) authentication.getDetails();
-                    username = oauthUser.getAttribute("email");
-                    System.out.println("DEBUG: NotificationController - username from OAuth2User: " + username);
-                }
+            Object principal = authentication.getPrincipal();
+            if (principal instanceof UserPrincipal user) {
+                return user.getId();
             }
-            
-            return username;
+            return authentication.getName();
         }
         return null;
     }

@@ -7,7 +7,7 @@ const LoginPage = () => {
     const { user, login } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
-    const [form, setForm] = useState({ username: '', password: '' });
+    const [form, setForm] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
@@ -51,12 +51,12 @@ const LoginPage = () => {
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <input
-                            type="text"
-                            name="username"
-                            value={form.username}
+                            type="email"
+                            name="email"
+                            value={form.email}
                             onChange={handleChange}
                             className="input input-bordered w-full"
-                            placeholder="Username"
+                            placeholder="Email"
                             required
                         />
                         <input
