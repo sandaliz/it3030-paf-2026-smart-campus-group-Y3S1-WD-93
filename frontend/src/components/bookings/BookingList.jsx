@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { bookingService } from '../../services/bookingService';
-import { googleCalendarService } from '../../services/googleCalendarService';
-import GoogleCalendarConnect from '../calendar/GoogleCalendarConnect';
 
 const BookingList = ({ userRole = 'USER' }) => {
   const [bookings, setBookings] = useState([]);
@@ -147,18 +145,7 @@ const BookingList = ({ userRole = 'USER' }) => {
         </div>
       </div>
 
-      {/* Google Calendar Section */}
-      <div className="mb-6">
-        <GoogleCalendarConnect 
-          onConnect={(connected) => {
-            if (connected) {
-              // Refresh bookings after calendar connection
-              loadBookings();
-            }
-          }}
-        />
-      </div>
-
+      
       {/* Error Display */}
       {error && (
         <div className="alert alert-error">

@@ -20,6 +20,7 @@ public enum Role {
     RESOURCE_MANAGER(7),    // Manage physical resources
     LECTURER(6),            // Faculty access
     TECHNICIAN(5),          // Maintenance access
+    TECHINICIAN(5),         // Legacy typo alias to prevent crashes with corrupted DB data
     NON_ACADEMIC(4),        // General staff
     USER(2),                // Generic end-user access for existing protected endpoints
     STUDENT(1);             // Default access

@@ -63,9 +63,11 @@ public class RoleMappingService {
             case ADMIN: return "/admin/dashboard";
             case BOOKING_MANAGER: return "/admin/bookings";
             case RESOURCE_MANAGER: return "/admin/resources";
-            case TICKET_MANAGER: 
-            case TECHNICIAN: 
+            case TICKET_MANAGER:
                 return "/admin/tickets";
+            case TECHNICIAN:
+            case TECHINICIAN:
+                return "/technician/dashboard";
             case LECTURER: return "/lecturer/dashboard";
             case NON_ACADEMIC: return "/staff/dashboard";
             case STUDENT:
