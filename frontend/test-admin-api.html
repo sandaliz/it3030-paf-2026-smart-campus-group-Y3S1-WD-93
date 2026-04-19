@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Admin API</title>
+</head>
+<body>
+    <h1>Admin API Test</h1>
+    <button onclick="testUsersEndpoint()">Test Users Endpoint</button>
+    <button onclick="testStatsEndpoint()">Test Stats Endpoint</button>
+    <div id="results"></div>
+
+    <script>
+        async function testUsersEndpoint() {
+            try {
+                const response = await fetch('http://localhost:8080/api/admin/dashboard/users', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                console.log('Users Response:', data);
+                document.getElementById('results').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                console.error('Users Error:', error);
+                document.getElementById('results').innerHTML = '<div style="color: red;">Error: ' + error.message + '</div>';
+            }
+        }
+
+        async function testStatsEndpoint() {
+            try {
+                const response = await fetch('http://localhost:8080/api/admin/dashboard/stats', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                console.log('Stats Response:', data);
+                document.getElementById('results').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                console.error('Stats Error:', error);
+                document.getElementById('results').innerHTML = '<div style="color: red;">Error: ' + error.message + '</div>';
+            }
+        }
+    </script>
+</body>
+</html>

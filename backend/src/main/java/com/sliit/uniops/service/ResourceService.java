@@ -1,8 +1,11 @@
 package com.sliit.uniops.service;
 
+import com.sliit.uniops.constants.ResourceErrorMessages;
+import com.sliit.uniops.exception.ResourceNotFoundException;
+import com.sliit.uniops.exception.UnauthorizedException;
 import com.sliit.uniops.model.Resource;
 import com.sliit.uniops.repository.ResourceRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -20,13 +23,11 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@RequiredArgsConstructor
 public class ResourceService {
 
-    @Autowired
-    private ResourceRepository resourceRepository;
-
-    @Autowired
-    private MongoTemplate mongoTemplate;
+    private final ResourceRepository resourceRepository;
+    private final MongoTemplate mongoTemplate;
 
     private boolean isAdmin(Authentication authentication) {
         if (authentication == null) return false;
@@ -39,32 +40,42 @@ public class ResourceService {
         return authentication.getName();
     }
 
-    public List<Resource> getAllResources() {
+    public List<Resource> getAllResources(String type, String status, String location, Integer minCapacity, String search, String creator) {
         Query query = new Query();
-        query.fields().include("id", "name", "type", "capacity", "location", "status", "description");
+
+        if (type != null && !type.isEmpty()) {
+            query.addCriteria(Criteria.where("type").is(type));
+        }
+        if (status != null && !status.isEmpty()) {
+            query.addCriteria(Criteria.where("status").is(status));
+        }
+        if (location != null && !location.isEmpty()) {
+            query.addCriteria(Criteria.where("location").regex(location, "i"));
+        }
+        if (minCapacity != null) {
+            query.addCriteria(Criteria.where("capacity").gte(minCapacity));
+        }
+        if (search != null && !search.trim().isEmpty()) {
+            Criteria searchCriteria = new Criteria().orOperator(
+                Criteria.where("name").regex(search, "i"),
+                Criteria.where("location").regex(search, "i"),
+                Criteria.where("description").regex(search, "i")
+            );
+            query.addCriteria(searchCriteria);
+        }
+        if (creator != null && !creator.isEmpty()) {
+            query.addCriteria(Criteria.where("createdBy").is(creator));
+        }
+
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "shareCount", "availabilityWindows", "amenities");
         return mongoTemplate.find(query, Resource.class);
     }
     
     public Resource getResourceById(String id) {
         return resourceRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Resource not found with ID: " + id));
+            .orElseThrow(() -> new ResourceNotFoundException(String.format(ResourceErrorMessages.RESOURCE_NOT_FOUND, id)));
     }
 
-    public List<Resource> getResourcesByType(String type) {
-        return searchResources(null, type, null, null);
-    }
-
-    public List<Resource> getResourcesByStatus(String status) {
-        return searchResources(status, null, null, null);
-    }
-
-    public List<Resource> getResourcesByLocation(String location) {
-        return searchResources(null, null, null, location);
-    }
-
-    public List<Resource> getResourcesByMinCapacity(Integer minCapacity) {
-        return searchResources(null, null, minCapacity, null);
-    }
     
     public Resource createResource(Resource resource, Authentication authentication) {
         resource.setCreatedBy(getCurrentUserId(authentication));
@@ -73,12 +84,6 @@ public class ResourceService {
         return resourceRepository.save(resource);
     }
 
-    // Overload for bulk create (admin only, no authentication needed for backward compatibility)
-    public Resource createResource(Resource resource) {
-        resource.setCreatedAt(LocalDateTime.now());
-        resource.setUpdatedAt(LocalDateTime.now());
-        return resourceRepository.save(resource);
-    }
     
     public List<Resource> createMultipleResources(List<Resource> resources) {
         return resourceRepository.saveAll(resources);
@@ -96,7 +101,7 @@ public class ResourceService {
 
         // Check ownership: admin can update all, staff can only update their own
         if (!isAdmin(authentication) && !resource.getCreatedBy().equals(getCurrentUserId(authentication))) {
-            throw new RuntimeException("You can only update resources you created");
+            throw new UnauthorizedException(ResourceErrorMessages.RESOURCE_UPDATE_UNAUTHORIZED);
         }
 
         resource.setName(resourceDetails.getName());
@@ -111,27 +116,13 @@ public class ResourceService {
         return resourceRepository.save(resource);
     }
 
-    // Overload for backward compatibility
-    public Resource updateResource(String id, Resource resourceDetails) {
-        Resource resource = getResourceById(id);
-        resource.setName(resourceDetails.getName());
-        resource.setType(resourceDetails.getType());
-        resource.setCapacity(resourceDetails.getCapacity());
-        resource.setLocation(resourceDetails.getLocation());
-        resource.setStatus(resourceDetails.getStatus());
-        resource.setDescription(resourceDetails.getDescription());
-        resource.setAmenities(resourceDetails.getAmenities());
-        resource.setAvailabilityWindows(resourceDetails.getAvailabilityWindows());
-        resource.setUpdatedAt(LocalDateTime.now());
-        return resourceRepository.save(resource);
-    }
 
     public Resource updateResourceStatus(String id, String status, Authentication authentication) {
         Resource resource = getResourceById(id);
 
-        // Check ownership: admin can update all, staff can only update their own
+        // Check ownership: admin can update status of all, staff can only update their own
         if (!isAdmin(authentication) && !resource.getCreatedBy().equals(getCurrentUserId(authentication))) {
-            throw new RuntimeException("You can only update status of resources you created");
+            throw new UnauthorizedException(ResourceErrorMessages.RESOURCE_STATUS_UPDATE_UNAUTHORIZED);
         }
 
         resource.setStatus(Resource.ResourceStatus.valueOf(status));
@@ -139,13 +130,6 @@ public class ResourceService {
         return resourceRepository.save(resource);
     }
 
-    // Overload for backward compatibility
-    public Resource updateResourceStatus(String id, String status) {
-        Resource resource = getResourceById(id);
-        resource.setStatus(Resource.ResourceStatus.valueOf(status));
-        resource.setUpdatedAt(LocalDateTime.now());
-        return resourceRepository.save(resource);
-    }
 
     public Resource incrementShareCount(String id) {
         Resource resource = getResourceById(id);
@@ -162,36 +146,13 @@ public class ResourceService {
 
         // Check ownership: admin can delete all, staff can only delete their own
         if (!isAdmin(authentication) && !resource.getCreatedBy().equals(getCurrentUserId(authentication))) {
-            throw new RuntimeException("You can only delete resources you created");
+            throw new UnauthorizedException(ResourceErrorMessages.RESOURCE_DELETE_UNAUTHORIZED);
         }
 
         resourceRepository.deleteById(id);
     }
 
-    // Overload for backward compatibility
-    public void deleteResource(String id) {
-        resourceRepository.deleteById(id);
-    }
     
-    public List<Resource> searchResources(String status, String type, Integer minCapacity, String location) {
-        Query query = new Query();
-
-        if (status != null && !status.isEmpty()) {
-            query.addCriteria(Criteria.where("status").is(status));
-        }
-        if (type != null && !type.isEmpty()) {
-            query.addCriteria(Criteria.where("type").is(type));
-        }
-        if (minCapacity != null) {
-            query.addCriteria(Criteria.where("capacity").gte(minCapacity));
-        }
-        if (location != null && !location.isEmpty()) {
-            query.addCriteria(Criteria.where("location").regex(location, "i"));
-        }
-
-        query.fields().include("id", "name", "type", "capacity", "location", "status", "description");
-        return mongoTemplate.find(query, Resource.class);
-    }
     
     public Object getResourceAvailability(String resourceId, String date) {
         Resource resource = getResourceById(resourceId);
@@ -240,13 +201,13 @@ public class ResourceService {
 
         if (!Resource.ResourceStatus.ACTIVE.equals(resource.getStatus())) {
             availability.put("available", false);
-            availability.put("reason", "Resource is not active");
+            availability.put("reason", ResourceErrorMessages.RESOURCE_NOT_ACTIVE);
             return availability;
         }
 
         if (resource.getAvailabilityWindows() == null || resource.getAvailabilityWindows().isEmpty()) {
             availability.put("available", true);
-            availability.put("reason", "No schedule restrictions configured");
+            availability.put("reason", ResourceErrorMessages.NO_SCHEDULE_RESTRICTIONS);
             return availability;
         }
 
@@ -261,7 +222,7 @@ public class ResourceService {
         );
 
         availability.put("available", available);
-        availability.put("reason", available ? "Within configured availability window" : "Outside configured availability window");
+        availability.put("reason", available ? ResourceErrorMessages.WITHIN_AVAILABILITY_WINDOW : ResourceErrorMessages.OUTSIDE_AVAILABILITY_WINDOW);
         return availability;
     }
 
@@ -307,7 +268,7 @@ public class ResourceService {
         }
 
         // Field projection
-        query.fields().include("id", "name", "type", "capacity", "location", "status", "description");
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "availabilityWindows", "amenities");
 
         // Sorting
         Sort sort = Sort.by(Sort.Direction.fromString(sortDir != null ? sortDir : "asc"), sortBy != null ? sortBy : "name");
