@@ -61,6 +61,7 @@ import AuthDebug from './components/AuthDebug';
 import NetworkTest from './components/NetworkTest';
 import ConsoleErrorCapture from './components/ConsoleErrorCapture';
 import RoleSwitcher from './components/RoleSwitcher';
+import UserManagementDebug from './components/UserManagementDebug';
 
 const AppContent = () => {
   const location = useLocation();
@@ -259,6 +260,13 @@ const AppContent = () => {
           <Route path="/role-switcher" element={
             <ProtectedRoute>
               <RoleSwitcher />
+            </ProtectedRoute>
+          } />
+          
+          {/* User Management Debug - Debug user display issues */}
+          <Route path="/user-management-debug" element={
+            <ProtectedRoute>
+              <UserManagementDebug />
             </ProtectedRoute>
           } />
           

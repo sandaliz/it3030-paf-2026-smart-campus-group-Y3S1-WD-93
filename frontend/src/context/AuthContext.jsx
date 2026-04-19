@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }) => {
 
         if (roles.includes('ADMIN')) return '/admin/dashboard';
         if (roles.includes('BOOKING_MANAGER')) return '/admin/bookings';
-        if (roles.includes('TICKET_MANAGER')) return '/tickets';
+        if (roles.includes('TICKET_MANAGER')) return '/admin/tickets';
         if (roles.includes('RESOURCE_MANAGER')) return '/admin/resources';
         if (roles.includes('LECTURER')) return '/lecturer/dashboard';
         if (roles.includes('TECHNICIAN')) return '/technician/dashboard';
