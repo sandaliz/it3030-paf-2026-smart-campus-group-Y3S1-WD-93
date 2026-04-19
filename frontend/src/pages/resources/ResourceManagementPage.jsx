@@ -5,6 +5,7 @@ import ResourceForm from '../../components/forms/ResourceForm';
 import { TableRowSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import ResourceAnalyticsModal from '../../components/common/ResourceAnalyticsModal';
+import AdminSidebar from '../../components/admin/AdminSidebar';
 
 const ResourceManagementPage = () => {
   const { user, hasRole, hasAnyRole } = useAuth();
@@ -101,11 +102,25 @@ const ResourceManagementPage = () => {
       }
       
       setResources(data.content || data);
+
+      // Safeguard: ensure totalPages is at least 1 and not invalid
+      const totalPages = data.totalPages || 1;
+      const totalElements = data.totalElements || data.length;
+
       setPagination(prev => ({
         ...prev,
-        totalElements: data.totalElements || data.length,
-        totalPages: data.totalPages || 1
+        totalElements,
+        totalPages: Math.max(1, totalPages)
       }));
+
+      // If current page is beyond available pages, reset to last valid page
+      if (pagination.page >= totalPages) {
+        setPagination(prev => ({
+          ...prev,
+          page: Math.max(0, totalPages - 1)
+        }));
+      }
+
       setError(null);
     } catch (err) {
       setError('Failed to load resources');
@@ -165,10 +180,14 @@ const ResourceManagementPage = () => {
   const handleFormSubmit = async () => {
     setShowForm(false);
     setEditingResource(null);
-    setSuccess(editingResource ? 'Resource updated successfully' : 'Resource created successfully');
     setError(null);
-    fetchResources();
-    fetchAllResources();
+    
+    // Fetch updated data first
+    await fetchResources();
+    await fetchAllResources();
+    
+    // Then show success message
+    setSuccess(editingResource ? 'Resource updated successfully' : 'Resource created successfully');
     setTimeout(() => setSuccess(null), 3000);
   };
 
@@ -300,150 +319,164 @@ const ResourceManagementPage = () => {
   const selectedTypeStats = selectedType ? getSelectedTypeStats(selectedType) : null;
 
   if (loading && resources.length === 0) {
-    return <PageLoader />;
+    return (
+      <div className="min-h-screen bg-base-200">
+        <div className="flex min-h-screen">
+          <AdminSidebar />
+          <div className="flex-1 p-6 lg:p-8">
+            <PageLoader />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Resource Management</h1>
-          <p className="text-base-content/70">Manage campus facilities and equipment</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            className="btn btn-outline"
-            onClick={() => setShowAnalyticsModal(true)}
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            Share Analytics
-          </button>
-          <button
-            className="btn btn-outline"
-            onClick={fetchResources}
-            disabled={loading}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refresh
-          </button>
-          {selectedResources.length > 0 && (
-            <button
-              className="btn btn-error"
-              onClick={handleBulkDelete}
-            >
-              Delete Selected ({selectedResources.length})
-            </button>
-          )}
-          {canAddEditResources && (
-            <button
-              className="btn btn-primary"
-              onClick={handleCreateResource}
-            >
-              Add New Resource
-            </button>
-          )}
-        </div>
-      </div>
+    <div className="h-screen bg-base-200 overflow-hidden">
+      <div className="flex h-full">
+        <AdminSidebar />
 
-      {/* Resource Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="card bg-base-100 shadow-lg border border-base-300">
-          <div className="card-body p-4">
-            <h3 className="text-sm text-base-content/70">Total Resources</h3>
-            <p className="text-3xl font-bold">{stats.total}</p>
-          </div>
-        </div>
-        <div className="card bg-base-100 shadow-lg border border-base-300">
-          <div className="card-body p-4">
-            <h3 className="text-sm text-base-content/70">Active</h3>
-            <p className="text-3xl font-bold text-success">{stats.byStatus.ACTIVE}</p>
-          </div>
-        </div>
-        <div className="card bg-base-100 shadow-lg border border-base-300">
-          <div className="card-body p-4">
-            <h3 className="text-sm text-base-content/70">Out of Service</h3>
-            <p className="text-3xl font-bold text-error">{stats.byStatus.OUT_OF_SERVICE}</p>
-          </div>
-        </div>
-        <div className="card bg-base-100 shadow-lg border border-base-300 relative">
-          <div className="card-body p-4">
-            <div className="flex justify-between items-center">
+        <div className="flex-1 flex flex-col overflow-auto">
+          <div className="p-6 lg:p-8">
+            {/* Header */}
+            <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <h3 className="text-sm text-base-content/70">By Type</h3>
-                <p className="text-3xl font-bold text-primary">
-                  {selectedType ? getResourceIcon(selectedType) : 'View'}
-                </p>
-                {selectedType && (
-                  <p className="text-sm text-base-content/70 capitalize">
-                    {selectedType.replace('_', ' ').toLowerCase()}
-                  </p>
-                )}
+                <h1 className="text-3xl font-bold">Resource Management</h1>
+                <p className="text-base-content/70">Manage campus facilities and equipment</p>
               </div>
               <div className="flex gap-2">
-                {selectedType && (
-                  <button 
-                    className="btn btn-sm btn-error"
-                    onClick={() => {
-                      setSelectedType(null);
-                      handleFilterChange('type', '');
-                      setSearching(true);
-                    }}
+                <button
+                  className="btn btn-outline"
+                  onClick={() => setShowAnalyticsModal(true)}
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  Share Analytics
+                </button>
+                <button
+                  className="btn btn-outline"
+                  onClick={fetchResources}
+                  disabled={loading}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh
+                </button>
+                {selectedResources.length > 0 && (
+                  <button
+                    className="btn btn-error"
+                    onClick={handleBulkDelete}
                   >
-                    Reset
+                    Delete Selected ({selectedResources.length})
                   </button>
                 )}
-                <button 
-                  className="btn btn-sm btn-outline"
-                  onClick={() => setShowTypeDropdown(!showTypeDropdown)}
-                >
-                  {showTypeDropdown ? 'Hide' : 'Show'}
-                </button>
+                {canAddEditResources && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleCreateResource}
+                  >
+                    Add New Resource
+                  </button>
+                )}
               </div>
             </div>
-            {selectedType && selectedTypeStats && (
-              <div className="mt-3 pt-3 border-t border-base-300 space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-base-content/70">Total:</span>
-                  <span className="font-semibold">{selectedTypeStats.total}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-base-content/70">Active:</span>
-                  <span className="font-semibold text-success">{selectedTypeStats.byStatus.ACTIVE}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-base-content/70">Out of Service:</span>
-                  <span className="font-semibold text-error">{selectedTypeStats.byStatus.OUT_OF_SERVICE}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-base-content/70">Maintenance:</span>
-                  <span className="font-semibold text-warning">{selectedTypeStats.byStatus.UNDER_MAINTENANCE}</span>
+
+            {/* Resource Overview Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="card bg-base-100 shadow-lg border border-base-300">
+                <div className="card-body p-4">
+                  <h3 className="text-sm text-base-content/70">Total Resources</h3>
+                  <p className="text-3xl font-bold">{stats.total}</p>
                 </div>
               </div>
-            )}
-          </div>
-          {showTypeDropdown && (
-            <div className="absolute top-full left-0 right-0 bg-base-100 shadow-xl rounded-lg p-4 z-20 border border-base-300">
-              <div className="space-y-2">
-                {Object.entries(stats.byType).map(([type, count]) => (
-                  <button
-                    key={type}
-                    className={`w-full flex justify-between items-center p-2 rounded-lg hover:bg-base-200 transition-colors ${
-                      selectedType === type ? 'bg-primary/20 border border-primary' : ''
-                    }`}
-                    onClick={() => {
-                      setSelectedType(type);
-                      handleFilterChange('type', type);
-                      setShowTypeDropdown(false);
-                    }}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span>{getResourceIcon(type)}</span>
-                      <span className="capitalize">{type.replace('_', ' ').toLowerCase()}</span>
+              <div className="card bg-base-100 shadow-lg border border-base-300">
+                <div className="card-body p-4">
+                  <h3 className="text-sm text-base-content/70">Active</h3>
+                  <p className="text-3xl font-bold text-success">{stats.byStatus.ACTIVE}</p>
+                </div>
+              </div>
+              <div className="card bg-base-100 shadow-lg border border-base-300">
+                <div className="card-body p-4">
+                  <h3 className="text-sm text-base-content/70">Out of Service</h3>
+                  <p className="text-3xl font-bold text-error">{stats.byStatus.OUT_OF_SERVICE}</p>
+                </div>
+              </div>
+              <div className="card bg-base-100 shadow-lg border border-base-300 relative">
+                <div className="card-body p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-sm text-base-content/70">By Type</h3>
+                      <p className="text-3xl font-bold text-primary">
+                        {selectedType ? getResourceIcon(selectedType) : 'View'}
+                      </p>
+                      {selectedType && (
+                        <p className="text-sm text-base-content/70 capitalize">
+                          {selectedType.replace('_', ' ').toLowerCase()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      {selectedType && (
+                        <button 
+                          className="btn btn-sm btn-error"
+                          onClick={() => {
+                            setSelectedType(null);
+                            handleFilterChange('type', '');
+                            setSearching(true);
+                          }}
+                        >
+                          Reset
+                        </button>
+                      )}
+                      <button 
+                        className="btn btn-sm btn-outline"
+                        onClick={() => setShowTypeDropdown(!showTypeDropdown)}
+                      >
+                        {showTypeDropdown ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </div>
+                  {selectedType && selectedTypeStats && (
+                    <div className="mt-3 pt-3 border-t border-base-300 space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-base-content/70">Total:</span>
+                        <span className="font-semibold">{selectedTypeStats.total}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-base-content/70">Active:</span>
+                        <span className="font-semibold text-success">{selectedTypeStats.byStatus.ACTIVE}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-base-content/70">Out of Service:</span>
+                        <span className="font-semibold text-error">{selectedTypeStats.byStatus.OUT_OF_SERVICE}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-base-content/70">Maintenance:</span>
+                        <span className="font-semibold text-warning">{selectedTypeStats.byStatus.UNDER_MAINTENANCE}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {showTypeDropdown && (
+                  <div className="absolute top-full left-0 right-0 bg-base-100 shadow-xl rounded-lg p-4 z-20 border border-base-300">
+                    <div className="space-y-2">
+                      {Object.entries(stats.byType).map(([type, count]) => (
+                        <button
+                          key={type}
+                          className={`w-full flex justify-between items-center p-2 rounded-lg hover:bg-base-200 transition-colors ${
+                            selectedType === type ? 'bg-primary/20 border border-primary' : ''
+                          }`}
+                          onClick={() => {
+                            setSelectedType(type);
+                            handleFilterChange('type', type);
+                            setShowTypeDropdown(false);
+                          }}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span>{getResourceIcon(type)}</span>
+                            <span className="capitalize">{type.replace('_', ' ').toLowerCase()}</span>
                     </span>
                     <span className="font-semibold">{count}</span>
                   </button>
@@ -455,7 +488,7 @@ const ResourceManagementPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="card bg-base-100 shadow-lg mb-6">
+      <div className="card bg-base-100 shadow-lg mb-0">
         <div className="card-body">
           <h3 className="card-title text-lg">Filters</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -551,9 +584,12 @@ const ResourceManagementPage = () => {
           <span>{success}</span>
         </div>
       )}
+          </div>
 
-      {/* Resources Table */}
-      <div className="card bg-base-100 shadow-lg relative">
+          {/* Scrollable Table Section */}
+          <div className="flex-1 px-6 lg:px-8 pb-6">
+            {/* Resources Table */}
+            <div className="card bg-base-100 shadow-lg relative">
         {searching && (
           <div className="absolute inset-0 bg-base-100/80 z-10 flex items-center justify-center">
             <div className="flex flex-col items-center gap-2">
@@ -581,7 +617,7 @@ const ResourceManagementPage = () => {
                   <th>Type</th>
                   <th>Location</th>
                   <th>Capacity</th>
-                  <th>Status</th>
+                  <th className="w-48">Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -611,7 +647,7 @@ const ResourceManagementPage = () => {
                     </td>
                   </tr>
                 ) : (
-                  resources.map((resource) => (
+                  resources.filter(r => r != null).map((resource) => (
                     <tr key={resource.id}>
                       <td>
                         <label>
@@ -625,9 +661,9 @@ const ResourceManagementPage = () => {
                       </td>
                       <td>
                         <div className="flex items-center gap-3">
-                          <span className="text-xl">{getResourceIcon(resource.type)}</span>
+                          <span className="text-xl">{resource.type ? getResourceIcon(resource.type) : '📦'}</span>
                           <div className="flex-1">
-                            <div className="font-semibold">{resource.name}</div>
+                            <div className="font-semibold">{resource.name || 'N/A'}</div>
                             {resource.description && (
                               <div className="text-sm text-base-content/70 line-clamp-1">
                                 {resource.description}
@@ -638,15 +674,15 @@ const ResourceManagementPage = () => {
                       </td>
                       <td>
                         <span className="capitalize">
-                          {resource.type.replace('_', ' ').toLowerCase()}
+                          {resource.type ? resource.type.replace('_', ' ').toLowerCase() : 'N/A'}
                         </span>
                       </td>
-                      <td>{resource.location}</td>
-                      <td>{resource.capacity}</td>
+                      <td>{resource.location || 'N/A'}</td>
+                      <td>{resource.capacity || 'N/A'}</td>
                       <td>
-                        <div className={`badge ${getStatusBadgeColor(resource.status)} badge-sm`}>
-                          {resource.status.replace('_', ' ')}
-                        </div>
+                        <span className={`badge ${getStatusBadgeColor(resource.status)} badge-sm whitespace-nowrap`}>
+                          {resource.status ? resource.status.replace('_', ' ') : 'N/A'}
+                        </span>
                       </td>
                       <td>
                         <div className="flex gap-2">
@@ -694,8 +730,12 @@ const ResourceManagementPage = () => {
                 </button>
                 <button
                   className="join-item btn btn-sm"
-                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                  disabled={pagination.page >= pagination.totalPages - 1}
+                  onClick={() => {
+                    if (pagination.page < pagination.totalPages - 1) {
+                      setPagination(prev => ({ ...prev, page: prev.page + 1 }));
+                    }
+                  }}
+                  disabled={pagination.page >= pagination.totalPages - 1 || pagination.totalPages === 0}
                 >
                   Next
                 </button>
@@ -704,11 +744,12 @@ const ResourceManagementPage = () => {
           )}
         </div>
       </div>
+          </div>
 
       {/* Resource Form Modal */}
       {showForm && (
         <div className="modal modal-open">
-          <div className="modal-box w-11/12 max-w-2xl">
+          <div className="modal-box w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-lg">
               {editingResource ? 'Edit Resource' : 'Add New Resource'}
             </h3>
@@ -727,6 +768,8 @@ const ResourceManagementPage = () => {
         isOpen={showAnalyticsModal}
         onClose={() => setShowAnalyticsModal(false)}
       />
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,0 +1,1015 @@
+{
+  "info": {
+    "name": "Module A - Facilities & Assets Catalogue - after finishing up",
+    "description": "Postman collection for Module A (Resources) endpoints only. Run Login request first to get JWT token for authenticated endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "description": "Backend API base URL"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "description": "JWT token - Run Login request to populate this"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication (Required for Admin/Staff endpoints)",
+      "item": [
+        {
+          "name": "Login - Get JWT Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@sliit.lk\",\n  \"password\": \"admin123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login to get JWT token. Replace email/password with your admin/staff credentials. The token is automatically saved to authToken variable."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "  pm.collectionVariables.set(\"authToken\", jsonData.token);",
+                  "  console.log('Token saved successfully');",
+                  "} else {",
+                  "  console.log('No token in response');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register - Create Admin/Staff Account",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@sliit.lk\",\n  \"password\": \"admin123\",\n  \"name\": \"Admin User\",\n  \"role\": \"ADMIN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Register a new admin or staff account. Use role: ADMIN or STAFF"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Public Endpoints (No Authentication Required)",
+      "item": [
+        {
+          "name": "Get All Resources",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources?type=LECTURE_HALL&status=ACTIVE&location=Main&minCapacity=50&search=hall",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "LECTURE_HALL",
+                  "description": "Filter by resource type (LECTURE_HALL, LAB, MEETING_ROOM, EQUIPMENT)",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE",
+                  "description": "Filter by status (ACTIVE, OUT_OF_SERVICE, UNDER_MAINTENANCE)",
+                  "disabled": true
+                },
+                {
+                  "key": "location",
+                  "value": "Main",
+                  "description": "Filter by location (partial match, case-insensitive)",
+                  "disabled": true
+                },
+                {
+                  "key": "minCapacity",
+                  "value": "50",
+                  "description": "Filter by minimum capacity",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "hall",
+                  "description": "Search across name, location, description (case-insensitive)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Retrieve all resources with optional filtering. All query parameters are optional."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Paginated Resources",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/paginated?page=0&size=10&search=lab&status=ACTIVE&type=LAB&sortBy=name&sortDir=asc",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", "paginated"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Page number (0-indexed)"
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": "Number of items per page"
+                },
+                {
+                  "key": "search",
+                  "value": "lab",
+                  "description": "Search term for name, location, description",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE",
+                  "description": "Filter by status",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "LAB",
+                  "description": "Filter by type",
+                  "disabled": true
+                },
+                {
+                  "key": "sortBy",
+                  "value": "name",
+                  "description": "Sort by field (name, capacity, etc.)",
+                  "disabled": true
+                },
+                {
+                  "key": "sortDir",
+                  "value": "asc",
+                  "description": "Sort direction (asc or desc)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get resources with pagination, sorting, and optional filtering"
+          },
+          "response": []
+        },
+        {
+          "name": "Track Resource Share",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/:resourceId/share",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", ":resourceId", "share"],
+              "variable": [
+                {
+                  "key": "resourceId",
+                  "value": "67f8a1b2e3c4d5e6f7a8b9c0",
+                  "description": "Replace with actual resource ID"
+                }
+              ]
+            },
+            "description": "Increment the share count for a resource (for analytics)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Authenticated Endpoints (Requires JWT Token)",
+      "item": [
+        {
+          "name": "Get Resource by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/:resourceId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", ":resourceId"],
+              "variable": [
+                {
+                  "key": "resourceId",
+                  "value": "67f8a1b2e3c4d5e6f7a8b9c0",
+                  "description": "Replace with actual resource ID from database"
+                }
+              ]
+            },
+            "description": "Retrieve a specific resource by its unique identifier. Requires authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Resource Availability",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/:resourceId/availability?date=2026-04-20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", ":resourceId", "availability"],
+              "variable": [
+                {
+                  "key": "resourceId",
+                  "value": "67f8a1b2e3c4d5e6f7a8b9c0"
+                }
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-04-20",
+                  "description": "Date in ISO format (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "description": "Get availability windows for a resource on a specific date. Requires authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "Check Resource Availability",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/:resourceId/availability/check?date=2026-04-20&startTime=09:00&endTime=10:00",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", ":resourceId", "availability", "check"],
+              "variable": [
+                {
+                  "key": "resourceId",
+                  "value": "67f8a1b2e3c4d5e6f7a8b9c0"
+                }
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-04-20",
+                  "description": "Date in ISO format (YYYY-MM-DD)"
+                },
+                {
+                  "key": "startTime",
+                  "value": "09:00",
+                  "description": "Start time in HH:MM format"
+                },
+                {
+                  "key": "endTime",
+                  "value": "10:00",
+                  "description": "End time in HH:MM format"
+                }
+              ]
+            },
+            "description": "Check if a resource is available for a specific time slot. Requires authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Resource Audit Log",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/:resourceId/audit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", ":resourceId", "audit"],
+              "variable": [
+                {
+                  "key": "resourceId",
+                  "value": "67f8a1b2e3c4d5e6f7a8b9c0"
+                }
+              ]
+            },
+            "description": "Retrieve audit information (creation, updates) for a resource. Requires authentication."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Resource",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Main Lecture Hall\",\n  \"type\": \"LECTURE_HALL\",\n  \"capacity\": 150,\n  \"location\": \"Building A, Floor 2\",\n  \"description\": \"Large lecture hall with projector and sound system\",\n  \"status\": \"ACTIVE\",\n  \"availabilityWindows\": [\n    {\n      \"dayOfWeek\": \"MONDAY\",\n      \"startTime\": \"08:00\",\n      \"endTime\": \"18:00\"\n    },\n    {\n      \"dayOfWeek\": \"TUESDAY\",\n      \"startTime\": \"08:00\",\n      \"endTime\": \"18:00\"\n    },\n    {\n      \"dayOfWeek\": \"WEDNESDAY\",\n      \"startTime\": \"08:00\",\n      \"endTime\": \"18:00\"\n    },\n    {\n      \"dayOfWeek\": \"THURSDAY\",\n      \"startTime\": \"08:00\",\n      \"endTime\": \"18:00\"\n    },\n    {\n      \"dayOfWeek\": \"FRIDAY\",\n      \"startTime\": \"08:00\",\n      \"endTime\": \"18:00\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/resources",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources"]
+            },
+            "description": "Create a new resource. Requires ADMIN or STAFF role. Run Login request first to get JWT token."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Resources",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/my",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", "my"]
+            },
+            "description": "Retrieve resources created by the authenticated user. Requires JWT token."
+          },
+          "response": []
+        },
+        {
+          "name": "Bulk Create Resources (Admin Only)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"name\": \"Computer Lab 1\",\n    \"type\": \"LAB\",\n    \"capacity\": 30,\n    \"location\": \"Building B, Floor 1\",\n    \"description\": \"Computer lab with 30 workstations\",\n    \"status\": \"ACTIVE\"\n  },\n  {\n    \"name\": \"Computer Lab 2\",\n    \"type\": \"LAB\",\n    \"capacity\": 30,\n    \"location\": \"Building B, Floor 2\",\n    \"description\": \"Computer lab with 30 workstations\",\n    \"status\": \"ACTIVE\"\n  },\n  {\n    \"name\": \"Meeting Room A\",\n    \"type\": \"MEETING_ROOM\",\n    \"capacity\": 10,\n    \"location\": \"Building C, Floor 1\",\n    \"description\": \"Small meeting room with video conferencing\",\n    \"status\": \"ACTIVE\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", "bulk"]
+            },
+            "description": "Create multiple resources at once. Requires ADMIN role only."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Resource",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Main Lecture Hall\",\n  \"type\": \"LECTURE_HALL\",\n  \"capacity\": 200,\n  \"location\": \"Building A, Floor 2\",\n  \"description\": \"Renovated lecture hall with new equipment\",\n  \"status\": \"ACTIVE\",\n  \"availabilityWindows\": [\n    {\n      \"dayOfWeek\": \"MONDAY\",\n      \"startTime\": \"08:00\",\n      \"endTime\": \"20:00\"\n    },\n    {\n      \"dayOfWeek\": \"TUESDAY\",\n      \"startTime\": \"08:00\",\n      \"endTime\": \"20:00\"\n    },\n    {\n      \"dayOfWeek\": \"WEDNESDAY\",\n      \"startTime\": \"08:00\",\n      \"endTime\": \"20:00\"\n    },\n    {\n      \"dayOfWeek\": \"THURSDAY\",\n      \"startTime\": \"08:00\",\n      \"endTime\": \"20:00\"\n    },\n    {\n      \"dayOfWeek\": \"FRIDAY\",\n      \"startTime\": \"08:00\",\n      \"endTime\": \"20:00\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/:resourceId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", ":resourceId"],
+              "variable": [
+                {
+                  "key": "resourceId",
+                  "value": "67f8a1b2e3c4d5e6f7a8b9c0"
+                }
+              ]
+            },
+            "description": "Update an existing resource. Requires ADMIN role or resource owner (STAFF)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Resource Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"OUT_OF_SERVICE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/:resourceId/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", ":resourceId", "status"],
+              "variable": [
+                {
+                  "key": "resourceId",
+                  "value": "67f8a1b2e3c4d5e6f7a8b9c0"
+                }
+              ]
+            },
+            "description": "Update the status of a resource. Valid statuses: ACTIVE, OUT_OF_SERVICE, UNDER_MAINTENANCE. Requires ADMIN role or resource owner (STAFF)."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Resource",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/:resourceId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", ":resourceId"],
+              "variable": [
+                {
+                  "key": "resourceId",
+                  "value": "67f8a1b2e3c4d5e6f7a8b9c0"
+                }
+              ]
+            },
+            "description": "Delete a resource. Requires ADMIN role or resource owner (STAFF)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Error/Negative Test Cases",
+      "item": [
+        {
+          "name": "Login with Invalid Credentials",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"wrong@email.com\",\n  \"password\": \"wrongpassword\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Test login with invalid credentials - should return 401 Unauthorized"
+          },
+          "response": []
+        },
+        {
+          "name": "Login with Missing Email",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"admin123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Test login with missing email - should return 400 Bad Request"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Resource without Authentication",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Resource\",\n  \"type\": \"LECTURE_HALL\",\n  \"capacity\": 50,\n  \"location\": \"Test Location\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/resources",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources"]
+            },
+            "description": "Test creating resource without auth token - should return 401 Unauthorized"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Resource with Invalid Token",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "invalid.token.here"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Resource\",\n  \"type\": \"LECTURE_HALL\",\n  \"capacity\": 50,\n  \"location\": \"Test Location\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/resources",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources"]
+            },
+            "description": "Test creating resource with invalid JWT token - should return 401 Unauthorized"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Resource with Missing Required Fields",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Resource\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/resources",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources"]
+            },
+            "description": "Test creating resource with missing required fields (type, capacity, location) - should return 400 Bad Request"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Resource with Invalid Type",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Resource\",\n  \"type\": \"INVALID_TYPE\",\n  \"capacity\": 50,\n  \"location\": \"Test Location\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/resources",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources"]
+            },
+            "description": "Test creating resource with invalid type - should return 400 Bad Request"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Resource with Invalid Capacity",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Resource\",\n  \"type\": \"LECTURE_HALL\",\n  \"capacity\": -10,\n  \"location\": \"Test Location\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/resources",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources"]
+            },
+            "description": "Test creating resource with negative capacity - should return 400 Bad Request"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Resource with Invalid ID Format",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/invalid-id",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", "invalid-id"]
+            },
+            "description": "Test getting resource with invalid ID format - should return 400 Bad Request"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Resource with Non-existent ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/67f8a1b2e3c4d5e6f7a8b9c0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", "67f8a1b2e3c4d5e6f7a8b9c0"]
+            },
+            "description": "Test getting resource with non-existent ID - should return 404 Not Found"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Non-existent Resource",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Resource\",\n  \"type\": \"LECTURE_HALL\",\n  \"capacity\": 100,\n  \"location\": \"Updated Location\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/67f8a1b2e3c4d5e6f7a8b9c0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", "67f8a1b2e3c4d5e6f7a8b9c0"]
+            },
+            "description": "Test updating non-existent resource - should return 404 Not Found"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Resource Status with Invalid Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"INVALID_STATUS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/67f8a1b2e3c4d5e6f7a8b9c0/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", "67f8a1b2e3c4d5e6f7a8b9c0", "status"]
+            },
+            "description": "Test updating resource status with invalid status value - should return 400 Bad Request"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Non-existent Resource",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/67f8a1b2e3c4d5e6f7a8b9c0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", "67f8a1b2e3c4d5e6f7a8b9c0"]
+            },
+            "description": "Test deleting non-existent resource - should return 404 Not Found"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Availability with Invalid Date Format",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/67f8a1b2e3c4d5e6f7a8b9c0/availability?date=invalid-date",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", "67f8a1b2e3c4d5e6f7a8b9c0", "availability"],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "invalid-date"
+                }
+              ]
+            },
+            "description": "Test getting availability with invalid date format - should return 400 Bad Request"
+          },
+          "response": []
+        },
+        {
+          "name": "Check Availability with Invalid Time Format",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{authToken}}"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/67f8a1b2e3c4d5e6f7a8b9c0/availability/check?date=2026-04-20&startTime=invalid&endTime=10:00",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", "67f8a1b2e3c4d5e6f7a8b9c0", "availability", "check"],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-04-20"
+                },
+                {
+                  "key": "startTime",
+                  "value": "invalid"
+                },
+                {
+                  "key": "endTime",
+                  "value": "10:00"
+                }
+              ]
+            },
+            "description": "Test checking availability with invalid time format - should return 400 Bad Request"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Resources with Invalid Query Parameter",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources?invalidParam=value",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources"],
+              "query": [
+                {
+                  "key": "invalidParam",
+                  "value": "value"
+                }
+              ]
+            },
+            "description": "Test getting resources with invalid query parameter - should ignore invalid param or return 400"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Paginated Resources with Invalid Page",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/paginated?page=-1&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", "paginated"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "-1"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Test getting paginated resources with negative page number - should return 400 Bad Request"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Paginated Resources with Invalid Size",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/resources/paginated?page=0&size=0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "resources", "paginated"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Test getting paginated resources with zero size - should return 400 Bad Request"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

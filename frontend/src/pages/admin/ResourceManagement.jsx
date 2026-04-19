@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
+import AdminSidebar from '../../components/admin/AdminSidebar';
 
 const ResourceManagement = () => {
   const [resources, setResources] = useState([]);
@@ -66,7 +67,7 @@ const ResourceManagement = () => {
       setShowModal(false);
       setEditingResource(null);
       resetForm();
-      fetchResources();
+      await fetchResources();
     } catch (error) {
       console.error('Failed to update resource:', error);
       alert('Failed to update resource: ' + error.message);
@@ -178,23 +179,39 @@ const ResourceManagement = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <span className="loading loading-spinner loading-lg"></span>
+      <div className="min-h-screen bg-base-200">
+        <div className="flex min-h-screen">
+          <AdminSidebar />
+          <div className="flex-1 p-6 lg:p-8">
+            <div className="flex justify-center items-center h-64">
+              <span className="loading loading-spinner loading-lg"></span>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-        <h1 className="text-3xl font-bold">📚 Resource Management</h1>
-        
-        <div className="flex gap-2">
-          <button className="btn btn-primary" onClick={openCreateModal}>
-            ➕ Add Resource
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-base-200">
+      <div className="flex min-h-screen">
+        <AdminSidebar />
+
+        <div className="flex-1 p-6 lg:p-8">
+          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold">📚 Resource Management</h1>
+              <p className="text-base-content/70">
+                Manage campus facilities, equipment, and assets
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button className="btn btn-primary" onClick={openCreateModal}>
+                ➕ Add Resource
+              </button>
+            </div>
+          </div>
 
       {/* Filters and Search */}
       <div className="card bg-base-100 shadow-xl">
@@ -322,11 +339,11 @@ const ResourceManagement = () => {
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="modal modal-open">
-          <div className="modal-box">
+          <div className="modal-box max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-lg mb-4">
               {editingResource ? '✏️ Edit Resource' : '➕ Create Resource'}
             </h3>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-control">
@@ -339,7 +356,7 @@ const ResourceManagement = () => {
                     required
                   />
                 </div>
-                
+
                 <div className="form-control">
                   <label className="label">Type *</label>
                   <select
@@ -354,7 +371,7 @@ const ResourceManagement = () => {
                     <option value="EQUIPMENT">📱 Equipment</option>
                   </select>
                 </div>
-                
+
                 <div className="form-control">
                   <label className="label">Capacity</label>
                   <input
@@ -365,7 +382,7 @@ const ResourceManagement = () => {
                     min="1"
                   />
                 </div>
-                
+
                 <div className="form-control">
                   <label className="label">Location *</label>
                   <input
@@ -377,7 +394,7 @@ const ResourceManagement = () => {
                   />
                 </div>
               </div>
-              
+
               <div className="form-control">
                 <label className="label">Status</label>
                 <select
@@ -390,7 +407,7 @@ const ResourceManagement = () => {
                   <option value="UNDER_MAINTENANCE">🔧 Under Maintenance</option>
                 </select>
               </div>
-              
+
               <div className="form-control">
                 <label className="label">Description</label>
                 <textarea
@@ -401,7 +418,7 @@ const ResourceManagement = () => {
                   placeholder="Describe the resource..."
                 />
               </div>
-              
+
               <div className="modal-action">
                 <button
                   type="button"
@@ -418,6 +435,8 @@ const ResourceManagement = () => {
           </div>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 };

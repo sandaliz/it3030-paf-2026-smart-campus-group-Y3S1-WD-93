@@ -16,6 +16,11 @@ const ResourceDetailPage = () => {
 
     const [similarResources, setSimilarResources] = useState([]);
 
+  // Scroll to top on component mount
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   useEffect(() => {
     fetchResourceDetails();
     fetchSimilarResources();

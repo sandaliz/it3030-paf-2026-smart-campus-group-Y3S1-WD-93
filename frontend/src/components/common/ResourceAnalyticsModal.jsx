@@ -383,9 +383,9 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
             <div className="card bg-base-200">
               <div className="card-body">
                 <h4 className="card-title">Resource Overview by Status</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="flex flex-wrap justify-between gap-4">
                   {Object.entries(analytics.resourceByStatus).map(([status, count]) => (
-                    <div key={status} className="text-center">
+                    <div key={status} className="text-center flex-1 min-w-[120px]">
                       <div className={`badge ${getStatusBadgeColor(status)} badge-lg mb-2`}>
                         {status.replace('_', ' ')}
                       </div>
@@ -464,9 +464,9 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
             <div className="card bg-base-200">
               <div className="card-body">
                 <h4 className="card-title">Shares by Status</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="flex flex-wrap justify-between gap-4">
                   {Object.entries(analytics.sharesByStatus).map(([status, count]) => (
-                    <div key={status} className="text-center">
+                    <div key={status} className="text-center flex-1 min-w-[120px]">
                       <div className={`badge ${getStatusBadgeColor(status)} badge-lg mb-2`}>
                         {status.replace('_', ' ')}
                       </div>
