@@ -29,7 +29,7 @@ const UserTicketsPage = () => {
   const [newTicket, setNewTicket] = useState({
     title: '',
     description: '',
-    category: 'HARDWARE',
+    category: 'IT',
     priority: 'MEDIUM',
     location: '',
     resourceId: '',
@@ -79,11 +79,11 @@ const UserTicketsPage = () => {
   };
 
   const fetchTickets = async () => {
-    if (!user?.subject) return;
+    if (!user?.id) return;
     
     try {
       setLoading(true);
-      const response = await ticketAPI.getUserTickets(user.subject, currentPage, pageSize);
+      const response = await ticketAPI.getUserTickets(user.id, currentPage, pageSize);
       setTickets(response.data.content || response.data);
     } catch (error) {
       console.error('Error fetching tickets:', error);
@@ -93,10 +93,10 @@ const UserTicketsPage = () => {
   };
 
   const fetchStats = async () => {
-    if (!user?.subject) return;
+    if (!user?.id) return;
     
     try {
-      const response = await ticketAPI.getUserTickets(user.subject, 0, 1000);
+      const response = await ticketAPI.getUserTickets(user.id, 0, 1000);
       const allTickets = response.data.content || response.data;
       const stats = allTickets.reduce((acc, ticket) => {
         acc.total++;
@@ -110,7 +110,12 @@ const UserTicketsPage = () => {
   };
 
   const handleCreateTicket = async () => {
-    if (!newTicket.title.trim() || !newTicket.description.trim()) {
+    if (
+      !newTicket.title.trim() ||
+      !newTicket.description.trim() ||
+      !newTicket.location.trim() ||
+      !newTicket.contactDetails.trim()
+    ) {
       alert('Please fill in all required fields');
       return;
     }
@@ -118,8 +123,8 @@ const UserTicketsPage = () => {
     try {
       const ticketData = {
         ...newTicket,
-        createdBy: user.subject,
-        userName: user.name || user.subject,
+        createdBy: user.id,
+        userName: user.name || user.username || user.email || user.id,
         attachments: attachments
       };
       
@@ -129,7 +134,7 @@ const UserTicketsPage = () => {
       setNewTicket({
         title: '',
         description: '',
-        category: 'HARDWARE',
+        category: 'IT',
         priority: 'MEDIUM',
         location: '',
         resourceId: '',
@@ -229,13 +234,13 @@ const UserTicketsPage = () => {
       LOW: 'text-success',
       MEDIUM: 'text-warning',
       HIGH: 'text-error',
-      CRITICAL: 'text-error font-bold',
+      URGENT: 'text-error font-bold',
     };
     return colors[priority] || 'text-neutral';
   };
 
   useEffect(() => {
-    if (user?.subject) {
+    if (user?.id) {
       fetchTickets();
       fetchStats();
       fetchResources();
@@ -422,10 +427,13 @@ const UserTicketsPage = () => {
                   value={newTicket.category}
                   onChange={(e) => setNewTicket({...newTicket, category: e.target.value})}
                 >
-                  <option value="HARDWARE">Hardware</option>
-                  <option value="SOFTWARE">Software</option>
-                  <option value="NETWORK">Network</option>
-                  <option value="FACILITY">Facility</option>
+                  <option value="IT">IT</option>
+                  <option value="ELECTRICAL">Electrical</option>
+                  <option value="PLUMBING">Plumbing</option>
+                  <option value="HVAC">HVAC</option>
+                  <option value="FURNITURE">Furniture</option>
+                  <option value="CLEANING">Cleaning</option>
+                  <option value="SECURITY">Security</option>
                   <option value="OTHER">Other</option>
                 </select>
               </div>
@@ -441,7 +449,7 @@ const UserTicketsPage = () => {
                   <option value="LOW">Low</option>
                   <option value="MEDIUM">Medium</option>
                   <option value="HIGH">High</option>
-                  <option value="CRITICAL">Critical</option>
+                  <option value="URGENT">Urgent</option>
                 </select>
               </div>
               <div className="form-control">
@@ -463,7 +471,7 @@ const UserTicketsPage = () => {
               </div>
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Location</span>
+                  <span className="label-text">Location *</span>
                 </label>
                 <input
                   type="text"
@@ -482,7 +490,7 @@ const UserTicketsPage = () => {
               </div>
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Contact Details</span>
+                  <span className="label-text">Contact Details *</span>
                 </label>
                 <input
                   type="text"
@@ -571,7 +579,12 @@ const UserTicketsPage = () => {
               <button
                 className="btn btn-primary"
                 onClick={handleCreateTicket}
-                disabled={!newTicket.title.trim() || !newTicket.description.trim()}
+                disabled={
+                  !newTicket.title.trim() ||
+                  !newTicket.description.trim() ||
+                  !newTicket.location.trim() ||
+                  !newTicket.contactDetails.trim()
+                }
               >
                 Create Ticket
               </button>

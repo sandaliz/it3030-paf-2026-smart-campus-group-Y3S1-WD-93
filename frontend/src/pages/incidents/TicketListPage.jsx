@@ -198,6 +198,32 @@ const TicketListPage = () => {
                   </span>
                 </div>
                 
+                {/* Show rejection reason for rejected tickets */}
+                {ticket.status === 'REJECTED' && ticket.rejectionReason && (
+                  <div className="mt-2 p-2 bg-error/10 rounded text-xs">
+                    <span className="font-semibold text-error">Rejection Reason:</span> {ticket.rejectionReason}
+                  </div>
+                )}
+                
+                {/* Show technician details for in-progress tickets */}
+                {ticket.status === 'IN_PROGRESS' && (
+                  <div className="mt-2 p-2 bg-info/10 rounded text-xs">
+                    <span className="font-semibold text-info">Assigned Technician:</span> {ticket.assignedToName || 'Not assigned'}
+                    {ticket.assignedToName && ticket.contactDetails && (
+                      <div className="mt-1">
+                        <span className="font-semibold text-info">Contact:</span> {ticket.contactDetails}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Show resolution notes for resolved tickets */}
+                {ticket.status === 'RESOLVED' && ticket.resolutionNotes && (
+                  <div className="mt-2 p-2 bg-success/10 rounded text-xs">
+                    <span className="font-semibold text-success">Resolution Notes:</span> {ticket.resolutionNotes}
+                  </div>
+                )}
+                
                 <div className="flex items-center gap-2 text-xs text-base-content/60 mt-2 pt-2 border-t border-base-200">
                   <span className="badge badge-ghost badge-sm">{ticket.category}</span>
                   <span>•</span>

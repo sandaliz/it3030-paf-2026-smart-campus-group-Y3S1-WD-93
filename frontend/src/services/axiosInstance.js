@@ -10,8 +10,11 @@ const normalizeUrl = (baseURL, requestUrl) => {
   const normalizedBase = baseURL.replace(/\/+$/, '');
   const normalizedRequest = requestUrl.startsWith('/') ? requestUrl : `/${requestUrl}`;
 
-  // Fixed: Don't remove /api from request URLs
-  // The previous logic was incorrectly removing /api from requests
+  // Avoid `/api/api/...` when the base URL already includes the API prefix.
+  if (normalizedBase.endsWith('/api') && normalizedRequest.startsWith('/api/')) {
+    return normalizedRequest.slice(4);
+  }
+
   return normalizedRequest;
 };
 
