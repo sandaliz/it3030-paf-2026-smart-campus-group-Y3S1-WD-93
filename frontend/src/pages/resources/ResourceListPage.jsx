@@ -33,6 +33,11 @@ const ResourceListPage = () => {
 
   // Check if user can book resources
   const canBookResources = hasAnyRole(['STUDENT', 'LECTURER', 'STAFF', 'ADMIN']);
+
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   
   // Check if resource is currently available
   const isResourceAvailable = (resource) => {

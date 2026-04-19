@@ -352,7 +352,7 @@ public class DashboardController {
     @GetMapping("/user/tickets")
     public ResponseEntity<List<Map<String, Object>>> getUserTickets(Authentication authentication) {
         try {
-            String userId = authentication.getName();
+            String userId = getUserId(authentication);
             var userTickets = ticketService.getAllTickets(org.springframework.data.domain.PageRequest.of(0, 1000));
             
             List<Map<String, Object>> result = userTickets.getContent().stream()
@@ -371,6 +371,7 @@ public class DashboardController {
                             ticketData.put("title", ticket.getClass().getMethod("getTitle").invoke(ticket));
                             ticketData.put("status", ticket.getClass().getMethod("getStatus").invoke(ticket));
                             ticketData.put("priority", ticket.getClass().getMethod("getPriority").invoke(ticket));
+                            ticketData.put("category", ticket.getClass().getMethod("getCategory").invoke(ticket));
                             ticketData.put("createdAt", ticket.getClass().getMethod("getCreatedAt").invoke(ticket));
                             return ticketData;
                         } catch (Exception e) {
@@ -384,5 +385,13 @@ public class DashboardController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body(List.of(Map.of("error", "Failed to fetch user tickets: " + e.getMessage())));
         }
+    }
+
+    private String getUserId(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof com.sliit.uniops.security.UserPrincipal user) {
+            return user.getId();
+        }
+        return authentication.getName();
     }
 }
