@@ -50,4 +50,7 @@ public class User {
 
     @Builder.Default
     private Set<Role> roles = new HashSet<>();
+
+    @Builder.Default
+    private Set<String> technicianSkills = new HashSet<>();
 }

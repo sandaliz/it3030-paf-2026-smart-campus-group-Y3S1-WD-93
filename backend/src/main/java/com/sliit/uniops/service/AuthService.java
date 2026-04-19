@@ -121,7 +121,7 @@ public class AuthService {
     }
 
     public AuthResponse buildAuthResponse(User user) {
-        String token = jwtUtils.generateToken(user.getUsername(), buildClaims(user));
+        String token = jwtUtils.generateToken(resolveJwtSubject(user), buildClaims(user));
         return AuthResponse.builder()
                 .token(token)
                 .id(user.getId())
@@ -133,6 +133,18 @@ public class AuthService {
                 .roles(user.getRoles())
                 .redirectPath(roleMappingService.getDashboardPath(roleMappingService.getHighestPriorityRole(user.getRoles())))
                 .build();
+    }
+
+    private String resolveJwtSubject(User user) {
+        if (user.getEmail() != null && !user.getEmail().isBlank()) {
+            return user.getEmail().trim().toLowerCase();
+        }
+
+        if (user.getUsername() != null && !user.getUsername().isBlank()) {
+            return user.getUsername().trim().toLowerCase();
+        }
+
+        throw new IllegalStateException("User must have an email or username to generate a JWT");
     }
 
     private Map<String, Object> buildClaims(User user) {

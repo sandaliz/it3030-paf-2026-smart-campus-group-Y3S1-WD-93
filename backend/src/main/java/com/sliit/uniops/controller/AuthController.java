@@ -1,32 +1,5 @@
 package com.sliit.uniops.controller;
 
-import com.sliit.uniops.dto.request.GoogleCalendarTokenExchangeRequest;
-import com.sliit.uniops.dto.response.GoogleCalendarTokenResponse;
-import com.sliit.uniops.service.GoogleCalendarOAuthService;
-import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-@RestController
-@RequestMapping("/api/auth")
-@CrossOrigin(origins = "http://localhost:5173")
-public class AuthController {
-
-    private final GoogleCalendarOAuthService googleCalendarOAuthService;
-
-    public AuthController(GoogleCalendarOAuthService googleCalendarOAuthService) {
-        this.googleCalendarOAuthService = googleCalendarOAuthService;
-    }
-
-    @PostMapping("/calendar/token")
-    public ResponseEntity<GoogleCalendarTokenResponse> exchangeCalendarCode(
-        @Valid @RequestBody GoogleCalendarTokenExchangeRequest request
-    ) {
-        return ResponseEntity.ok(googleCalendarOAuthService.exchangeCodeForToken(request.getCode()));
 import com.sliit.uniops.dto.request.auth.LoginRequest;
 import com.sliit.uniops.dto.request.auth.RegisterRequest;
 import com.sliit.uniops.dto.response.auth.AuthResponse;
@@ -107,19 +80,19 @@ public class AuthController {
 
         try {
             String form = "code=" + URLEncoder.encode(code, StandardCharsets.UTF_8)
-                + "&client_id=" + URLEncoder.encode(googleClientId, StandardCharsets.UTF_8)
-                + "&client_secret=" + URLEncoder.encode(googleClientSecret, StandardCharsets.UTF_8)
-                + "&redirect_uri=" + URLEncoder.encode(frontendUrl + "/auth/calendar/callback", StandardCharsets.UTF_8)
-                + "&grant_type=authorization_code";
+                    + "&client_id=" + URLEncoder.encode(googleClientId, StandardCharsets.UTF_8)
+                    + "&client_secret=" + URLEncoder.encode(googleClientSecret, StandardCharsets.UTF_8)
+                    + "&redirect_uri=" + URLEncoder.encode(frontendUrl + "/auth/calendar/callback", StandardCharsets.UTF_8)
+                    + "&grant_type=authorization_code";
 
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://oauth2.googleapis.com/token"))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .POST(HttpRequest.BodyPublishers.ofString(form))
-                .build();
+                    .uri(URI.create("https://oauth2.googleapis.com/token"))
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .POST(HttpRequest.BodyPublishers.ofString(form))
+                    .build();
 
             HttpResponse<String> response = HttpClient.newHttpClient()
-                .send(request, HttpResponse.BodyHandlers.ofString());
+                    .send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                 return ResponseEntity.ok(objectMapper.readValue(response.body(), new TypeReference<Map<String, Object>>() {}));
@@ -127,7 +100,7 @@ public class AuthController {
 
             try {
                 return ResponseEntity.status(response.statusCode())
-                    .body(objectMapper.readValue(response.body(), new TypeReference<Map<String, Object>>() {}));
+                        .body(objectMapper.readValue(response.body(), new TypeReference<Map<String, Object>>() {}));
             } catch (Exception ignored) {
                 return ResponseEntity.status(response.statusCode()).body(Map.of("message", response.body()));
             }

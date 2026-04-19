@@ -2,17 +2,25 @@ package com.sliit.uniops.service.ticket;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.sliit.uniops.model.ticket.TicketModel;
 import com.sliit.uniops.repository.ticket.TicketRepository;
 import com.sliit.uniops.repository.ticket.CommentRepository;
 import com.sliit.uniops.dto.request.ticket.TicketRequestDTO;
+import com.sliit.uniops.dto.response.ticket.TechnicianRecommendationDTO;
 import com.sliit.uniops.dto.response.ticket.TicketResponseDTO;
+import com.sliit.uniops.model.Role;
 import com.sliit.uniops.model.Resource;
+import com.sliit.uniops.model.User;
 import com.sliit.uniops.exception.ticket.InvalidTicketStatusException;
 import com.sliit.uniops.exception.ticket.TicketNotFoundException;
+import com.sliit.uniops.repository.UserRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +46,7 @@ public class TicketService {
     private final AttachmentService attachmentService;
     private final TicketNotificationService notificationService;
     private final ResourceService resourceService;
+    private final UserRepository userRepository;
 
     // ✅ CREATE TICKET (FIXED)
     @Transactional
@@ -126,9 +135,13 @@ public class TicketService {
     }
 
     // ✅ GET BY ID
-    public TicketResponseDTO getTicketById(String id) {
+    public TicketResponseDTO getTicketById(String id, String userId, String userRole) {
         TicketModel ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
+
+        if (!canAccessTicket(ticket, userId, userRole)) {
+            throw new AccessDeniedException("You do not have permission to view this ticket");
+        }
 
         return mapToResponseDTO(ticket);
     }
@@ -151,12 +164,32 @@ public class TicketService {
                 .map(this::mapToResponseDTO);
     }
 
+    public List<TechnicianRecommendationDTO> getRecommendedTechnicians(String ticketId) {
+        TicketModel ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
+
+        Set<String> desiredSkills = deriveDesiredSkills(ticket);
+
+        return userRepository.findAll().stream()
+                .filter(this::isActiveTechnician)
+                .map(technician -> toTechnicianRecommendation(technician, desiredSkills))
+                .sorted(Comparator
+                        .comparingInt(TechnicianRecommendationDTO::getMatchScore).reversed()
+                        .thenComparingInt(TechnicianRecommendationDTO::getActiveTicketCount)
+                        .thenComparing(TechnicianRecommendationDTO::getName, String.CASE_INSENSITIVE_ORDER))
+                .collect(Collectors.toList());
+    }
+
     // ✅ UPDATE STATUS
     @Transactional
     public TicketResponseDTO updateTicketStatus(String ticketId, String newStatus, String reason, String userId, String userRole) {
 
         TicketModel ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
+
+        if (!canManageTicket(ticket, userId, userRole)) {
+            throw new AccessDeniedException("Only admins or the assigned technician can update this ticket");
+        }
 
         if (!isValidStatus(newStatus)) {
             throw new IllegalArgumentException("Invalid status");
@@ -205,7 +238,20 @@ public class TicketService {
         TicketModel ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
 
+        User technician = userRepository.findById(technicianId)
+                .orElseThrow(() -> new TicketNotFoundException("Technician not found"));
+
+        if (!isActiveTechnician(technician)) {
+            throw new AccessDeniedException("Selected user is not an active technician");
+        }
+
+        if (TicketStatus.CLOSED.equals(ticket.getStatus())
+                || TicketStatus.REJECTED.equals(ticket.getStatus())) {
+            throw new InvalidTicketStatusException("Cannot assign technician to a closed or rejected ticket");
+        }
+
         ticket.setAssignedTo(technicianId);
+        ticket.setAssignedToName(resolveDisplayName(technician));
         ticket.setUpdatedAt(LocalDateTime.now());
 
         if (TicketStatus.OPEN.equals(ticket.getStatus())) {
@@ -214,7 +260,7 @@ public class TicketService {
 
         TicketModel updated = ticketRepository.save(ticket);
         
-        notificationService.notifyTicketAssigned(updated, technicianId, assignedBy);
+        notificationService.notifyTicketAssigned(updated, technician, resolveAssignedByLabel(assignedBy));
 
         return mapToResponseDTO(updated);
     }
@@ -293,11 +339,142 @@ public class TicketService {
     }
 
     // Search tickets by keyword
-    public List<TicketResponseDTO> searchTickets(String keyword) {
+    public List<TicketResponseDTO> searchTickets(String keyword, String userId, String userRole) {
         return ticketRepository.searchByKeyword(keyword)
                 .stream()
+                .filter(ticket -> canAccessTicket(ticket, userId, userRole))
                 .map(this::mapToResponseDTO)
                 .collect(Collectors.toList());
+    }
+
+    private TechnicianRecommendationDTO toTechnicianRecommendation(User technician, Set<String> desiredSkills) {
+        Set<String> technicianSkills = normalizeSkills(technician.getTechnicianSkills());
+        List<String> matchedSkills = technicianSkills.stream()
+                .filter(desiredSkills::contains)
+                .sorted()
+                .collect(Collectors.toList());
+        int activeTicketCount = countActiveAssignments(technician.getId());
+        int score = (matchedSkills.size() * 100) - (activeTicketCount * 10);
+
+        List<String> reasons = new ArrayList<>();
+        if (!matchedSkills.isEmpty()) {
+            reasons.add("Skills match: " + String.join(", ", matchedSkills));
+        }
+        if (activeTicketCount == 0) {
+            reasons.add("No active assigned tickets");
+        } else {
+            reasons.add(activeTicketCount + " active assigned ticket" + (activeTicketCount == 1 ? "" : "s"));
+        }
+        if (matchedSkills.isEmpty() && technicianSkills.isEmpty()) {
+            reasons.add("No technician skills configured yet");
+        }
+
+        return TechnicianRecommendationDTO.builder()
+                .id(technician.getId())
+                .name(resolveDisplayName(technician))
+                .email(technician.getEmail())
+                .skills(new LinkedHashSet<>(technicianSkills))
+                .activeTicketCount(activeTicketCount)
+                .matchScore(score)
+                .recommended(!matchedSkills.isEmpty())
+                .reasons(reasons)
+                .build();
+    }
+
+    private Set<String> deriveDesiredSkills(TicketModel ticket) {
+        Set<String> desiredSkills = new LinkedHashSet<>();
+
+        if (ticket.getCategory() != null) {
+            desiredSkills.add(ticket.getCategory().name().toLowerCase(Locale.ROOT));
+        }
+
+        if (ticket.getResourceId() != null && !ticket.getResourceId().isBlank()) {
+            try {
+                Resource resource = resourceService.getResourceById(ticket.getResourceId());
+                if (resource != null && resource.getType() != null) {
+                    desiredSkills.add(resource.getType().name().toLowerCase(Locale.ROOT));
+                }
+            } catch (Exception ignored) {
+                // Best-effort enrichment only.
+            }
+        }
+
+        return desiredSkills;
+    }
+
+    private int countActiveAssignments(String technicianId) {
+        return (int) ticketRepository.findByAssignedTo(technicianId).stream()
+                .filter(ticket -> TicketStatus.OPEN.equals(ticket.getStatus())
+                        || TicketStatus.IN_PROGRESS.equals(ticket.getStatus())
+                        || TicketStatus.PENDING_CONFIRMATION.equals(ticket.getStatus()))
+                .count();
+    }
+
+    private boolean isActiveTechnician(User user) {
+        return user != null
+                && user.isEnabled()
+                && user.getRoles() != null
+                && user.getRoles().contains(Role.TECHNICIAN);
+    }
+
+    private Set<String> normalizeSkills(Set<String> rawSkills) {
+        if (rawSkills == null) {
+            return Set.of();
+        }
+
+        return rawSkills.stream()
+                .filter(skill -> skill != null && !skill.isBlank())
+                .map(skill -> skill.trim().toLowerCase(Locale.ROOT))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private String resolveDisplayName(User user) {
+        if (user.getName() != null && !user.getName().isBlank()) {
+            return user.getName();
+        }
+        if (user.getEmail() != null && !user.getEmail().isBlank()) {
+            return user.getEmail();
+        }
+        return "Technician";
+    }
+
+    private String resolveAssignedByLabel(String assignedBy) {
+        return userRepository.findById(assignedBy)
+                .map(this::resolveDisplayName)
+                .orElse(assignedBy);
+    }
+
+    private boolean canAccessTicket(TicketModel ticket, String userId, String userRole) {
+        if (isAdmin(userRole)) {
+            return true;
+        }
+
+        if (userId == null || userId.isBlank()) {
+            return false;
+        }
+
+        if (userId.equals(ticket.getCreatedBy())) {
+            return true;
+        }
+
+        return isTechnician(userRole)
+                && ticket.getAssignedTo() != null
+                && userId.equals(ticket.getAssignedTo());
+    }
+
+    private boolean canManageTicket(TicketModel ticket, String userId, String userRole) {
+        return isAdmin(userRole)
+                || (isTechnician(userRole)
+                && ticket.getAssignedTo() != null
+                && ticket.getAssignedTo().equals(userId));
+    }
+
+    private boolean isAdmin(String userRole) {
+        return "ADMIN".equalsIgnoreCase(userRole);
+    }
+
+    private boolean isTechnician(String userRole) {
+        return "TECHNICIAN".equalsIgnoreCase(userRole);
     }
 
     // ✅ VALIDATION METHODS

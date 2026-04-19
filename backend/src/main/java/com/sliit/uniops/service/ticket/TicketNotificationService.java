@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import com.sliit.uniops.model.ticket.TicketModel;
 import com.sliit.uniops.model.ticket.CommentModel;
 import com.sliit.uniops.model.ticket.NotificationModel;
+import com.sliit.uniops.model.User;
 import com.sliit.uniops.repository.ticket.TicketNotificationRepository;
 import com.sliit.uniops.service.EmailService;
 
@@ -48,11 +49,11 @@ public class TicketNotificationService {
     }
 
     // ✅ Assigned
-    public void notifyTicketAssigned(TicketModel ticket, String technicianId, String assignedBy) {
+    public void notifyTicketAssigned(TicketModel ticket, User technician, String assignedBy) {
 
         String message = String.format(
                 "Ticket #%s assigned to %s by %s | Title: %s | Priority: %s",
-                ticket.getId(), technicianId, assignedBy,
+                ticket.getId(), technician.getName(), assignedBy,
                 ticket.getTitle(), ticket.getPriority());
 
         if (ticket.getAssignedTo() != null) {
@@ -61,8 +62,8 @@ public class TicketNotificationService {
             // Send email notification to technician
             try {
                 emailService.sendTicketAssignmentNotification(
-                    ticket.getAssignedTo(),           // technician email
-                    technicianId,                    // technician name
+                    technician.getEmail(),            // technician email
+                    technician.getName(),            // technician name
                     ticket.getId(),                   // ticket ID
                     ticket.getTitle(),                 // ticket title
                     ticket.getDescription(),            // ticket description
@@ -70,10 +71,10 @@ public class TicketNotificationService {
                     ticket.getCategory().toString(),  // category
                     ticket.getLocation()               // location
                 );
-                log.info("Email notification sent to technician: {} for ticket: {}", ticket.getAssignedTo(), ticket.getId());
+                log.info("Email notification sent to technician: {} for ticket: {}", technician.getEmail(), ticket.getId());
             } catch (Exception e) {
                 log.error("Failed to send email notification to technician: {} for ticket: {}", 
-                           ticket.getAssignedTo(), ticket.getId(), e);
+                           technician.getEmail(), ticket.getId(), e);
             }
         }
 

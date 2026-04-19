@@ -40,7 +40,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         User user = resolveOAuthUser(oAuth2User);
-        String token = jwtUtils.generateToken(user.getUsername(), buildClaims(user));
+        String token = jwtUtils.generateToken(resolveJwtSubject(user), buildClaims(user));
         String redirectPath = getDashboardPath(user.getRoles());
 
         String origin = request.getHeader("Origin");
@@ -85,6 +85,18 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         user.setRoles(defaultRoles(primaryRole));
 
         return userRepository.save(user);
+    }
+
+    private String resolveJwtSubject(User user) {
+        if (user.getEmail() != null && !user.getEmail().isBlank()) {
+            return user.getEmail().trim().toLowerCase();
+        }
+
+        if (user.getUsername() != null && !user.getUsername().isBlank()) {
+            return user.getUsername().trim().toLowerCase();
+        }
+
+        throw new IllegalStateException("OAuth user must have an email or username to generate a JWT");
     }
 
     private User createNewUser(String email, String name) {

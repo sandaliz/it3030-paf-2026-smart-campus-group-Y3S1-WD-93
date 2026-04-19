@@ -10,7 +10,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -48,10 +50,13 @@ public class UserController {
         }
         
         Set<Role> roles = roleNames.stream()
-                .map(Role::valueOf)
+                .map(this::parseRoleName)
                 .collect(Collectors.toSet());
         
         user.setRoles(roles);
+        if (roleRequest.containsKey("technicianSkills")) {
+            user.setTechnicianSkills(normalizeSkills(roleRequest.get("technicianSkills")));
+        }
         userRepository.save(user);
         
         return ResponseEntity.ok(user);
@@ -67,6 +72,8 @@ public class UserController {
         String name = (String) userRequest.get("name");
         @SuppressWarnings("unchecked")
         List<String> roleNames = (List<String>) userRequest.get("roles");
+        @SuppressWarnings("unchecked")
+        List<String> technicianSkills = (List<String>) userRequest.get("technicianSkills");
         Boolean enabled = (Boolean) userRequest.getOrDefault("enabled", true);
         
         if (email == null || name == null) {
@@ -78,14 +85,15 @@ public class UserController {
             return ResponseEntity.badRequest().body("User with this email already exists");
         }
         
-        Set<Role> roles = roleNames != null ? 
-            roleNames.stream().map(Role::valueOf).collect(Collectors.toSet()) :
+        Set<Role> roles = roleNames != null ?
+            roleNames.stream().map(this::parseRoleName).collect(Collectors.toSet()) :
             Set.of(Role.STUDENT);
         
         User user = User.builder()
                 .email(email.toLowerCase().trim())
                 .name(name)
                 .roles(roles)
+                .technicianSkills(normalizeSkills(technicianSkills))
                 .enabled(enabled)
                 .createdAt(System.currentTimeMillis())
                 .build();
@@ -114,7 +122,7 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<User>> getTechnicians() {
         List<User> technicians = userRepository.findAll().stream()
-                .filter(user -> user.getRoles().contains(com.sliit.uniops.model.Role.TECHNICIAN))
+                .filter(user -> user.isEnabled() && user.getRoles().contains(com.sliit.uniops.model.Role.TECHNICIAN))
                 .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(technicians);
     }
@@ -137,5 +145,29 @@ public class UserController {
         userRepository.save(user);
         
         return ResponseEntity.ok(user);
+    }
+
+    private Set<String> normalizeSkills(List<String> skills) {
+        if (skills == null) {
+            return new LinkedHashSet<>();
+        }
+
+        return skills.stream()
+                .filter(skill -> skill != null && !skill.isBlank())
+                .map(skill -> skill.trim().toLowerCase(Locale.ROOT))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private Role parseRoleName(String roleName) {
+        if (roleName == null || roleName.isBlank()) {
+            throw new IllegalArgumentException("Role name cannot be empty");
+        }
+
+        String normalizedRole = roleName.trim().toUpperCase(Locale.ROOT);
+        if ("TECHINICIAN".equals(normalizedRole)) {
+            normalizedRole = "TECHNICIAN";
+        }
+
+        return Role.valueOf(normalizedRole);
     }
 }

@@ -4,6 +4,7 @@ import { commentService } from '../../services/ticketService';
 import { userService } from '../../services/userService';
 import { useAuth } from '../../context/AuthContext';
 import AdminSidebar from '../../components/admin/AdminSidebar';
+import AssignTechnicianModal from '../incidents/AssignTechnicianModal';
 
 // ── Icon helper ───────────────────────────────────────────────────────────────
 const Icon = ({ d, size = 16, className = '' }) => (
@@ -145,6 +146,8 @@ const TicketManagementPage = () => {
   const [showRejectModal, setShowRejectModal]       = useState(false);
   const [showStatusModal, setShowStatusModal]       = useState(false);
   const [selectedTechnician, setSelectedTechnician] = useState('');
+  const [recommendedTechnicians, setRecommendedTechnicians] = useState([]);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [rejectionReason, setRejectionReason]       = useState('');
   const [resolutionNotes, setResolutionNotes]       = useState('');
   const [newStatus, setNewStatus]                   = useState('');
@@ -193,6 +196,19 @@ const TicketManagementPage = () => {
   const fetchTechnicians = async () => {
     try { setTechnicians(await userService.getTechnicians()); }
     catch (e) { console.error(e); }
+  };
+
+  const fetchRecommendedTechnicians = async (ticketId) => {
+    try {
+      setLoadingRecommendations(true);
+      const recommendations = await ticketAPI.getRecommendedTechnicians(ticketId);
+      setRecommendedTechnicians(recommendations);
+    } catch (e) {
+      console.error(e);
+      setRecommendedTechnicians([]);
+    } finally {
+      setLoadingRecommendations(false);
+    }
   };
 
   // ── Analytics recalc ─────────────────────────────────────────────────────────
@@ -267,6 +283,14 @@ const TicketManagementPage = () => {
 
   useEffect(() => { fetchTickets(); fetchStatsAndAll(); fetchTechnicians(); }, []);
   useEffect(() => { if (allTickets.length) runAnalytics(allTickets); }, [timeRange, allTickets]);
+  useEffect(() => {
+    if (showAssignModal && selectedTicket?.id) {
+      fetchRecommendedTechnicians(selectedTicket.id);
+    } else {
+      setRecommendedTechnicians([]);
+      setSelectedTechnician('');
+    }
+  }, [showAssignModal, selectedTicket?.id]);
 
   const refresh = () => { fetchTickets(); fetchStatsAndAll(); };
 
@@ -275,9 +299,13 @@ const TicketManagementPage = () => {
     if (!selectedTechnician) return;
     try {
       await ticketAPI.assignTicket(selectedTicket.id, selectedTechnician);
-      const tech = technicians.find(t => t.id === selectedTechnician);
+      const tech = recommendedTechnicians.find(t => t.id === selectedTechnician)
+        || technicians.find(t => t.id === selectedTechnician);
       alert(`Ticket #${selectedTicket.id} assigned to ${tech?.name || selectedTechnician}. Email sent.`);
-      setShowAssignModal(false); setSelectedTechnician(''); refresh();
+      setShowAssignModal(false);
+      setSelectedTechnician('');
+      setRecommendedTechnicians([]);
+      refresh();
     } catch { alert('Error assigning ticket.'); }
   };
 
@@ -796,7 +824,28 @@ const TicketManagementPage = () => {
         </Modal>
       )}
 
-      {showAssignModal && selectedTicket && (
+      <AssignTechnicianModal
+        isOpen={showAssignModal && !!selectedTicket}
+        ticket={selectedTicket}
+        loading={false}
+        onClose={() => setShowAssignModal(false)}
+        onAssign={async (technicianId, technician) => {
+          setSelectedTechnician(technicianId);
+          try {
+            await ticketAPI.assignTicket(selectedTicket.id, technicianId);
+            alert(`Ticket #${selectedTicket.id} assigned to ${technician?.name || technicianId}. Email sent.`);
+            setShowAssignModal(false);
+            setSelectedTechnician('');
+            setRecommendedTechnicians([]);
+            refresh();
+          } catch (error) {
+            console.error(error);
+            alert('Error assigning ticket.');
+          }
+        }}
+      />
+
+      {false && showAssignModal && selectedTicket && (
         <Modal title="Assign Ticket" onClose={() => setShowAssignModal(false)}
           footer={
             <>

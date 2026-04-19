@@ -10,11 +10,20 @@ const AdminSidebar = () => {
 
   const menuItems = [
     {
-      path: '/admin/ticket-analytics',
-      label: 'Ticket Analytics',
+      path: '/admin/dashboard',
+      label: 'Admin Dashboard',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 10l2-2m-2 2l-2-2" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l8-8 8 8M5 10v10a1 1 0 001 1h3v-6h4v6h3a1 1 0 001-1V10" />
+        </svg>
+      ),
+    },
+    {
+      path: '/admin/users',
+      label: 'User Management',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5V4H2v16h5m10 0v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2m12 0H7m8-10a4 4 0 11-8 0 4 4 0 018 0z" />
         </svg>
       ),
     },
