@@ -3,6 +3,17 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/ticketService';
 import { useRealTimeValidation } from '../utils/validation';
+import { 
+    HiOutlineOfficeBuilding, 
+    HiOutlineTicket, 
+    HiOutlineBell, 
+    HiOutlineShieldCheck,
+    HiEye,
+    HiEyeOff,
+    HiArrowRight,
+    HiLightningBolt
+} from 'react-icons/hi';
+import { FcGoogle } from 'react-icons/fc';
 
 const LoginPage = () => {
     const { user, login } = useAuth();
@@ -16,12 +27,13 @@ const LoginPage = () => {
         handleChange,
         handleBlur,
         validateAll,
-        validateField,
         isFormValid
     } = useRealTimeValidation({ email: '', password: '' });
     
     const [submitting, setSubmitting] = useState(false);
     const [serverError, setServerError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [activeTab, setActiveTab] = useState('signin');
 
     if (user) {
         const from = location.state?.from?.pathname || "/";
@@ -31,7 +43,6 @@ const LoginPage = () => {
     const handleFieldChange = (event) => {
         const { name, value } = event.target;
         handleChange(name, value);
-        // Clear server error when user starts typing
         if (serverError) {
             setServerError('');
         }
@@ -41,7 +52,6 @@ const LoginPage = () => {
         event.preventDefault();
         setServerError('');
         
-        // Validate all fields
         if (!validateAll()) {
             return;
         }
@@ -59,79 +69,170 @@ const LoginPage = () => {
         }
     };
 
+    const features = [
+        { icon: <HiOutlineOfficeBuilding />, title: "Bookings", color: "text-primary" },
+        { icon: <HiOutlineTicket />, title: "Tickets", color: "text-secondary" },
+        { icon: <HiOutlineBell />, title: "Alerts", color: "text-accent" },
+        { icon: <HiOutlineShieldCheck />, title: "Secure", color: "text-info" }
+    ];
+
     return (
-        <div className="w-full max-w-md px-4">
-            <div className="card bg-base-100 shadow-2xl overflow-hidden">
-                <div className="bg-primary h-2 w-full"></div>
-                <div className="card-body p-8 md:p-10">
-                    <div className="avatar mb-4 justify-center">
-                        <div className="w-24 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
-                            <img src="https://img.icons8.com/clouds/200/university.png" alt="Campus Logo" />
-                        </div>
-                    </div>
-                    <h2 className="card-title text-3xl font-bold justify-center mb-2">Smart Campus Hub</h2>
-                    <p className="text-base-content/70 mb-6 text-center">Welcome Back! Please sign in to your account with your email and password. </p>
+        <div className="min-h-screen w-full flex items-center justify-center bg-base-300 relative overflow-hidden p-6">
+            {/* Subtle background pulses for depth */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
+                <div className="absolute top-[10%] left-[15%] w-96 h-96 bg-primary/20 rounded-full blur-[100px]"></div>
+                <div className="absolute bottom-[20%] right-[20%] w-[500px] h-[500px] bg-secondary/10 rounded-full blur-[120px]"></div>
+            </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <input
-                            type="email"
-                            name="email"
-                            value={form.email}
-                            onChange={handleFieldChange}
-                            onBlur={() => handleBlur('email')}
-                            className={`input input-bordered w-full ${
-                                touched.email && errors.email ? 'input-error' : ''
-                            }`}
-                            placeholder="Email"
-                            required
-                        />
-                        {touched.email && errors.email && (
-                            <label className="label">
-                                <span className="label-text-alt text-error text-xs">{errors.email}</span>
-                            </label>
-                        )}
-                        <input
-                            type="password"
-                            name="password"
-                            value={form.password}
-                            onChange={handleFieldChange}
-                            onBlur={() => handleBlur('password')}
-                            className={`input input-bordered w-full ${
-                                touched.password && errors.password ? 'input-error' : ''
-                            }`}
-                            placeholder="Password"
-                            required
-                        />
-                        {touched.password && errors.password && (
-                            <label className="label">
-                                <span className="label-text-alt text-error text-xs">{errors.password}</span>
-                            </label>
-                        )}
-
-                        {(serverError || (touched.email && errors.email) || (touched.password && errors.password)) && (
-                            <div className="alert alert-error text-sm">
-                                <span>{serverError || 'Please fix the errors above'}</span>
+            <div className="relative z-10 w-full max-w-[520px]">
+                <div className="card bg-base-100 shadow-2xl border border-base-content/5 rounded-[2.5rem] overflow-hidden">
+                    <div className="card-body p-8 sm:p-12">
+                        {/* Branding at the top of the card */}
+                        <div className="flex flex-col items-center mb-10">
+                            <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30 mb-4 animate-bounce-slow">
+                                <HiLightningBolt className="w-10 h-10 text-primary-content" />
                             </div>
-                        )}
+                            <h1 className="text-4xl font-black text-base-content tracking-tighter">UniOps</h1>
+                            <p className="text-xs uppercase tracking-[0.3em] font-bold text-base-content/40 mt-1">Operations Hub</p>
+                        </div>
 
-                        <button
-                            type="submit"
-                            className="btn btn-primary btn-lg w-full"
-                            disabled={submitting || !isFormValid}
+                        {/* Centered Tabs */}
+                        <div className="flex bg-base-200 p-1.5 rounded-2xl mb-12 w-fit mx-auto border border-base-content/5">
+                            <Link 
+                                to="/login"
+                                onClick={() => setActiveTab('signin')}
+                                className={`px-10 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'signin' ? 'bg-primary text-primary-content shadow-md' : 'text-base-content/40 hover:text-base-content'}`}
+                            >
+                                Sign In
+                            </Link>
+                            <Link 
+                                to="/register"
+                                onClick={() => setActiveTab('signup')}
+                                className={`px-10 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'signup' ? 'bg-primary text-primary-content shadow-md' : 'text-base-content/40 hover:text-base-content'}`}
+                            >
+                                Sign Up
+                            </Link>
+                        </div>
+
+                        <div className="text-center mb-10">
+                            <h2 className="text-2xl font-bold text-base-content mb-1">Welcome Back</h2>
+                            <p className="text-base-content/50 text-sm">Please enter your credentials to access your account</p>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div className="form-control">
+                                <label className="label py-1">
+                                    <span className="label-text font-bold text-xs text-base-content/60 tracking-wide">EMAIL ADDRESS</span>
+                                </label>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    value={form.email}
+                                    onChange={handleFieldChange}
+                                    onBlur={() => handleBlur('email')}
+                                    className={`input input-bordered bg-base-200/50 focus:bg-base-100 h-14 rounded-2xl transition-all ${
+                                        touched.email && errors.email ? 'input-error' : 'border-base-content/10'
+                                    }`}
+                                    placeholder="your@email.com"
+                                    required
+                                />
+                                {touched.email && errors.email && (
+                                    <label className="label">
+                                        <span className="label-text-alt text-error font-medium">{errors.email}</span>
+                                    </label>
+                                )}
+                            </div>
+
+                            <div className="form-control">
+                                <label className="label py-1">
+                                    <span className="label-text font-bold text-xs text-base-content/60 tracking-wide">PASSWORD</span>
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        name="password"
+                                        value={form.password}
+                                        onChange={handleFieldChange}
+                                        onBlur={() => handleBlur('password')}
+                                        className={`input input-bordered bg-base-200/50 focus:bg-base-100 h-14 rounded-2xl w-full pr-12 transition-all ${
+                                            touched.password && errors.password ? 'input-error' : 'border-base-content/10'
+                                        }`}
+                                        placeholder="••••••••"
+                                        required
+                                    />
+                                    <button 
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-base-content/30 hover:text-base-content transition-colors"
+                                    >
+                                        {showPassword ? <HiEyeOff className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
+                                    </button>
+                                </div>
+                                {touched.password && errors.password && (
+                                    <label className="label">
+                                        <span className="label-text-alt text-error font-medium">{errors.password}</span>
+                                    </label>
+                                )}
+                            </div>
+
+                            {serverError && (
+                                <div className="alert alert-error bg-error/10 border-error/20 text-error text-xs p-4 rounded-xl flex items-center gap-2">
+                                    <span className="font-bold">Error:</span> {serverError}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                className="btn btn-primary h-14 rounded-2xl w-full text-lg font-black shadow-lg shadow-primary/20 hover:scale-[1.01] transition-all"
+                                disabled={submitting || !isFormValid}
+                            >
+                                {submitting ? (
+                                    <span className="loading loading-spinner"></span>
+                                ) : (
+                                    <>
+                                        Sign In
+                                        <HiArrowRight className="ml-2" />
+                                    </>
+                                )}
+                            </button>
+                        </form>
+
+                        <div className="mt-8 text-center">
+                            <Link to="/forgot-password" size="sm" className="text-sm font-semibold text-base-content/40 hover:text-primary transition-colors">
+                                Forgot Password?
+                            </Link>
+                        </div>
+
+                        {/* Moderate Feature Grid Integrated into the bottom of the card */}
+                        <div className="grid grid-cols-4 gap-2 mt-12 pt-8 border-t border-base-content/5">
+                            {features.map((item, idx) => (
+                                <div key={idx} className="flex flex-col items-center gap-1 group">
+                                    <div className={`text-xl ${item.color} opacity-40 group-hover:opacity-100 transition-opacity`}>
+                                        {item.icon}
+                                    </div>
+                                    <span className="text-[10px] font-bold text-base-content/20 group-hover:text-base-content transition-colors uppercase tracking-widest">{item.title}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="relative my-10">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-base-content/5"></div>
+                            </div>
+                            <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-[0.2em]">
+                                <span className="bg-base-100 px-4 text-base-content/20">Social Login</span>
+                            </div>
+                        </div>
+
+                        <button 
+                            type="button" 
+                            onClick={authService.loginWithGoogle} 
+                            className="btn h-14 rounded-2xl w-full bg-base-200 hover:bg-base-300 border-none text-base-content font-bold flex items-center justify-center gap-3 transition-all"
                         >
-                            {submitting ? 'Signing In...' : 'Login'}
+                            <FcGoogle size={24} />
+                            Continue with Google
                         </button>
-                    </form>
-
-                    <div className="divider">Or</div>
-
-                    <button type="button" onClick={authService.loginWithGoogle} className="btn btn-outline w-full">
-                        Continue with Google
-                    </button>
-
-                    <p className="text-sm text-center text-base-content/70 mt-4">
-                        Don&apos;t have an account? <Link to="/register" className="link link-primary">Create one</Link>
-                    </p>
+                    </div>
                 </div>
             </div>
         </div>

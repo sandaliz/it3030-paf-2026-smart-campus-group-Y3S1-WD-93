@@ -3,13 +3,13 @@ import { useAuth } from '../../context/AuthContext';
 import { dashboardService } from '../../services/dashboardService';
 import NotificationBell from '../../components/notifications/NotificationBell';
 
-const LecturerDashboard = () => {
+const StudentDashboard = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     myBookings: 0,
     myResources: 0,
-    upcomingClasses: 0
+    activeTickets: 0
   });
   const [recentActivity, setRecentActivity] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -19,8 +19,8 @@ const LecturerDashboard = () => {
     try {
       setLoading(true);
       const [statsData, activityData] = await Promise.all([
-        dashboardService.getLecturerStats(),
-        dashboardService.getLecturerActivity()
+        dashboardService.getStudentStats(),
+        dashboardService.getStudentActivity()
       ]);
       
       setStats(statsData);
@@ -50,7 +50,7 @@ const LecturerDashboard = () => {
   const dashboardStats = [
     { title: 'My Bookings', value: stats.myBookings.toString(), icon: '📅', color: 'bg-blue-500' },
     { title: 'My Resources', value: stats.myResources.toString(), icon: '📊', color: 'bg-green-500' },
-    { title: 'Upcoming Classes', value: stats.upcomingClasses.toString(), icon: '📚', color: 'bg-purple-500' }
+    { title: 'Active Tickets', value: stats.activeTickets.toString(), icon: '🎫', color: 'bg-yellow-500' }
   ];
 
   if (loading) {
@@ -68,8 +68,8 @@ const LecturerDashboard = () => {
       <div className="mb-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Lecturer Dashboard</h1>
-            <p className="text-gray-600">Welcome back, {user?.name || 'Lecturer'}!</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Student Dashboard</h1>
+            <p className="text-gray-600">Welcome back, {user?.name || 'Student'}!</p>
           </div>
           <div className="flex items-center gap-4">
             <NotificationBell />
@@ -102,11 +102,15 @@ const LecturerDashboard = () => {
           <div className="space-y-4">
             <a href="/bookings" className="flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
               <span className="text-blue-600 mr-2">📅</span>
-              <span>Manage Bookings</span>
+              <span>My Bookings</span>
             </a>
             <a href="/resources" className="flex items-center p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
               <span className="text-green-600 mr-2">📊</span>
               <span>Browse Resources</span>
+            </a>
+            <a href="/tickets" className="flex items-center p-3 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors">
+              <span className="text-yellow-600 mr-2">🎫</span>
+              <span>My Tickets</span>
             </a>
             <a href="/calendar" className="flex items-center p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
               <span className="text-purple-600 mr-2">📅</span>
@@ -139,4 +143,4 @@ const LecturerDashboard = () => {
   );
 };
 
-export default LecturerDashboard;
+export default StudentDashboard;

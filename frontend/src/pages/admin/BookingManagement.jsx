@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import { bookingService } from '../../services/bookingService';
+import BookingNotifications from '../../components/bookings/BookingNotifications';
 
 const INITIAL_FILTERS = {
   status: '',
@@ -226,7 +227,8 @@ const BookingManagement = () => {
               </p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <BookingNotifications />
               <button 
                 className="btn btn-success" 
                 onClick={handleGenerateReport} 

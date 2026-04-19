@@ -9,7 +9,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Service for handling notification operations.
@@ -120,5 +123,88 @@ public class NotificationService {
         
         log.warn("Notification {} not found or access denied for user: {}", notificationId, userId);
         return false;
+    }
+
+    /**
+     * Get notification analytics for admin dashboard
+     */
+    public Map<String, Object> getNotificationAnalytics(String timeRange) {
+        log.info("Fetching notification analytics for time range: {}", timeRange);
+        
+        // Calculate date range
+        LocalDateTime endDate = LocalDateTime.now();
+        LocalDateTime startDate;
+        
+        switch (timeRange) {
+            case "7d":
+                startDate = endDate.minusDays(7);
+                break;
+            case "30d":
+                startDate = endDate.minusDays(30);
+                break;
+            case "90d":
+                startDate = endDate.minusDays(90);
+                break;
+            default:
+                startDate = endDate.minusDays(30);
+                break;
+        }
+        
+        // Get all notifications in date range
+        List<Notification> notifications = notificationRepository.findByCreatedAtBetween(startDate, endDate);
+        
+        // Calculate metrics
+        long totalNotifications = notifications.size();
+        long readNotifications = notifications.stream()
+                .mapToLong(n -> n.getIsRead() ? 1 : 0)
+                .sum();
+        double readRate = totalNotifications > 0 ? (double) readNotifications / totalNotifications * 100 : 0;
+        
+        // Group by type
+        Map<String, Long> notificationsByType = notifications.stream()
+                .collect(Collectors.groupingBy(
+                    n -> n.getType().name(),
+                    Collectors.counting()
+                ));
+        
+        // Group by user and find most active users
+        Map<String, Long> userNotificationCounts = notifications.stream()
+                .collect(Collectors.groupingBy(
+                    Notification::getUserId,
+                    Collectors.counting()
+                ));
+        
+        // Get user details for most active users (top 5)
+        List<Map<String, Object>> mostActiveUsers = userNotificationCounts.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(5)
+                .map(entry -> {
+                    Map<String, Object> userStats = new HashMap<>();
+                    userStats.put("userId", entry.getKey());
+                    userStats.put("notificationCount", entry.getValue());
+                    userStats.put("name", "User " + entry.getKey().substring(0, Math.min(8, entry.getKey().length()))); // Simplified name
+                    userStats.put("email", entry.getKey() + "@example.com"); // Simplified email
+                    return userStats;
+                })
+                .collect(Collectors.toList());
+        
+        // Calculate average notifications per user
+        double averagePerUser = userNotificationCounts.size() > 0 ? 
+                (double) totalNotifications / userNotificationCounts.size() : 0;
+        
+        // Build response
+        Map<String, Object> analytics = new HashMap<>();
+        analytics.put("totalNotifications", totalNotifications);
+        analytics.put("readRate", readRate);
+        analytics.put("averagePerUser", averagePerUser);
+        analytics.put("notificationsByType", notificationsByType);
+        analytics.put("mostActiveUsers", mostActiveUsers);
+        analytics.put("timeRange", timeRange);
+        analytics.put("generatedAt", LocalDateTime.now().toString());
+        
+        log.info("Notification analytics generated: {} notifications, {}% read rate", 
+                totalNotifications, String.format("%.1f", readRate));
+        
+        return analytics;
     }
 }

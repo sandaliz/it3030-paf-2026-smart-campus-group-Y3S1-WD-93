@@ -75,7 +75,27 @@ public class BookingService {
         booking.setExpectedAttendees(request.getExpectedAttendees());
         booking.setStatus("PENDING");
         
-        return bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+        
+        // 4. Send email notification to booking management admin
+        try {
+            User user = userRepository.findById(userId).orElse(null);
+            String requestedBy = user != null ? user.getName() : "Unknown User";
+            
+            emailService.sendBookingManagementNotification(
+                savedBooking.getId(),
+                resource.getName(),
+                request.getDate().toString(),
+                request.getStartTime().toString(),
+                request.getEndTime().toString(),
+                requestedBy
+            );
+        } catch (Exception e) {
+            // Log error but don't fail the booking creation
+            System.err.println("Failed to send booking management notification: " + e.getMessage());
+        }
+        
+        return savedBooking;
     }
     
     // Create multiple bookings (bulk insert)

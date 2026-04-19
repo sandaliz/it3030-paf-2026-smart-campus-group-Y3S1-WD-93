@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../hooks/useNotifications';
 
 const StudentDashboard = () => {
     const [stats, setStats] = useState({
@@ -12,14 +13,15 @@ const StudentDashboard = () => {
 
     const [loading, setLoading] = useState(true);
     const [upcomingBookings, setUpcomingBookings] = useState([]);
-    const [notifications, setNotifications] = useState([]);
     const [facilities, setFacilities] = useState([]);
     const [myTickets, setMyTickets] = useState([]);
     const [savedResources, setSavedResources] = useState([]);
+    const [notifications, setNotifications] = useState([]);
     const [noteModalOpen, setNoteModalOpen] = useState(false);
     const [selectedResource, setSelectedResource] = useState(null);
     const [noteText, setNoteText] = useState('');
     const { user } = useAuth();
+    const { userBookings, userTickets, markAsRead, markAllAsRead, isNotificationRead, getTotalUnreadCount } = useNotifications();
 
     // Helper function to extract data from Page response
     const extractData = (response) => response?.data?.content || response?.data || [];
@@ -293,31 +295,90 @@ const StudentDashboard = () => {
                         <div className="p-8 border-b border-base-200 bg-secondary/5">
                             <h3 className="text-xl font-black flex items-center gap-4 uppercase tracking-tighter">
                                 <span className="w-2 h-8 bg-secondary rounded-full"></span>
-                                🔔 RECENT NOTIFICATIONS
+                                &#x1f514; RECENT NOTIFICATIONS
+                                {getTotalUnreadCount() > 0 && (
+                                    <span className="badge badge-secondary badge-md text-white font-black ml-auto">
+                                        {getTotalUnreadCount()} NEW
+                                    </span>
+                                )}
                             </h3>
                         </div>
                         <div className="card-body p-6 space-y-4">
-                            {notifications.length > 0 ? (
-                                notifications.slice(0, 5).map((n) => (
-                                    <div key={n.id} className="flex gap-4 p-5 bg-base-200 rounded-2xl border border-base-300 items-start hover:bg-base-100 transition-colors">
-                                        <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center text-xl shadow-inner border border-secondary/20">
-                                            {n.type === 'BOOKING_APPROVED' ? '✅' : n.type === 'TICKET_STATUS_CHANGED' ? '🔧' : '📢'}
+                            {(() => {
+                                const allNotifications = [
+                                    ...userBookings.slice(0, 3).map(b => ({
+                                        id: `booking-${b.id}`,
+                                        type: 'USER_BOOKING',
+                                        title: `Booking: ${b.resourceName || b.facilityName}`,
+                                        message: `${b.date} - ${b.startTime} to ${b.endTime}`,
+                                        createdAt: b.createdAt || new Date().toISOString(),
+                                        icon: '&#x1f4c5;'
+                                    })),
+                                    ...userTickets.slice(0, 3).map(t => ({
+                                        id: `ticket-${t.id}`,
+                                        type: 'USER_TICKET',
+                                        title: `Ticket: ${t.title}`,
+                                        message: `Status: ${t.status} | Priority: ${t.priority}`,
+                                        createdAt: t.createdAt || new Date().toISOString(),
+                                        icon: '&#x1f39f;'
+                                    }))
+                                ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+                                return allNotifications.length > 0 ? (
+                                    allNotifications.map((n) => (
+                                        <div 
+                                            key={n.id} 
+                                            className={`flex gap-4 p-5 bg-base-200 rounded-2xl border border-base-300 items-start hover:bg-base-100 transition-colors ${
+                                                isNotificationRead(n.id) ? 'opacity-60' : ''
+                                            }`}
+                                        >
+                                            <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center text-xl shadow-inner border border-secondary/20">
+                                                {n.icon}
+                                            </div>
+                                            <div className="flex-1">
+                                                <h4 className="font-bold text-sm flex justify-between">
+                                                    {n.title}
+                                                    <span className="text-[10px] opacity-40 font-mono italic">
+                                                        {new Date(n.createdAt).toLocaleTimeString()}
+                                                    </span>
+                                                </h4>
+                                                <p className="text-xs opacity-60 mt-1">{n.message}</p>
+                                            </div>
+                                            {!isNotificationRead(n.id) && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        markAsRead(n.id);
+                                                    }}
+                                                    className="btn btn-xs btn-secondary text-white"
+                                                >
+                                                    Mark read
+                                                </button>
+                                            )}
                                         </div>
-                                        <div className="flex-1">
-                                            <h4 className="font-bold text-sm flex justify-between">
-                                                {n.title}
-                                                <span className="text-[10px] opacity-40 font-mono italic">{new Date(n.createdAt).toLocaleTimeString()}</span>
-                                            </h4>
-                                            <p className="text-xs opacity-60 mt-1">{n.message}</p>
-                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-8 opacity-50">
+                                        <p className="font-bold">No notifications found</p>
                                     </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-8 opacity-50">
-                                    <p className="font-bold">No notifications found</p>
-                                </div>
-                            )}
-                            <button className="btn btn-ghost btn-sm btn-block text-secondary font-black tracking-widest mt-4">VIEW ALL NOTIFICATIONS</button>
+                                );
+                            })()}
+                            <div className="flex gap-2 mt-4">
+                                <button 
+                                    onClick={() => {
+                                        markAllAsRead();
+                                    }}
+                                    className="btn btn-sm btn-secondary text-white flex-1 font-black"
+                                >
+                                    Mark All as Read
+                                </button>
+                                <button 
+                                    onClick={() => window.location.href = '/notifications'}
+                                    className="btn btn-sm btn-outline flex-1 font-black"
+                                >
+                                    View All
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

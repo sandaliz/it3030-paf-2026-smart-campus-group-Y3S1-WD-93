@@ -6,6 +6,7 @@ import com.sliit.uniops.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -123,6 +124,19 @@ public class NotificationController {
     @PatchMapping("/read-all")
     public ResponseEntity<Integer> markAllAsReadPatch() {
         return markAllAsRead();
+    }
+
+    /**
+     * 6. GET /api/notifications/analytics → get notification analytics (admin only)
+     */
+    @GetMapping("/analytics")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> getNotificationAnalytics(
+            @RequestParam(defaultValue = "30d") String timeRange) {
+        
+        Map<String, Object> analytics = notificationService.getNotificationAnalytics(timeRange);
+        log.info("Notification analytics retrieved for time range: {}", timeRange);
+        return ResponseEntity.ok(analytics);
     }
 
     /**
