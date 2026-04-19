@@ -1,6 +1,7 @@
 package com.sliit.uniops.controller.ticket;
 
 import com.sliit.uniops.dto.request.ticket.TicketRequestDTO;
+import com.sliit.uniops.dto.response.ticket.TechnicianRecommendationDTO;
 import com.sliit.uniops.dto.response.ticket.TicketResponseDTO;
 import com.sliit.uniops.security.UserPrincipal;
 import com.sliit.uniops.service.ticket.TicketService;
@@ -37,8 +38,14 @@ public class TicketController {
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<TicketResponseDTO> getTicketById(@PathVariable String id) {
-        TicketResponseDTO ticket = ticketService.getTicketById(id);
+    public ResponseEntity<TicketResponseDTO> getTicketById(
+            @PathVariable String id,
+            Authentication authentication) {
+        TicketResponseDTO ticket = ticketService.getTicketById(
+                id,
+                getUserId(authentication),
+                getPrimaryRole(authentication)
+        );
         return ResponseEntity.ok(ticket);
     }
 
@@ -92,7 +99,6 @@ public class TicketController {
     public ResponseEntity<TicketResponseDTO> assignTechnician(
             @PathVariable String id,
             @RequestParam String technicianId,
-            @RequestParam String technicianName,
             Authentication authentication) {
 
 
@@ -100,6 +106,12 @@ public class TicketController {
 
         TicketResponseDTO ticket = ticketService.assignTechnician(id, technicianId, assignedBy);
         return ResponseEntity.ok(ticket);
+    }
+
+    @GetMapping("/{id}/recommended-technicians")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<TechnicianRecommendationDTO>> getRecommendedTechnicians(@PathVariable String id) {
+        return ResponseEntity.ok(ticketService.getRecommendedTechnicians(id));
     }
 
     @PatchMapping("/{id}/confirm")
@@ -115,8 +127,14 @@ public class TicketController {
 
     @GetMapping("/search")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<List<TicketResponseDTO>> searchTickets(@RequestParam String keyword) {
-        List<TicketResponseDTO> tickets = ticketService.searchTickets(keyword);
+    public ResponseEntity<List<TicketResponseDTO>> searchTickets(
+            @RequestParam String keyword,
+            Authentication authentication) {
+        List<TicketResponseDTO> tickets = ticketService.searchTickets(
+                keyword,
+                getUserId(authentication),
+                getPrimaryRole(authentication)
+        );
         return ResponseEntity.ok(tickets);
     }
 

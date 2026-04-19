@@ -101,9 +101,12 @@ const Header = () => {
                                         } else if (roles.includes('BOOKING_MANAGER')) {
                                             path = "/admin/bookings";
                                             label = "Booking Management";
-                                        } else if (roles.includes('TICKET_MANAGER') || roles.includes('TECHNICIAN')) {
+                                        } else if (roles.includes('TICKET_MANAGER')) {
                                             path = "/admin/tickets";
                                             label = "Ticket Analytics";
+                                        } else if (roles.includes('TECHNICIAN')) {
+                                            path = "/technician/dashboard";
+                                            label = "Technician Dashboard";
                                         } else if (roles.includes('RESOURCE_MANAGER')) {
                                             path = "/admin/resources";
                                             label = "Resource Management";

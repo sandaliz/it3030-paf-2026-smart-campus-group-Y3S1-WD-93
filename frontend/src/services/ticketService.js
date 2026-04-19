@@ -48,10 +48,15 @@ export const ticketService = {
   },
 
   // Assign technician
-  assignTechnician: async (id, technicianId, technicianName) => {
+  assignTechnician: async (id, technicianId) => {
     const response = await api.patch(`/api/tickets/${id}/assign`, null, {
-      params: { technicianId, technicianName }
+      params: { technicianId }
     });
+    return response.data;
+  },
+
+  getRecommendedTechnicians: async (id) => {
+    const response = await api.get(`/api/tickets/${id}/recommended-technicians`);
     return response.data;
   },
 
@@ -107,9 +112,14 @@ export const ticketAPI = {
     return { data };
   },
 
-  assignTicket: async (id, technicianId, technicianName = '') => {
-    const data = await ticketService.assignTechnician(id, technicianId, technicianName);
+  assignTicket: async (id, technicianId) => {
+    const data = await ticketService.assignTechnician(id, technicianId);
     return { data };
+  },
+
+  getRecommendedTechnicians: async (id) => {
+    const data = await ticketService.getRecommendedTechnicians(id);
+    return data;
   },
 
   rejectTicket: async (id, reason) => {

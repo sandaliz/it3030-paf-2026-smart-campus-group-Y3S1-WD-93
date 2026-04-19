@@ -102,6 +102,21 @@ public class JwtUtils {
         return (tokenUsername.equalsIgnoreCase(expectedUsername) && !isTokenExpired(token));
     }
 
+    public Boolean validateToken(String token, String... allowedSubjects) {
+        final String tokenSubject = extractUsername(token);
+        if (tokenSubject == null || isTokenExpired(token)) {
+            return false;
+        }
+
+        for (String allowedSubject : allowedSubjects) {
+            if (allowedSubject != null && tokenSubject.equalsIgnoreCase(allowedSubject)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public Key getSigningKey() {
         return signingKey;
     }

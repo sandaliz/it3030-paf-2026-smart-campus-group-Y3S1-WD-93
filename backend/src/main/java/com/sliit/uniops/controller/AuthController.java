@@ -80,19 +80,19 @@ public class AuthController {
 
         try {
             String form = "code=" + URLEncoder.encode(code, StandardCharsets.UTF_8)
-                + "&client_id=" + URLEncoder.encode(googleClientId, StandardCharsets.UTF_8)
-                + "&client_secret=" + URLEncoder.encode(googleClientSecret, StandardCharsets.UTF_8)
-                + "&redirect_uri=" + URLEncoder.encode(frontendUrl + "/auth/calendar/callback", StandardCharsets.UTF_8)
-                + "&grant_type=authorization_code";
+                    + "&client_id=" + URLEncoder.encode(googleClientId, StandardCharsets.UTF_8)
+                    + "&client_secret=" + URLEncoder.encode(googleClientSecret, StandardCharsets.UTF_8)
+                    + "&redirect_uri=" + URLEncoder.encode(frontendUrl + "/auth/calendar/callback", StandardCharsets.UTF_8)
+                    + "&grant_type=authorization_code";
 
             HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create("https://oauth2.googleapis.com/token"))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .POST(HttpRequest.BodyPublishers.ofString(form))
-                .build();
+                    .uri(URI.create("https://oauth2.googleapis.com/token"))
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .POST(HttpRequest.BodyPublishers.ofString(form))
+                    .build();
 
             HttpResponse<String> response = HttpClient.newHttpClient()
-                .send(request, HttpResponse.BodyHandlers.ofString());
+                    .send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                 return ResponseEntity.ok(objectMapper.readValue(response.body(), new TypeReference<Map<String, Object>>() {}));
@@ -100,7 +100,7 @@ public class AuthController {
 
             try {
                 return ResponseEntity.status(response.statusCode())
-                    .body(objectMapper.readValue(response.body(), new TypeReference<Map<String, Object>>() {}));
+                        .body(objectMapper.readValue(response.body(), new TypeReference<Map<String, Object>>() {}));
             } catch (Exception ignored) {
                 return ResponseEntity.status(response.statusCode()).body(Map.of("message", response.body()));
             }

@@ -81,17 +81,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             username = extractedUsername;
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                User user = userRepository.findByUsername(username.toLowerCase()).orElse(null);
-                System.out.println("DEBUG: Found user by username: " + (user != null ? user.getUsername() : "null"));
-
-                // If not found by username, try by email
-                if (user == null) {
-                    user = userRepository.findByEmail(username.toLowerCase()).orElse(null);
-                    System.out.println("DEBUG: Found user by email: " + (user != null ? user.getEmail() : "null"));
-                }
+                String normalizedSubject = username.toLowerCase();
+                User user = userRepository.findByUsername(normalizedSubject)
+                        .or(() -> userRepository.findByEmail(normalizedSubject))
+                        .orElse(null);
 
                 // 4. Validate token and set security context
-                if (user != null && jwtUtils.validateToken(jwt, user.getUsername())) {
+                if (user != null && jwtUtils.validateToken(jwt, normalizedSubject, user.getUsername(), user.getEmail())) {
                     // Create UserPrincipal instead of using User directly
                     UserPrincipal userPrincipal = new UserPrincipal(
                             user.getId(),

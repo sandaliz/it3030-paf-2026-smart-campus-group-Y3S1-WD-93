@@ -85,9 +85,10 @@ const AdminDashboard = () => {
   const fetchAllUsers = async () => {
     try {
       const response = await apiInstance.get('/api/admin/dashboard/users');
-      setAllUsers(response.data);
+      setAllUsers(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching users:', error);
+      setAllUsers([]);
     }
   };
 
@@ -601,6 +602,49 @@ const AdminDashboard = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* All Users */}
+            <div className="bg-base-100 shadow-sm rounded-lg p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold flex items-center">
+                  👥 ALL USERS
+                </h2>
+                <div className="flex gap-2">
+                  <button className="btn btn-sm btn-primary">Add User</button>
+                  <button className="btn btn-sm btn-outline">Filter by Role</button>
+                </div>
+              </div>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {allUsers.slice(0, 5).map((user) => (
+                  <div key={user.id} className="border border-base-300 rounded-lg p-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="font-semibold">{user.name}</h3>
+                        <p className="text-sm text-base-content/70">{user.email}</p>
+                        <div className="flex gap-1 mt-1">
+                          {(user.roles || []).map((role, index) => (
+                            <span key={index} className="badge badge-xs badge-outline">
+                              {role}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button className="btn btn-xs btn-outline">Edit Role</button>
+                        <button
+                          className={`btn btn-xs ${user.enabled ? 'btn-warning' : 'btn-success'}`}
+                          onClick={() => handleToggleUserStatus(user.id)}
+                        >
+                          {user.enabled ? 'Disable' : 'Enable'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
