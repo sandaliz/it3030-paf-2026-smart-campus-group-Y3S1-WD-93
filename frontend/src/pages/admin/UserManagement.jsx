@@ -23,7 +23,7 @@ const UserManagement = () => {
   });
 
   // Available roles
-  const availableRoles = ['USER', 'ADMIN', 'TECHNICIAN', 'LECTURER', 'NON_ACADEMIC'];
+  const availableRoles = ['USER', 'ADMIN', 'TECHNICIAN', 'LECTURER', 'NON_ACADEMIC', 'BOOKING_MANAGER', 'TICKET_MANAGER', 'RESOURCE_MANAGER'];
 
   // Fetch users
   const fetchUsers = async () => {
@@ -90,17 +90,40 @@ const UserManagement = () => {
     }
 
     try {
-      await userService.updateUserRoles(selectedUser.id, {
+      const updatedUser = await userService.updateUserRoles(selectedUser.id, {
         roles: formData.roles,
         technicianSkills: formData.roles.includes('TECHNICIAN')
           ? formData.technicianSkills.split(',').map((skill) => skill.trim()).filter(Boolean)
           : []
       });
+      
       setShowEditModal(false);
       setSelectedUser(null);
       setFormData({ email: '', name: '', password: '', roles: ['USER'], enabled: true, technicianSkills: '' });
       fetchUsers();
       alert('User updated successfully');
+
+      // If the updated user is the currently logged-in user, redirect to their new dashboard
+      // Note: A logout/re-login is often needed to refresh the JWT claims, 
+      // but we redirect them immediately to the appropriate dashboard.
+      if (selectedUser.id === currentUser.id) {
+        const primaryRole = formData.roles[0];
+        let path = '/';
+        
+        switch (primaryRole) {
+          case 'ADMIN': path = '/admin/dashboard'; break;
+          case 'BOOKING_MANAGER': path = '/admin/bookings'; break;
+          case 'TICKET_MANAGER': path = '/admin/tickets'; break; // Fixed path
+          case 'RESOURCE_MANAGER': path = '/admin/resources'; break;
+          case 'LECTURER': path = '/lecturer/dashboard'; break;
+          case 'TECHNICIAN': path = '/technician/dashboard'; break;
+          case 'NON_ACADEMIC': path = '/staff/dashboard'; break;
+          default: path = '/student/dashboard';
+        }
+        
+        alert('Your role has been updated. You will be redirected to your new dashboard. Please re-login if you encounter permission issues.');
+        navigate(path);
+      }
     } catch (error) {
       console.error('Error updating user:', error);
       alert('Error updating user: ' + (error.response?.data || error.message));

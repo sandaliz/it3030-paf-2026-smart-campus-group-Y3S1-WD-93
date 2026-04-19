@@ -80,9 +80,11 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         user.setEnabled(true);
         user.setLastLoginAt(System.currentTimeMillis());
         
-        // Always update roles based on email to ensure correct role assignment
-        Role primaryRole = roleMappingService.parseRoleFromEmail(normalizedEmail);
-        user.setRoles(defaultRoles(primaryRole));
+        // Update roles based on email only if no roles are currently assigned (prevents overwriting manual admin changes)
+        if (user.getRoles() == null || user.getRoles().isEmpty()) {
+            Role primaryRole = roleMappingService.parseRoleFromEmail(normalizedEmail);
+            user.setRoles(defaultRoles(primaryRole));
+        }
 
         return userRepository.save(user);
     }

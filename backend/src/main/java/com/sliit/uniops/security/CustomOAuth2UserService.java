@@ -75,9 +75,11 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         user.setEnabled(true);
         user.setLastLoginAt(System.currentTimeMillis());
         
-        // Always update roles based on email to ensure correct role assignment
-        Role primaryRole = roleMappingService.parseRoleFromEmail(user.getEmail());
-        user.setRoles(defaultRoles(primaryRole));
+        // Update roles based on email only if no roles are currently assigned (prevents overwriting manual admin changes)
+        if (user.getRoles() == null || user.getRoles().isEmpty()) {
+            Role primaryRole = roleMappingService.parseRoleFromEmail(user.getEmail());
+            user.setRoles(defaultRoles(primaryRole));
+        }
     }
 
     private Set<Role> defaultRoles(Role primaryRole) {
