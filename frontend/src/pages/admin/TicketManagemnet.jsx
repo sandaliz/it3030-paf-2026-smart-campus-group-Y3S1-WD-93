@@ -4,6 +4,7 @@ import { commentService } from '../../services/ticketService';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import AssignTechnicianModal from '../incidents/AssignTechnicianModal';
 import { formatAssignedTechnicians, getAssignedTechnicianNames } from '../../utils/ticketAssignments';
+import { useAuth } from '../../context/AuthContext';
 
 // ── Icon helper ───────────────────────────────────────────────────────────────
 const Icon = ({ d, size = 16, className = '' }) => (
@@ -121,6 +122,8 @@ const getAssignedTechnicianSummary = (ticket) => formatAssignedTechnicians(ticke
 // Main component
 // ═══════════════════════════════════════════════════════════════════════════════
 const TicketManagementPage = () => {
+  const { user, hasRole } = useAuth();
+  
   // ── Active tab ──────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('tickets');
 
@@ -128,6 +131,15 @@ const TicketManagementPage = () => {
   const [allTickets, setAllTickets] = useState([]);
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // ── Comment state ─────────────────────────────────────────────────────────────
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [isInternalComment, setIsInternalComment] = useState(false);
+  const [postingComment, setPostingComment] = useState(false);
+  const [editingComment, setEditingComment] = useState(null);
+  const [editContent, setEditContent] = useState('');
+  const [updatingComment, setUpdatingComment] = useState(false);
 
   // ── Tickets tab ─────────────────────────────────────────────────────────────
   const [stats, setStats] = useState({
@@ -147,6 +159,19 @@ const TicketManagementPage = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [newStatus, setNewStatus] = useState('');
+  
+  // Permission helpers
+  const isAdmin = hasRole('ADMIN');
+  const isTechnician = hasRole('TECHNICIAN');
+  const canViewInternal = isAdmin || isTechnician;
+  const canAddInternal = isAdmin || isTechnician;
+  const isAssignedTechnician = (ticket) => {
+    if (!ticket || !user) return false;
+    return ticket.assignedTechnicians?.some(tech => tech.id === user.id);
+  };
+  const canAddInternalToTicket = (ticket) => {
+    return canAddInternal || isAssignedTechnician(ticket);
+  };
 
   // ── Analytics tab ────────────────────────────────────────────────────────────
   const [timeRange, setTimeRange]               = useState('30');
@@ -187,6 +212,85 @@ const TicketManagementPage = () => {
       return; // Added return statement
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
+  };
+
+  // Comment functions
+  const fetchComments = async (ticketId) => {
+    try {
+      const commentsData = await commentService.getComments(ticketId);
+      setComments(commentsData);
+    } catch (error) {
+      console.error('Failed to fetch comments:', error);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+
+    // Check permissions for internal comments
+    if (isInternalComment && !canAddInternalToTicket(selectedTicket)) {
+      alert('Only admins, technicians, or assigned technicians can add internal comments');
+      return;
+    }
+
+    setPostingComment(true);
+    try {
+      await commentService.addComment(selectedTicket.id, {
+        content: newComment,
+        isInternal: isInternalComment
+      });
+      setNewComment('');
+      setIsInternalComment(false);
+      await fetchComments(selectedTicket.id);
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+      alert('Failed to add comment: ' + (error.response?.data?.message || 'Unknown error'));
+    } finally {
+      setPostingComment(false);
+    }
+  };
+
+  const handleEditComment = async (commentId) => {
+    if (!editContent.trim()) return;
+
+    setUpdatingComment(true);
+    try {
+      await commentService.updateComment(selectedTicket.id, commentId, editContent);
+      setEditingComment(null);
+      setEditContent('');
+      await fetchComments(selectedTicket.id);
+    } catch (error) {
+      console.error('Failed to edit comment:', error);
+      alert('Failed to edit comment: ' + (error.response?.data?.message || 'Unknown error'));
+    } finally {
+      setUpdatingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!confirm('Are you sure you want to delete this comment?')) return;
+
+    try {
+      await commentService.deleteComment(selectedTicket.id, commentId);
+      await fetchComments(selectedTicket.id);
+    } catch (error) {
+      console.error('Failed to delete comment:', error);
+      alert('Failed to delete comment: ' + (error.response?.data?.message || 'Unknown error'));
+    }
+  };
+
+  const canEditComment = (comment) => {
+    // Owner can edit within 30 minutes, admin can edit anytime
+    if (isAdmin) return true;
+    if (comment.authorId !== user?.id) return false;
+    const createdAt = new Date(comment.createdAt);
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    return createdAt > thirtyMinutesAgo;
+  };
+
+  const canDeleteComment = (comment) => {
+    // Owner or admin can delete
+    return isAdmin || comment.authorId === user?.id;
   };
 
   // ── Analytics recalc ─────────────────────────────────────────────────────────
@@ -284,6 +388,12 @@ const TicketManagementPage = () => {
       await ticketAPI.updateTicketStatus(selectedTicket.id, newStatus, resolutionNotes);
       setShowStatusModal(false); setNewStatus(''); setResolutionNotes(''); refresh();
     } catch { alert('Error updating status.'); }
+  };
+
+  const handleViewDetails = async (ticket) => {
+    setSelectedTicket(ticket);
+    setShowDetailsModal(true);
+    await fetchComments(ticket.id);
   };
 
   // ── Report generation ────────────────────────────────────────────────────────
@@ -533,7 +643,7 @@ const TicketManagementPage = () => {
                             <div className="flex gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                               <button
                                 className="btn btn-xs btn-ghost btn-square tooltip" data-tip="View details"
-                                onClick={() => { setSelectedTicket(ticket); setShowDetailsModal(true); }}
+                                onClick={() => handleViewDetails(ticket)}
                               >
                                 <Icon d={icons.eye} size={13} />
                               </button>
@@ -783,6 +893,176 @@ const TicketManagementPage = () => {
             <p className="text-sm text-base-content/80 leading-relaxed bg-base-200 rounded-xl p-3">
               {selectedTicket.description}
             </p>
+          </div>
+          
+          {/* Comments Section */}
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-semibold text-base flex items-center gap-2">
+                <Icon d={icons.eye} size={14} className="text-primary" />
+                Comments
+                {comments.length > 0 && (
+                  <span className="badge badge-ghost badge-sm">{comments.length}</span>
+                )}
+              </h4>
+            </div>
+            
+            {/* Add Comment Form */}
+            <div className="mb-4">
+              <div className="form-control">
+                <textarea
+                  className="textarea textarea-bordered w-full text-sm"
+                  placeholder="Add a comment…"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  rows={3}
+                />
+                
+                {/* Internal Comment Toggle */}
+                {canAddInternalToTicket(selectedTicket) && (
+                  <label className="label cursor-pointer justify-start gap-2">
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-sm"
+                      checked={isInternalComment}
+                      onChange={(e) => setIsInternalComment(e.target.checked)}
+                    />
+                    <span className="label-text text-xs font-medium">
+                      {isInternalComment ? '🔒 Internal Note' : '💬 Public Comment'}
+                    </span>
+                  </label>
+                )}
+                
+                <div className="flex justify-end mt-2">
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={handleAddComment}
+                    disabled={!newComment.trim() || postingComment}
+                  >
+                    {postingComment ? (
+                      <span className="loading loading-spinner loading-xs" />
+                    ) : (
+                      <Icon d={icons.check} size={12} />
+                    )}
+                    {isInternalComment ? 'Add Internal' : 'Add Comment'}
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Comments List */}
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {comments.length === 0 ? (
+                <div className="text-center py-8 text-base-content/30">
+                  <Icon d={icons.eye} size={32} className="opacity-40" />
+                  <p className="text-sm mt-2">No comments yet</p>
+                </div>
+              ) : (
+                comments.map((comment) => {
+                  // Filter comments based on user role and permissions
+                  if (comment.isInternal && !canViewInternal) {
+                    return null;
+                  }
+                  
+                  const isEditing = editingComment === comment.id;
+                  const canEdit = canEditComment(comment);
+                  const canDelete = canDeleteComment(comment);
+                  
+                  return (
+                    <div
+                      key={comment.id}
+                      className={`p-3 rounded-lg border ${
+                        comment.isInternal ? 'bg-warning/10 border-warning/30' : 'bg-base-200/50 border-base-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-semibold">{comment.authorName}</span>
+                            {comment.isInternal && (
+                              <span className="badge badge-warning badge-xs gap-1">
+                                <Icon d={icons.warning} size={8} />
+                                Internal
+                              </span>
+                            )}
+                            {comment.isEdited && (
+                              <span className="text-xs text-base-content/40">(edited)</span>
+                            )}
+                            <span className="text-xs text-base-content/40">
+                              {new Date(comment.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                          
+                          {isEditing ? (
+                            <textarea
+                              className="textarea textarea-bordered w-full text-sm"
+                              value={editContent}
+                              onChange={(e) => setEditContent(e.target.value)}
+                              rows={2}
+                              autoFocus
+                            />
+                          ) : (
+                            <p className="text-sm text-base-content/80 whitespace-pre-wrap">
+                              {comment.content}
+                            </p>
+                          )}
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div className="flex gap-1">
+                          {isEditing ? (
+                            <>
+                              <button
+                                className="btn btn-success btn-xs"
+                                onClick={() => handleEditComment(comment.id)}
+                                disabled={!editContent.trim() || updatingComment}
+                              >
+                                {updatingComment ? (
+                                  <span className="loading loading-spinner loading-xs" />
+                                ) : (
+                                  <Icon d={icons.check} size={10} />
+                                )}
+                              </button>
+                              <button
+                                className="btn btn-ghost btn-xs"
+                                onClick={() => {
+                                  setEditingComment(null);
+                                  setEditContent('');
+                                }}
+                              >
+                                <Icon d={icons.x} size={10} />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {canEdit && (
+                                <button
+                                  className="btn btn-ghost btn-xs"
+                                  onClick={() => {
+                                    setEditingComment(comment.id);
+                                    setEditContent(comment.content);
+                                  }}
+                                >
+                                  <Icon d={icons.search} size={10} />
+                                </button>
+                              )}
+                              {canDelete && (
+                                <button
+                                  className="btn btn-ghost btn-xs text-error"
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                >
+                                  <Icon d={icons.x} size={10} />
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </Modal>
       )}
