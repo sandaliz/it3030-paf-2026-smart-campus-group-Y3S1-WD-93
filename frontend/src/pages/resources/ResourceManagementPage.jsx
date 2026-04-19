@@ -617,7 +617,7 @@ const ResourceManagementPage = () => {
                   <th>Type</th>
                   <th>Location</th>
                   <th>Capacity</th>
-                  <th>Status</th>
+                  <th className="w-48">Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -680,9 +680,9 @@ const ResourceManagementPage = () => {
                       <td>{resource.location || 'N/A'}</td>
                       <td>{resource.capacity || 'N/A'}</td>
                       <td>
-                        <div className={`badge ${getStatusBadgeColor(resource.status)} badge-sm`}>
+                        <span className={`badge ${getStatusBadgeColor(resource.status)} badge-sm whitespace-nowrap`}>
                           {resource.status ? resource.status.replace('_', ' ') : 'N/A'}
-                        </div>
+                        </span>
                       </td>
                       <td>
                         <div className="flex gap-2">
