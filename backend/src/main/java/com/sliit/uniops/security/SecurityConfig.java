@@ -70,7 +70,11 @@ public class SecurityConfig {
                                 "/api/resources/*/share",
                                 "/oauth2/**",
                                 "/login/**",
-                                "/api/debug/**"
+                                "/api/debug/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-resources/**"
                         ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/technician/**").hasRole("TECHNICIAN")

@@ -67,7 +67,7 @@ public class ResourceService {
             query.addCriteria(Criteria.where("createdBy").is(creator));
         }
 
-        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "shareCount", "availabilityWindows", "amenities");
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "shareCount", "availabilityWindows", "amenities", "assignedStaff");
         return mongoTemplate.find(query, Resource.class);
     }
     
@@ -92,15 +92,18 @@ public class ResourceService {
     public List<Resource> getResourcesByCreator(Authentication authentication) {
         String userId = getCurrentUserId(authentication);
         Query query = new Query(Criteria.where("createdBy").is(userId));
-        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "createdBy");
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "createdBy", "assignedStaff");
         return mongoTemplate.find(query, Resource.class);
     }
 
     public Resource updateResource(String id, Resource resourceDetails, Authentication authentication) {
         Resource resource = getResourceById(id);
+        String currentUserId = getCurrentUserId(authentication);
 
-        // Check ownership: admin can update all, staff can only update their own
-        if (!isAdmin(authentication) && !resource.getCreatedBy().equals(getCurrentUserId(authentication))) {
+        // Check ownership: admin can update all, staff can update their own or assigned resources
+        if (!isAdmin(authentication) &&
+            !resource.getCreatedBy().equals(currentUserId) &&
+            !(resource.getAssignedStaff() != null && resource.getAssignedStaff().contains(currentUserId))) {
             throw new UnauthorizedException(ResourceErrorMessages.RESOURCE_UPDATE_UNAUTHORIZED);
         }
 
@@ -119,9 +122,12 @@ public class ResourceService {
 
     public Resource updateResourceStatus(String id, String status, Authentication authentication) {
         Resource resource = getResourceById(id);
+        String currentUserId = getCurrentUserId(authentication);
 
-        // Check ownership: admin can update status of all, staff can only update their own
-        if (!isAdmin(authentication) && !resource.getCreatedBy().equals(getCurrentUserId(authentication))) {
+        // Check ownership: admin can update status of all, staff can update their own or assigned resources
+        if (!isAdmin(authentication) &&
+            !resource.getCreatedBy().equals(currentUserId) &&
+            !(resource.getAssignedStaff() != null && resource.getAssignedStaff().contains(currentUserId))) {
             throw new UnauthorizedException(ResourceErrorMessages.RESOURCE_STATUS_UPDATE_UNAUTHORIZED);
         }
 
@@ -268,7 +274,7 @@ public class ResourceService {
         }
 
         // Field projection
-        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "availabilityWindows", "amenities");
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "availabilityWindows", "amenities", "assignedStaff");
 
         // Sorting
         Sort sort = Sort.by(Sort.Direction.fromString(sortDir != null ? sortDir : "asc"), sortBy != null ? sortBy : "name");
@@ -293,5 +299,19 @@ public class ResourceService {
         response.put("last", (page + 1) * size >= totalElements);
 
         return response;
+    }
+
+    public Resource assignStaffToResource(String resourceId, List<String> staffIds) {
+        Resource resource = getResourceById(resourceId);
+        resource.setAssignedStaff(staffIds);
+        resource.setUpdatedAt(LocalDateTime.now());
+        return resourceRepository.save(resource);
+    }
+
+    public List<Resource> getResourcesAssignedToStaff(Authentication authentication) {
+        String userId = getCurrentUserId(authentication);
+        Query query = new Query(Criteria.where("assignedStaff").in(userId));
+        query.fields().include("id", "name", "type", "capacity", "location", "status", "description", "assignedStaff");
+        return mongoTemplate.find(query, Resource.class);
     }
 }

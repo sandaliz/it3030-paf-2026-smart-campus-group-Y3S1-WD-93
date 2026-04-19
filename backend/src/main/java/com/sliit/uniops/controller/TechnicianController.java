@@ -54,13 +54,25 @@ public class TechnicianController {
     public ResponseEntity<User> updateTechnicianSkills(
             @PathVariable String id,
             @RequestBody java.util.Set<String> skills) {
-        
+
         User technician = userRepository.findById(id)
                 .filter(user -> user.isEnabled() && user.getRoles().contains(Role.TECHNICIAN))
                 .orElseThrow(() -> new RuntimeException("Technician not found with ID: " + id));
-        
+
         technician.setTechnicianSkills(skills);
         User updatedTechnician = userRepository.save(technician);
         return ResponseEntity.ok(updatedTechnician);
+    }
+
+    /**
+     * Get all NON_ACADEMIC staff (for resource assignment)
+     */
+    @GetMapping("/staff")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<User>> getStaff() {
+        List<User> staff = userRepository.findAll().stream()
+                .filter(user -> user.isEnabled() && user.getRoles().contains(Role.NON_ACADEMIC))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(staff);
     }
 }

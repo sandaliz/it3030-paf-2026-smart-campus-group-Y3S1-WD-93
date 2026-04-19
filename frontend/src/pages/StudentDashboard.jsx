@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
 
@@ -16,61 +15,176 @@ const StudentDashboard = () => {
     const [upcomingBookings, setUpcomingBookings] = useState([]);
     const [facilities, setFacilities] = useState([]);
     const [myTickets, setMyTickets] = useState([]);
+    const [savedResources, setSavedResources] = useState([]);
+    const [noteModalOpen, setNoteModalOpen] = useState(false);
+    const [selectedResource, setSelectedResource] = useState(null);
+    const [noteText, setNoteText] = useState('');
     const { user } = useAuth();
-    const navigate = useNavigate();
-    const { 
-        userBookings, 
-        userTickets, 
-        markAsRead, 
-        markAllAsRead, 
-        isNotificationRead,
-        getTotalUnreadCount 
-    } = useNotifications();
 
+    // Helper function to extract data from Page response
+    const extractData = (response) => response?.data?.content || response?.data || [];
+
+    // Helper function to get token
+    const getToken = () => localStorage.getItem('token');
+
+    // Helper function to refresh saved resources
+    const refreshSavedResources = async () => {
+        try {
+            const token = getToken();
+            const response = await axios.get('http://localhost:8080/api/saved-resources', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setSavedResources(response.data || []);
+        } catch (error) {
+            console.error('Error refreshing saved resources:', error);
+        }
+    };
 
     useEffect(() => {
         const fetchDashboardData = async () => {
+            const token = getToken();
+
+            // Fetch all data independently
+            const fetchData = async () => {
+                try {
+                    const bookingsResponse = await axios.get('http://localhost:8080/api/bookings/my-bookings', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    const bookingsData = extractData(bookingsResponse);
+                    setUpcomingBookings(bookingsData);
+                    return bookingsData;
+                } catch (error) {
+                    console.error('Error fetching bookings:', error);
+                    return [];
+                }
+            };
+
+            const fetchNotifications = async () => {
+                try {
+                    const notificationsResponse = await axios.get('http://localhost:8080/api/notifications', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    setNotifications(notificationsResponse.data || []);
+                } catch (error) {
+                    console.error('Error fetching notifications:', error);
+                    setNotifications([]);
+                }
+            };
+
+            const fetchFacilities = async () => {
+                try {
+                    const facilitiesResponse = await axios.get('http://localhost:8080/api/resources');
+                    setFacilities(extractData(facilitiesResponse));
+                } catch (error) {
+                    console.error('Error fetching facilities:', error);
+                    setFacilities([]);
+                }
+            };
+
+            const fetchTickets = async () => {
+                try {
+                    const ticketsResponse = await axios.get('http://localhost:8080/api/tickets/my-tickets', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    const ticketsData = extractData(ticketsResponse);
+                    setMyTickets(ticketsData);
+                    return ticketsData;
+                } catch (error) {
+                    console.error('Error fetching tickets:', error);
+                    setMyTickets([]);
+                    return [];
+                }
+            };
+
+            const bookings = await fetchData();
+            const tickets = await fetchTickets();
+            await fetchNotifications();
+            await fetchFacilities();
+
+            // Update stats based on actual data
+            setStats({
+                activeBookings: bookings?.filter(b => b.status === 'APPROVED').length || 0,
+                pendingBookings: bookings?.filter(b => b.status === 'PENDING').length || 0,
+                approvedTickets: tickets?.filter(t => t.status?.toUpperCase() === 'RESOLVED').length || 0,
+                openTickets: tickets?.filter(t => t.status?.toUpperCase() === 'OPEN').length || 0
+            });
+
+            setLoading(false);
+
+            // Fetch saved resources independently
             try {
-                // Get user info from AuthContext (same as profile component)
-                const token = localStorage.getItem('token');
-
-                // Fetch stats
-                const statsResponse = await axios.get('http://localhost:8080/api/student/stats', {
+                const savedResourcesResponse = await axios.get('http://localhost:8080/api/saved-resources', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                setStats(statsResponse.data);
-
-                // Fetch upcoming bookings
-                const bookingsResponse = await axios.get('http://localhost:8080/api/bookings/my-bookings', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                setUpcomingBookings(bookingsResponse.data || []);
-
-                
-                // Fetch facilities
-                const facilitiesResponse = await axios.get('http://localhost:8080/api/facilities');
-                setFacilities(facilitiesResponse.data || []);
-
-                // Fetch my tickets
-                const ticketsResponse = await axios.get('http://localhost:8080/api/tickets/my-tickets', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                setMyTickets(ticketsResponse.data || []);
-
+                setSavedResources(savedResourcesResponse.data || []);
             } catch (error) {
-                console.error('Error fetching dashboard data:', error);
-                // Set fallback data if API fails
-                setStats({ activeBookings: 0, pendingBookings: 0, approvedTickets: 0, openTickets: 0 });
-                setUpcomingBookings([]);
-                setFacilities([]);
-                setMyTickets([]);
-            } finally {
-                setLoading(false);
+                console.error('Error fetching saved resources:', error);
+                setSavedResources([]);
             }
         };
 
         fetchDashboardData();
     }, []);
+
+    // Set up polling for real-time updates (every 30 seconds)
+    useEffect(() => {
+        const interval = setInterval(() => {
+            fetchDashboardData();
+        }, 30000);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleSaveResource = async (resourceId) => {
+        try {
+            const token = getToken();
+            await axios.post(`http://localhost:8080/api/saved-resources/${resourceId}`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            await refreshSavedResources();
+        } catch (error) {
+            console.error('Error saving resource:', error);
+        }
+    };
+
+    const handleUnsaveResource = async (resourceId) => {
+        try {
+            const token = getToken();
+            await axios.delete(`http://localhost:8080/api/saved-resources/${resourceId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            await refreshSavedResources();
+        } catch (error) {
+            console.error('Error unsaving resource:', error);
+        }
+    };
+
+    const isResourceSaved = (resourceId) => {
+        return savedResources.some(saved => saved.resourceId === resourceId);
+    };
+
+    const handleNoteClick = (savedResource) => {
+        setSelectedResource(savedResource);
+        setNoteText(savedResource.note || '');
+        setNoteModalOpen(true);
+    };
+
+    const saveNote = async () => {
+        try {
+            const token = getToken();
+            await axios.put(`http://localhost:8080/api/saved-resources/${selectedResource.resourceId}/note`,
+                { note: noteText },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            await refreshSavedResources();
+
+            setNoteModalOpen(false);
+            setSelectedResource(null);
+            setNoteText('');
+        } catch (error) {
+            console.error('Error saving note:', error);
+        }
+    };
 
     if (loading) {
         return (
@@ -103,27 +217,42 @@ const StudentDashboard = () => {
                         </div>
                     </div>
                     <div className="flex gap-3">
-                        <button className="btn btn-secondary px-8 shadow-lg shadow-secondary/20">Help Center</button>
-                        <button className="btn btn-outline border-base-300">Profile</button>
+                        <button
+                            onClick={() => window.location.href = 'http://localhost:5173/tickets'}
+                            className="btn btn-secondary px-8 shadow-lg shadow-secondary/20"
+                        >
+                            Help Center
+                        </button>
                     </div>
                 </div>
 
                 {/* Activity Section Activity Section */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     {[
-                        { label: 'Active Bookings', value: stats.activeBookings, color: 'from-blue-600 to-cyan-500' },
-                        { label: 'Pending Bookings', value: stats.pendingBookings, color: 'from-orange-500 to-yellow-400' },
-                        { label: 'Approved Tickets', value: stats.approvedTickets, color: 'from-emerald-500 to-teal-400' },
-                        { label: 'My Open Tickets', value: stats.openTickets, color: 'from-purple-600 to-pink-500' }
+                        { label: 'Active Bookings', value: stats.activeBookings, color: 'text-primary', bg: 'bg-primary/10', icon: '📅' },
+                        { label: 'Pending Bookings', value: stats.pendingBookings, color: 'text-warning', bg: 'bg-warning/10', icon: '⏳' },
+                        { label: 'Approved Tickets', value: stats.approvedTickets, color: 'text-success', bg: 'bg-success/10', icon: '✅' },
+                        { label: 'My Open Tickets', value: stats.openTickets, color: 'text-error', bg: 'bg-error/10', icon: '🎫' }
                     ].map((stat, i) => (
-                        <div key={i} className={`card bg-gradient-to-br ${stat.color} text-white shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer overflow-hidden group`}>
-                            <div className="card-body p-8 items-center text-center relative z-10">
-                                <h2 className="text-xs font-black tracking-widest uppercase opacity-80">{stat.label}</h2>
-                                <p className="text-5xl font-black mt-2">{stat.value}</p>
+                        <div key={i} className="stat bg-base-100 shadow-sm rounded-lg border border-base-300">
+                            <div className={`stat-figure ${stat.bg}`}>
+                                <div className={`text-3xl ${stat.color}`}>{stat.icon}</div>
                             </div>
-                            <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+                            <div className={`stat-title ${stat.color}`}>{stat.label}</div>
+                            <div className={`stat-value text-3xl ${stat.color}`}>{stat.value}</div>
+                            <div className="stat-desc">Total count</div>
                         </div>
                     ))}
+                </div>
+
+                {/* Saved Resources Count */}
+                <div className="stat bg-base-100 shadow-sm rounded-lg border border-base-300">
+                    <div className="stat-figure bg-secondary/10">
+                        <div className="text-3xl text-secondary">❤️</div>
+                    </div>
+                    <div className="stat-title text-secondary">Saved Resources</div>
+                    <div className="stat-value text-3xl text-secondary">{savedResources.length}</div>
+                    <div className="stat-desc">Resources saved for later</div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -282,54 +411,75 @@ const StudentDashboard = () => {
                     </div>
                 </div>
 
-                {/* Browse Facilities Browse Facilities */}
+                {/* Saved Resources */}
                 <div className="card bg-base-100 shadow-xl border border-base-300 overflow-hidden">
-                    <div className="p-8 border-b border-base-200 bg-info/5 flex flex-col md:flex-row justify-between items-center gap-6">
-                        <h3 className="text-xl font-black flex items-center gap-4">
-                             <span className="w-2 h-8 bg-info rounded-full"></span>
-                             🏢 BROWSE FACILITIES
+                    <div className="p-8 border-b border-base-200 bg-secondary/5 flex justify-between items-center">
+                        <h3 className="text-xl font-black flex items-center gap-4 uppercase tracking-tighter">
+                            <span className="w-2 h-8 bg-secondary rounded-full"></span>
+                            ❤️ SAVED RESOURCES — Keep notes on your saved resources
                         </h3>
-                        <div className="flex flex-wrap gap-3 w-full md:w-auto">
-                            <input type="text" placeholder="🔍 Search resources..." className="input input-bordered input-sm rounded-full flex-1 md:w-64" />
-                            <select className="select select-bordered select-sm rounded-full">
-                                <option disabled selected>Filter Type</option>
-                                <option>All</option>
-                                <option>Labs</option>
-                                <option>Halls</option>
-                                <option>Equip</option>
-                            </select>
-                        </div>
+                        <button
+                            onClick={() => window.location.href = 'http://localhost:5173/resources'}
+                            className="btn btn-sm btn-ghost"
+                        >
+                            View All Resources
+                        </button>
                     </div>
                     <div className="card-body p-8">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {facilities.length > 0 ? (
-                                facilities.map((f, i) => (
-                                    <div key={i} className="card bg-base-200 border border-base-300 hover:shadow-xl hover:-translate-y-1 transition-all overflow-hidden">
-                                         <div className="h-2 bg-info"></div>
-                                         <div className="card-body p-6">
+                            {savedResources.length === 0 ? (
+                                <div className="col-span-full text-center py-8 opacity-50">
+                                    <p className="font-bold">No saved resources yet</p>
+                                </div>
+                            ) : (
+                                savedResources.slice(0, 6).map((saved) => (
+                                    <div key={saved.id} className="card bg-base-200 border border-base-300 hover:shadow-xl hover:-translate-y-1 transition-all overflow-hidden">
+                                        <div className="h-2 bg-secondary"></div>
+                                        <div className="card-body p-6">
                                             <div className="flex justify-between items-start">
                                                 <div>
-                                                    <h4 className="text-xl font-black text-info">{f.name}</h4>
-                                                    <p className="text-xs font-bold opacity-50 uppercase tracking-widest">{f.type}</p>
+                                                    <h4 className="text-xl font-black text-secondary">{saved.name || 'Unknown Resource'}</h4>
+                                                    <p className="text-xs font-bold opacity-50 uppercase tracking-widest">{saved.type?.replace('_', ' ') || 'Resource'}</p>
+                                                    <p className="text-sm font-bold opacity-70 mt-1">{saved.location || 'Unknown'}</p>
                                                 </div>
-                                                <span className={`badge font-black text-[10px] ${f.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'} text-white`}>
-                                                    {f.status}
-                                                </span>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleNoteClick(saved);
+                                                    }}
+                                                    className="btn btn-sm btn-ghost"
+                                                    title="Add/Edit Note"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                </button>
                                             </div>
-                                            <p className="text-sm font-bold opacity-70 mt-4 mb-6">Capacity: <span className="text-info">{f.capacity}</span> students</p>
-                                            <button 
-                                                onClick={() => window.location.href = 'http://localhost:5173/bookings'}
-                                                className={`btn btn-sm ${f.status === 'ACTIVE' ? 'btn-info text-white' : 'btn-ghost border-base-300 text-base-content/40'} btn-block font-black`}
-                                            >
-                                                {f.type === 'Equipment' ? 'Request' : 'Book Now'}
-                                            </button>
-                                         </div>
+                                            {saved.note && (
+                                                <div className="mb-3 p-2 bg-yellow-100 dark:bg-yellow-900/40 rounded text-sm text-gray-900 dark:text-gray-900">
+                                                    {saved.note}
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between items-center mt-4">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleUnsaveResource(saved.resourceId);
+                                                    }}
+                                                    className="btn btn-sm btn-error"
+                                                >
+                                                    Remove
+                                                </button>
+                                                <button
+                                                    onClick={() => window.location.href = `http://localhost:5173/resources/${saved.resourceId}`}
+                                                    className="btn btn-sm btn-primary"
+                                                >
+                                                    View Details
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 ))
-                            ) : (
-                                <div className="col-span-full text-center py-8 opacity-50">
-                                    <p className="font-bold">No facilities available</p>
-                                </div>
                             )}
                         </div>
                     </div>
@@ -363,7 +513,7 @@ const StudentDashboard = () => {
                                     myTickets.map((t) => (
                                         <tr key={t.id} className="hover">
                                             <td className="font-bold">
-                                                <p className="text-neutral mb-1">#{t.id}</p>
+                                                <p className="text-neutral mb-1">#{t.id.substring(0, 8)}</p>
                                                 <p className="text-base-content/70">{t.title}</p>
                                             </td>
                                             <td>
@@ -372,7 +522,12 @@ const StudentDashboard = () => {
                                                 </span>
                                             </td>
                                             <td className="text-right">
-                                                <button className="btn btn-ghost btn-sm text-info font-black">View Details</button>
+                                                <button
+                                                    onClick={() => window.location.href = `http://localhost:5173/tickets/${t.id}`}
+                                                    className="btn btn-ghost btn-sm text-info font-black"
+                                                >
+                                                    View Details
+                                                </button>
                                             </td>
                                         </tr>
                                     ))
@@ -391,7 +546,108 @@ const StudentDashboard = () => {
                     </div>
                 </div>
 
+                {/* Browse Facilities Browse Facilities */}
+                <div className="card bg-base-100 shadow-xl border border-base-300 overflow-hidden">
+                    <div className="p-8 border-b border-base-200 bg-info/5 flex flex-col md:flex-row justify-between items-center gap-6">
+                        <h3 className="text-xl font-black flex items-center gap-4">
+                             <span className="w-2 h-8 bg-info rounded-full"></span>
+                             🏢 BROWSE FACILITIES
+                        </h3>
+                        <div className="flex flex-wrap gap-3 w-full md:w-auto">
+                            <button
+                                onClick={() => window.location.href = 'http://localhost:5173/resources'}
+                                className="btn btn-sm btn-ghost"
+                            >
+                                View All
+                            </button>
+                        </div>
+                    </div>
+                    <div className="card-body p-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {facilities.length > 0 ? (
+                                facilities.slice(0, 4).map((f, i) => (
+                                    <div key={i} className="card bg-base-200 border border-base-300 hover:shadow-xl hover:-translate-y-1 transition-all overflow-hidden">
+                                         <div className="h-2 bg-info"></div>
+                                         <div className="card-body p-6">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h4 className="text-xl font-black text-info">{f.name}</h4>
+                                                    <p className="text-xs font-bold opacity-50 uppercase tracking-widest">{f.type}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`badge font-black text-[10px] ${f.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'} text-white`}>
+                                                        {f.status}
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            isResourceSaved(f.id) ? handleUnsaveResource(f.id) : handleSaveResource(f.id);
+                                                        }}
+                                                        className={`btn btn-sm ${isResourceSaved(f.id) ? 'btn-secondary' : 'btn-ghost'} transition-all duration-300 hover:scale-125 active:scale-95`}
+                                                        title={isResourceSaved(f.id) ? 'Remove from saved' : 'Save resource'}
+                                                    >
+                                                        <svg className="w-5 h-5" fill={isResourceSaved(f.id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <p className="text-sm font-bold opacity-70 mt-4 mb-6">Capacity: <span className="text-info">{f.capacity}</span> students</p>
+                                            <button
+                                                onClick={() => window.location.href = 'http://localhost:5173/bookings'}
+                                                className={`btn btn-sm ${f.status === 'ACTIVE' ? 'btn-info text-white' : 'btn-ghost border-base-300 text-base-content/40'} btn-block font-black`}
+                                            >
+                                                {f.type === 'Equipment' ? 'Request' : 'Book Now'}
+                                            </button>
+                                         </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="col-span-full text-center py-8 opacity-50">
+                                    <p className="font-bold">No facilities available</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
             </div>
+
+            {/* Note Modal */}
+            {noteModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="bg-base-100 rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+                        <h3 className="text-xl font-bold mb-4">Add Note</h3>
+                        <p className="text-sm text-base-content/70 mb-4">
+                            {selectedResource?.name || 'Resource'}
+                        </p>
+                        <textarea
+                            value={noteText}
+                            onChange={(e) => setNoteText(e.target.value)}
+                            placeholder="Add a note about this resource :)..."
+                            className="textarea textarea-bordered w-full h-32 mb-4"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => {
+                                    setNoteModalOpen(false);
+                                    setSelectedResource(null);
+                                    setNoteText('');
+                                }}
+                                className="btn btn-ghost"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={saveNote}
+                                className="btn btn-primary"
+                            >
+                                Save Note
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

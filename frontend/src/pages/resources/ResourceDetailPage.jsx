@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import axios from 'axios';
 import { resourceService } from '../../services/resourceService';
 import ResourceCard from '../../components/cards/ResourceCard';
 import { DetailSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
@@ -13,8 +14,32 @@ const ResourceDetailPage = () => {
   const [availability, setAvailability] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [savedResources, setSavedResources] = useState([]);
 
     const [similarResources, setSimilarResources] = useState([]);
+
+  // Scroll to top on component mount
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // Fetch saved resources on mount
+  useEffect(() => {
+    const fetchSavedResources = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          const response = await axios.get('http://localhost:8080/api/saved-resources', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setSavedResources(response.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching saved resources:', error);
+      }
+    };
+    fetchSavedResources();
+  }, []);
 
   useEffect(() => {
     fetchResourceDetails();
@@ -64,6 +89,42 @@ const ResourceDetailPage = () => {
     } catch (err) {
       console.error('Error fetching similar resources:', err);
     }
+  };
+
+  const handleSaveResource = async (resourceId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`http://localhost:8080/api/saved-resources/${resourceId}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const response = await axios.get('http://localhost:8080/api/saved-resources', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSavedResources(response.data || []);
+    } catch (error) {
+      console.error('Error saving resource:', error);
+    }
+  };
+
+  const handleUnsaveResource = async (resourceId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`http://localhost:8080/api/saved-resources/${resourceId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const response = await axios.get('http://localhost:8080/api/saved-resources', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSavedResources(response.data || []);
+    } catch (error) {
+      console.error('Error unsaving resource:', error);
+    }
+  };
+
+  const isResourceSaved = (resourceId) => {
+    return savedResources.some(saved => saved.resourceId === resourceId);
   };
 
   const getStatusBadgeColor = (status) => {
@@ -182,6 +243,15 @@ const ResourceDetailPage = () => {
                   Book This Resource
                 </Link>
               )}
+              <button
+                onClick={() => isResourceSaved(resource.id) ? handleUnsaveResource(resource.id) : handleSaveResource(resource.id)}
+                className={`btn btn-sm ${isResourceSaved(resource.id) ? 'btn-secondary' : 'btn-ghost'} transition-all duration-300 hover:scale-125 active:scale-95`}
+                title={isResourceSaved(resource.id) ? 'Remove from saved' : 'Save resource'}
+              >
+                <svg className="w-5 h-5" fill={isResourceSaved(resource.id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              </button>
               <button
                 onClick={() => setShowShareModal(true)}
                 className="btn btn-outline"

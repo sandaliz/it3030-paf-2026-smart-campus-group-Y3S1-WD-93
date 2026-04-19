@@ -178,18 +178,20 @@ public class TicketService {
         return mapToResponseDTO(ticket);
     }
 
-    // ✅ GET USER TICKETS
+    // GET USER TICKETS
     public Page<TicketResponseDTO> getTicketsByUser(String userId, Pageable pageable) {
         return ticketRepository.findByCreatedBy(userId, pageable)
                 .map(this::mapToResponseDTO);
     }
 
-    // ✅ GET TECHNICIAN TICKETS
+    // GET TECHNICIAN TICKETS
+    @Transactional
     public Page<TicketResponseDTO> getTicketsByTechnician(String technicianId, Pageable pageable) {
         return ticketRepository.findByAssignedTechnician(technicianId, pageable)
                 .map(this::mapToResponseDTO);
     }
 
+    // GET ALL
     // ✅ GET ALL
     public Page<TicketResponseDTO> getAllTickets(Pageable pageable) {
         return ticketRepository.findAll(pageable)
