@@ -139,6 +139,18 @@ export const resourceService = {
     const response = await api.patch(`/api/resources/${id}/share`);
     return response.data;
   },
+
+  // Assign staff to resource
+  assignStaffToResource: async (id, staffIds) => {
+    const response = await api.patch(`/api/resources/${id}/assign-staff`, { staffIds });
+    return response.data;
+  },
+
+  // Get resources assigned to current staff
+  getResourcesAssignedToMe: async () => {
+    const response = await api.get('/api/resources/assigned-to-me');
+    return response.data;
+  },
 };
 
 export default resourceService;

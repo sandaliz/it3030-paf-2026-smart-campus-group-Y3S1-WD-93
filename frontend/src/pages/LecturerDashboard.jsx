@@ -7,13 +7,18 @@ const LecturerDashboard = () => {
     const [stats, setStats] = useState({
         myBookings: 0,
         myResources: 0,
-        upcomingClasses: 0
+        upcomingClasses: 0,
+        savedResources: 0
     });
 
     const [loading, setLoading] = useState(true);
     const [myBookings, setMyBookings] = useState([]);
     const [myTickets, setMyTickets] = useState([]);
     const [resources, setResources] = useState([]);
+    const [savedResources, setSavedResources] = useState([]);
+    const [noteModalOpen, setNoteModalOpen] = useState(false);
+    const [selectedResource, setSelectedResource] = useState(null);
+    const [noteText, setNoteText] = useState('');
     const { user } = useAuth();
     const navigate = useNavigate();
 
@@ -29,7 +34,7 @@ const LecturerDashboard = () => {
                 setStats(statsResponse.data);
                 
                 // Fetch my bookings
-                const bookingsResponse = await axios.get('http://localhost:8080/api/user/bookings', {
+                const bookingsResponse = await axios.get('http://localhost:8080/api/bookings/my-bookings', {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 setMyBookings(bookingsResponse.data || []);
@@ -46,10 +51,17 @@ const LecturerDashboard = () => {
                 });
                 setResources(resourcesResponse.data || []);
                 
+                // Fetch saved resources
+                const savedResourcesResponse = await axios.get('http://localhost:8080/api/saved-resources', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setSavedResources(savedResourcesResponse.data || []);
+                setStats(prev => ({ ...prev, savedResources: (savedResourcesResponse.data || []).length }));
+                
             } catch (error) {
                 console.error('Error fetching lecturer dashboard data:', error);
                 // Set fallback data if API fails
-                setStats({ myBookings: 0, myResources: 0, upcomingClasses: 0 });
+                setStats({ myBookings: 0, myResources: 0, upcomingClasses: 0, savedResources: 0 });
                 setMyBookings([]);
                 setMyTickets([]);
                 setResources([]);
@@ -60,6 +72,72 @@ const LecturerDashboard = () => {
 
         fetchDashboardData();
     }, []);
+
+    const handleSaveResource = async (resourceId) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(`http://localhost:8080/api/saved-resources/${resourceId}`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            // Refresh saved resources
+            const savedResourcesResponse = await axios.get('http://localhost:8080/api/saved-resources', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setSavedResources(savedResourcesResponse.data || []);
+        } catch (error) {
+            console.error('Error saving resource:', error);
+        }
+    };
+
+    const handleUnsaveResource = async (resourceId) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.delete(`http://localhost:8080/api/saved-resources/${resourceId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            // Refresh saved resources
+            const savedResourcesResponse = await axios.get('http://localhost:8080/api/saved-resources', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setSavedResources(savedResourcesResponse.data || []);
+        } catch (error) {
+            console.error('Error unsaving resource:', error);
+        }
+    };
+
+    const isResourceSaved = (resourceId) => {
+        return savedResources.some(saved => saved.resourceId === resourceId);
+    };
+
+    const handleNoteClick = (savedResource) => {
+        setSelectedResource(savedResource);
+        setNoteText(savedResource.note || '');
+        setNoteModalOpen(true);
+    };
+
+    const saveNote = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`http://localhost:8080/api/saved-resources/${selectedResource.resourceId}/note`, 
+                { note: noteText },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            
+            // Refresh saved resources
+            const savedResourcesResponse = await axios.get('http://localhost:8080/api/saved-resources', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setSavedResources(savedResourcesResponse.data || []);
+            
+            setNoteModalOpen(false);
+            setSelectedResource(null);
+            setNoteText('');
+        } catch (error) {
+            console.error('Error saving note:', error);
+        }
+    };
 
     if (loading) {
         return (
@@ -94,13 +172,13 @@ const LecturerDashboard = () => {
                 </div>
 
                 {/* Stats Section */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="stat bg-base-100 shadow-sm rounded-lg">
                         <div className="stat-figure text-primary">
                             📅
                         </div>
                         <div className="stat-title">My Bookings</div>
-                        <div className="stat-value text-primary">{stats.myBookings}</div>
+                        <div className="stat-value text-primary">{myBookings.length}</div>
                         <div className="stat-desc">Total bookings made</div>
                     </div>
                     <div className="stat bg-base-100 shadow-sm rounded-lg">
@@ -110,6 +188,14 @@ const LecturerDashboard = () => {
                         <div className="stat-title">My Tickets</div>
                         <div className="stat-value text-error">{myTickets.length}</div>
                         <div className="stat-desc">Support tickets created</div>
+                    </div>
+                    <div className="stat bg-base-100 shadow-sm rounded-lg">
+                        <div className="stat-figure text-secondary">
+                            ❤️
+                        </div>
+                        <div className="stat-title">Saved Resources</div>
+                        <div className="stat-value text-secondary">{savedResources.length}</div>
+                        <div className="stat-desc">Resources saved for later</div>
                     </div>
                 </div>
 
@@ -140,10 +226,10 @@ const LecturerDashboard = () => {
                                 <p className="text-base-content/60 text-center py-4">No bookings found</p>
                             ) : (
                                 myBookings.map((b) => (
-                                    <div key={b.id} className="border border-base-300 rounded-lg p-4 hover:border-success hover:bg-base-200 transition-all cursor-pointer">
+                                    <div key={b.id} className="border-2 border-base-content/30 rounded-lg p-4 hover:border-success hover:bg-base-200 transition-all cursor-pointer">
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
-                                                <h3 className="font-semibold">{b.resource}</h3>
+                                                <h3 className="font-semibold">{b.resourceName || 'Unknown Resource'}</h3>
                                                 <p className="text-sm text-base-content/70">{b.purpose}</p>
                                             </div>
                                             <span className={`badge badge-sm ${
@@ -155,9 +241,9 @@ const LecturerDashboard = () => {
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-center text-sm text-base-content/70">
-                                            <p>{new Date(b.startTime).toLocaleDateString()}</p>
+                                            <p>{b.date ? new Date(b.date).toLocaleDateString() : 'N/A'}</p>
                                             <p>
-                                                {new Date(b.startTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {new Date(b.endTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                {b.startTime} - {b.endTime}
                                             </p>
                                         </div>
                                     </div>
@@ -192,7 +278,7 @@ const LecturerDashboard = () => {
                                 <p className="text-base-content/60 text-center py-4">No tickets found</p>
                             ) : (
                                 myTickets.slice(0, 5).map((ticket) => (
-                                    <div key={ticket.id} className="border border-base-300 rounded-lg p-4 hover:border-error hover:bg-base-200 transition-all cursor-pointer">
+                                    <div key={ticket.id} className="border-2 border-base-content/30 rounded-lg p-4 hover:border-error hover:bg-base-200 transition-all cursor-pointer">
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
                                                 <h3 className="font-semibold">{ticket.title}</h3>
@@ -221,13 +307,78 @@ const LecturerDashboard = () => {
                     </div>
                 </div>
 
+                {/* Saved Resources */}
+                <div className="bg-base-100 shadow-sm rounded-lg p-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold flex items-center">
+                            ❤️   Saved Resources — Keep notes on your saved resources
+                        </h2>
+                        <button
+                            onClick={() => navigate('/resources')}
+                            className="btn btn-sm btn-ghost"
+                        >
+                            View All Resources
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {savedResources.length === 0 ? (
+                            <p className="text-base-content/60 text-center py-4 col-span-full">No saved resources yet</p>
+                        ) : (
+                            savedResources.slice(0, 6).map((saved) => (
+                                <div key={saved.id} className="border-2 border-base-content/30 rounded-lg p-4 hover:border-error hover:bg-base-200 transition-all cursor-pointer">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <h3 className="font-semibold">{saved.name || 'Unknown Resource'}</h3>
+                                            <p className="text-sm text-base-content/70">{saved.type?.replace('_', ' ') || 'Resource'} • {saved.location || 'Unknown'}</p>
+                                        </div>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleNoteClick(saved);
+                                            }}
+                                            className="btn btn-sm btn-ghost"
+                                            title="Add/Edit Note"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    {saved.note && (
+                                        <div className="mb-3 p-2 bg-yellow-100 dark:bg-yellow-900/40 rounded text-sm text-gray-900 dark:text-gray-900">
+                                            {saved.note}
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between items-center">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleUnsaveResource(saved.resourceId);
+                                            }}
+                                            className="btn btn-sm btn-error"
+                                        >
+                                            Remove
+                                        </button>
+                                        <button
+                                            onClick={() => navigate(`/resources/${saved.resourceId}`)}
+                                            className="btn btn-sm btn-primary"
+                                        >
+                                            View Details
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+
                 {/* Available Resources */}
                 <div className="bg-base-100 shadow-sm rounded-lg p-6">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-xl font-bold flex items-center">
                             🏢 Available Resources
                         </h2>
-                        <button 
+                        <button
                             onClick={() => navigate('/resources')}
                             className="btn btn-sm btn-ghost"
                         >
@@ -239,18 +390,32 @@ const LecturerDashboard = () => {
                             <p className="text-base-content/60 text-center py-4 col-span-full">No active resources found</p>
                         ) : (
                             resources.filter(r => r.status === 'ACTIVE').slice(0, 6).map((resource) => (
-                                <div key={resource.id} className="border border-base-300 rounded-lg p-4 hover:border-primary hover:bg-base-200 transition-all cursor-pointer">
+                                <div key={resource.id} className="border-2 border-base-content/30 rounded-lg p-4 hover:border-primary hover:bg-base-200 transition-all cursor-pointer">
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
                                             <h3 className="font-semibold">{resource.name}</h3>
                                             <p className="text-sm text-base-content/70">{resource.type} • {resource.location}</p>
                                         </div>
-                                        <span className={`badge badge-sm ${resource.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'}`}>
-                                            {resource.status}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`badge badge-sm ${resource.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'}`}>
+                                                {resource.status}
+                                            </span>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    isResourceSaved(resource.id) ? handleUnsaveResource(resource.id) : handleSaveResource(resource.id);
+                                                }}
+                                                className={`btn btn-sm ${isResourceSaved(resource.id) ? 'btn-secondary' : 'btn-ghost'} transition-all duration-300 hover:scale-125 active:scale-95`}
+                                                title={isResourceSaved(resource.id) ? 'Remove from saved' : 'Save resource'}
+                                            >
+                                                <svg className="w-5 h-5" fill={isResourceSaved(resource.id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="flex justify-end">
-                                        <button 
+                                        <button
                                             onClick={() => navigate(`/resources/${resource.id}`)}
                                             className="btn btn-sm btn-primary"
                                         >
@@ -264,6 +429,42 @@ const LecturerDashboard = () => {
                 </div>
 
             </div>
+
+            {/* Note Modal */}
+            {noteModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="bg-base-100 rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+                        <h3 className="text-xl font-bold mb-4">Add Note</h3>
+                        <p className="text-sm text-base-content/70 mb-4">
+                            {selectedResource?.name || 'Resource'}
+                        </p>
+                        <textarea
+                            value={noteText}
+                            onChange={(e) => setNoteText(e.target.value)}
+                            placeholder="Add a note about this resource :)..."
+                            className="textarea textarea-bordered w-full h-32 mb-4"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => {
+                                    setNoteModalOpen(false);
+                                    setSelectedResource(null);
+                                    setNoteText('');
+                                }}
+                                className="btn btn-ghost"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={saveNote}
+                                className="btn btn-primary"
+                            >
+                                Save Note
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

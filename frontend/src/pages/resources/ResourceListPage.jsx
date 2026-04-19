@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 import { resourceService } from '../../services/resourceService';
 import { CardSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
@@ -30,6 +31,7 @@ const ResourceListPage = () => {
     totalPages: 0
   });
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [savedResources, setSavedResources] = useState([]);
 
   // Check if user can book resources
   const canBookResources = hasAnyRole(['STUDENT', 'LECTURER', 'STAFF', 'ADMIN']);
@@ -38,6 +40,60 @@ const ResourceListPage = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // Fetch saved resources on mount
+  useEffect(() => {
+    const fetchSavedResources = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          const response = await axios.get('http://localhost:8080/api/saved-resources', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setSavedResources(response.data || []);
+        }
+      } catch (error) {
+        console.error('Error fetching saved resources:', error);
+      }
+    };
+    fetchSavedResources();
+  }, []);
+
+  const handleSaveResource = async (resourceId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(`http://localhost:8080/api/saved-resources/${resourceId}`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const response = await axios.get('http://localhost:8080/api/saved-resources', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSavedResources(response.data || []);
+    } catch (error) {
+      console.error('Error saving resource:', error);
+    }
+  };
+
+  const handleUnsaveResource = async (resourceId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`http://localhost:8080/api/saved-resources/${resourceId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const response = await axios.get('http://localhost:8080/api/saved-resources', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSavedResources(response.data || []);
+    } catch (error) {
+      console.error('Error unsaving resource:', error);
+    }
+  };
+
+  const isResourceSaved = (resourceId) => {
+    return savedResources.some(saved => saved.resourceId === resourceId);
+  };
   
   // Check if resource is currently available
   const isResourceAvailable = (resource) => {
@@ -64,7 +120,7 @@ const ResourceListPage = () => {
   // Handle booking
   const handleBookResource = (resource) => {
     if (!isResourceAvailable(resource)) {
-      alert('This resource is not available at the current time. Please check the availability schedule.');
+      alert('This resource is not available at the current time. Please check the availability schedule in the details.');
       return;
     }
     
@@ -554,21 +610,35 @@ const ResourceListPage = () => {
                       </div>
                     </div>
                     
-                    <div className="card-actions justify-end gap-2">
-                      <Link 
-                        to={`/resources/${resource.id}`} 
-                        className="btn btn-sm btn-outline"
+                    <div className="card-actions justify-between items-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          isResourceSaved(resource.id) ? handleUnsaveResource(resource.id) : handleSaveResource(resource.id);
+                        }}
+                        className={`btn btn-sm ${isResourceSaved(resource.id) ? 'btn-secondary' : 'btn-ghost'} transition-all duration-300 hover:scale-125 active:scale-95`}
+                        title={isResourceSaved(resource.id) ? 'Remove from saved' : 'Save resource'}
                       >
-                        View Details
-                      </Link>
-                      {canBookResources && resource.status === 'ACTIVE' && (
-                        <button 
-                          onClick={() => handleBookResource(resource)}
-                          className="btn btn-sm btn-primary"
+                        <svg className="w-5 h-5" fill={isResourceSaved(resource.id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                        </svg>
+                      </button>
+                      <div className="flex gap-2">
+                        <Link 
+                          to={`/resources/${resource.id}`} 
+                          className="btn btn-sm btn-outline"
                         >
-                          Book Now
-                        </button>
-                      )}
+                          View Details
+                        </Link>
+                        {canBookResources && resource.status === 'ACTIVE' && (
+                          <button 
+                            onClick={() => handleBookResource(resource)}
+                            className="btn btn-sm btn-primary"
+                          >
+                            Book Now
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

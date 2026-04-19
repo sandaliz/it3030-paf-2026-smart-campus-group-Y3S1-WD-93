@@ -34,6 +34,7 @@ public class Resource {
     private List<String> amenities;
     private Integer shareCount;
     private String createdBy; // User ID of who created this resource
+    private List<String> assignedStaff; // Staff IDs assigned to manage this resource
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

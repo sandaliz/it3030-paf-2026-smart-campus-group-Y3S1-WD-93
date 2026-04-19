@@ -289,4 +289,35 @@ public class ResourceController {
                 .cacheControl(CacheControl.noCache())
                 .body(resourceService.getResourceAudit(id));
     }
+
+    // Assign staff to resource (admin only)
+    @PatchMapping("/{id}/assign-staff")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Assign staff to resource", description = "Assign staff members to manage a resource (requires ADMIN role)")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Staff assigned successfully"),
+        @ApiResponse(responseCode = "403", description = "Insufficient permissions"),
+        @ApiResponse(responseCode = "404", description = "Resource not found")
+    })
+    public ResponseEntity<Resource> assignStaffToResource(
+            @Parameter(description = "Resource ID")
+            @PathVariable String id,
+            @Parameter(description = "List of staff IDs to assign")
+            @RequestBody java.util.Map<String, List<String>> staffIds) {
+        return ResponseEntity.ok(resourceService.assignStaffToResource(id, staffIds.get("staffIds")));
+    }
+
+    // Get resources assigned to current staff
+    @GetMapping("/assigned-to-me")
+    @PreAuthorize("hasAnyRole('STAFF', 'RESOURCE_MANAGER')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Get resources assigned to me", description = "Retrieve resources assigned to the authenticated staff member")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Successfully retrieved assigned resources"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized")
+    })
+    public ResponseEntity<List<Resource>> getResourcesAssignedToMe(Authentication authentication) {
+        return ResponseEntity.ok(resourceService.getResourcesAssignedToStaff(authentication));
+    }
 }

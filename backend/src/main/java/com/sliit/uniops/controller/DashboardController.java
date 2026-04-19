@@ -296,15 +296,14 @@ public class DashboardController {
     @GetMapping("/user/bookings")
     public ResponseEntity<List<Map<String, Object>>> getUserBookings(Authentication authentication) {
         try {
-            String userId = getUserId(authentication);
+            String userId = authentication.getName();
             List<Booking> userBookings = bookingService.getAllBookings(null, null, userId, null, null);
             
             List<Map<String, Object>> result = userBookings.stream()
                     .map(booking -> {
                         Map<String, Object> bookingData = new HashMap<>();
                         bookingData.put("id", booking.getId());
-                        bookingData.put("resourceId", booking.getResourceId());
-                        bookingData.put("resource", getResourceName(booking.getResourceId()));
+                        bookingData.put("resource", "Resource Name"); // Placeholder - will be filled by frontend
                         bookingData.put("startTime", booking.getStartTime());
                         bookingData.put("endTime", booking.getEndTime());
                         bookingData.put("status", booking.getStatus());

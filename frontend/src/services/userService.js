@@ -14,6 +14,12 @@ export const userService = {
     return response.data;
   },
 
+  // Get all NON_ACADEMIC staff (admin only)
+  getStaff: async () => {
+    const response = await api.get('/api/technicians/staff');
+    return response.data;
+  },
+
   // Create new user (admin only)
   createUser: async (userData) => {
     const response = await api.post('/api/admin/users', userData);
