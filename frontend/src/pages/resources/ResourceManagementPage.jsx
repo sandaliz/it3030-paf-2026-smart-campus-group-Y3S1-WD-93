@@ -102,11 +102,25 @@ const ResourceManagementPage = () => {
       }
       
       setResources(data.content || data);
+
+      // Safeguard: ensure totalPages is at least 1 and not invalid
+      const totalPages = data.totalPages || 1;
+      const totalElements = data.totalElements || data.length;
+
       setPagination(prev => ({
         ...prev,
-        totalElements: data.totalElements || data.length,
-        totalPages: data.totalPages || 1
+        totalElements,
+        totalPages: Math.max(1, totalPages)
       }));
+
+      // If current page is beyond available pages, reset to last valid page
+      if (pagination.page >= totalPages) {
+        setPagination(prev => ({
+          ...prev,
+          page: Math.max(0, totalPages - 1)
+        }));
+      }
+
       setError(null);
     } catch (err) {
       setError('Failed to load resources');
@@ -629,7 +643,7 @@ const ResourceManagementPage = () => {
                     </td>
                   </tr>
                 ) : (
-                  resources.map((resource) => (
+                  resources.filter(r => r != null).map((resource) => (
                     <tr key={resource.id}>
                       <td>
                         <label>
@@ -643,9 +657,9 @@ const ResourceManagementPage = () => {
                       </td>
                       <td>
                         <div className="flex items-center gap-3">
-                          <span className="text-xl">{getResourceIcon(resource.type)}</span>
+                          <span className="text-xl">{resource.type ? getResourceIcon(resource.type) : '📦'}</span>
                           <div className="flex-1">
-                            <div className="font-semibold">{resource.name}</div>
+                            <div className="font-semibold">{resource.name || 'N/A'}</div>
                             {resource.description && (
                               <div className="text-sm text-base-content/70 line-clamp-1">
                                 {resource.description}
@@ -656,14 +670,14 @@ const ResourceManagementPage = () => {
                       </td>
                       <td>
                         <span className="capitalize">
-                          {resource.type.replace('_', ' ').toLowerCase()}
+                          {resource.type ? resource.type.replace('_', ' ').toLowerCase() : 'N/A'}
                         </span>
                       </td>
-                      <td>{resource.location}</td>
-                      <td>{resource.capacity}</td>
+                      <td>{resource.location || 'N/A'}</td>
+                      <td>{resource.capacity || 'N/A'}</td>
                       <td>
                         <div className={`badge ${getStatusBadgeColor(resource.status)} badge-sm`}>
-                          {resource.status.replace('_', ' ')}
+                          {resource.status ? resource.status.replace('_', ' ') : 'N/A'}
                         </div>
                       </td>
                       <td>
@@ -712,8 +726,12 @@ const ResourceManagementPage = () => {
                 </button>
                 <button
                   className="join-item btn btn-sm"
-                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                  disabled={pagination.page >= pagination.totalPages - 1}
+                  onClick={() => {
+                    if (pagination.page < pagination.totalPages - 1) {
+                      setPagination(prev => ({ ...prev, page: prev.page + 1 }));
+                    }
+                  }}
+                  disabled={pagination.page >= pagination.totalPages - 1 || pagination.totalPages === 0}
                 >
                   Next
                 </button>
