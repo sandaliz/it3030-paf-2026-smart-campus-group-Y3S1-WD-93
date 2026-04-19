@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { ticketAPI } from '../../services/ticketService';
 import { commentService } from '../../services/ticketService';
-import { userService } from '../../services/userService';
-import { useAuth } from '../../context/AuthContext';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import AssignTechnicianModal from '../incidents/AssignTechnicianModal';
+import { formatAssignedTechnicians, getAssignedTechnicianNames } from '../../utils/ticketAssignments';
 
 // ── Icon helper ───────────────────────────────────────────────────────────────
 const Icon = ({ d, size = 16, className = '' }) => (
@@ -116,20 +115,19 @@ const ProgressRow = ({ label, count, percentage, barClass = 'bg-primary', labelC
   </div>
 );
 
+const getAssignedTechnicianSummary = (ticket) => formatAssignedTechnicians(ticket, '—');
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // Main component
 // ═══════════════════════════════════════════════════════════════════════════════
 const TicketManagementPage = () => {
-  const { user } = useAuth();
-
   // ── Active tab ──────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('tickets');
 
   // ── Shared data ─────────────────────────────────────────────────────────────
-  const [allTickets, setAllTickets]   = useState([]);
-  const [tickets, setTickets]         = useState([]);
-  const [technicians, setTechnicians] = useState([]);
-  const [loading, setLoading]         = useState(true);
+  const [allTickets, setAllTickets] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // ── Tickets tab ─────────────────────────────────────────────────────────────
   const [stats, setStats] = useState({
@@ -140,17 +138,15 @@ const TicketManagementPage = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   // Modals
-  const [selectedTicket, setSelectedTicket]         = useState(null);
-  const [showDetailsModal, setShowDetailsModal]     = useState(false);
-  const [showAssignModal, setShowAssignModal]       = useState(false);
-  const [showRejectModal, setShowRejectModal]       = useState(false);
-  const [showStatusModal, setShowStatusModal]       = useState(false);
-  const [selectedTechnician, setSelectedTechnician] = useState('');
-  const [recommendedTechnicians, setRecommendedTechnicians] = useState([]);
-  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
-  const [rejectionReason, setRejectionReason]       = useState('');
-  const [resolutionNotes, setResolutionNotes]       = useState('');
-  const [newStatus, setNewStatus]                   = useState('');
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [assigningTicket, setAssigningTicket] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [resolutionNotes, setResolutionNotes] = useState('');
+  const [newStatus, setNewStatus] = useState('');
 
   // ── Analytics tab ────────────────────────────────────────────────────────────
   const [timeRange, setTimeRange]               = useState('30');
@@ -191,24 +187,6 @@ const TicketManagementPage = () => {
       return; // Added return statement
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  };
-
-  const fetchTechnicians = async () => {
-    try { setTechnicians(await userService.getTechnicians()); }
-    catch (e) { console.error(e); }
-  };
-
-  const fetchRecommendedTechnicians = async (ticketId) => {
-    try {
-      setLoadingRecommendations(true);
-      const recommendations = await ticketAPI.getRecommendedTechnicians(ticketId);
-      setRecommendedTechnicians(recommendations);
-    } catch (e) {
-      console.error(e);
-      setRecommendedTechnicians([]);
-    } finally {
-      setLoadingRecommendations(false);
-    }
   };
 
   // ── Analytics recalc ─────────────────────────────────────────────────────────
@@ -260,11 +238,16 @@ const TicketManagementPage = () => {
     );
 
     // Technician load
-    const assigned = filtered.filter(t => t.assignedTo);
-    const techMap = assigned.reduce((acc,t) => { acc[t.assignedTo]=(acc[t.assignedTo]||0)+1; return acc; }, {});
+    const assignedEntries = filtered.flatMap((ticket) =>
+      getAssignedTechnicianNames(ticket).map((technicianName) => ({ technicianName }))
+    );
+    const techMap = assignedEntries.reduce((acc, entry) => {
+      acc[entry.technicianName] = (acc[entry.technicianName] || 0) + 1;
+      return acc;
+    }, {});
     setTechnicianStats(Object.entries(techMap).map(([technician, count]) => ({
       technician, count,
-      percentage: assigned.length ? ((count/assigned.length)*100).toFixed(1) : '0.0',
+      percentage: assignedEntries.length ? ((count/assignedEntries.length)*100).toFixed(1) : '0.0',
     })));
 
     // Resolution time
@@ -281,34 +264,12 @@ const TicketManagementPage = () => {
     }
   };
 
-  useEffect(() => { fetchTickets(); fetchStatsAndAll(); fetchTechnicians(); }, []);
+  useEffect(() => { fetchTickets(); fetchStatsAndAll(); }, []);
   useEffect(() => { if (allTickets.length) runAnalytics(allTickets); }, [timeRange, allTickets]);
-  useEffect(() => {
-    if (showAssignModal && selectedTicket?.id) {
-      fetchRecommendedTechnicians(selectedTicket.id);
-    } else {
-      setRecommendedTechnicians([]);
-      setSelectedTechnician('');
-    }
-  }, [showAssignModal, selectedTicket?.id]);
 
   const refresh = () => { fetchTickets(); fetchStatsAndAll(); };
 
   // ── Ticket actions ───────────────────────────────────────────────────────────
-  const handleAssign = async () => {
-    if (!selectedTechnician) return;
-    try {
-      await ticketAPI.assignTicket(selectedTicket.id, selectedTechnician);
-      const tech = recommendedTechnicians.find(t => t.id === selectedTechnician)
-        || technicians.find(t => t.id === selectedTechnician);
-      alert(`Ticket #${selectedTicket.id} assigned to ${tech?.name || selectedTechnician}. Email sent.`);
-      setShowAssignModal(false);
-      setSelectedTechnician('');
-      setRecommendedTechnicians([]);
-      refresh();
-    } catch { alert('Error assigning ticket.'); }
-  };
-
   const handleReject = async () => {
     if (!rejectionReason.trim()) return;
     try {
@@ -338,7 +299,7 @@ const TicketManagementPage = () => {
       const headers = ['Ticket ID','Title','Category','Priority','Status','Created By','Assigned To','Created Date','Updated Date','Location'];
       const rows = analyticsTickets.map(t => [
         t.id, `"${(t.title||'').replace(/"/g,'""')}"`, t.category, t.priority, t.status,
-        `"${t.userName||'N/A'}"`, `"${t.assignedTo||'N/A'}"`,
+        `"${t.userName||'N/A'}"`, `"${getAssignedTechnicianSummary(t)}"`,
         new Date(t.createdAt).toLocaleDateString(), new Date(t.updatedAt).toLocaleDateString(),
         `"${t.location||'N/A'}"`,
       ].join(','));
@@ -396,7 +357,7 @@ const TicketManagementPage = () => {
       ${technicianStats.length?`<h2>Technician Load</h2><table><tr><th>Technician</th><th>Tickets</th><th>%</th></tr>${technicianStats.map(r=>`<tr><td>${r.technician}</td><td>${r.count}</td><td>${r.percentage}%</td></tr>`).join('')}</table>`:''}
       <h2>Ticket Detail</h2>
       <table><tr><th>ID</th><th>Title</th><th>Category</th><th>Priority</th><th>Status</th><th>Assigned To</th><th>Created</th></tr>
-      ${analyticsTickets.map(t=>`<tr><td>${t.id}</td><td>${t.title}</td><td>${t.category}</td><td>${t.priority}</td><td>${t.status}</td><td>${t.assignedTo||'—'}</td><td>${new Date(t.createdAt).toLocaleDateString()}</td></tr>`).join('')}
+      ${analyticsTickets.map(t=>`<tr><td>${t.id}</td><td>${t.title}</td><td>${t.category}</td><td>${t.priority}</td><td>${t.status}</td><td>${getAssignedTechnicianSummary(t)}</td><td>${new Date(t.createdAt).toLocaleDateString()}</td></tr>`).join('')}
       </table>
       </body></html>`;
       const w = window.open('','_blank');
@@ -551,12 +512,12 @@ const TicketManagementPage = () => {
                           <td><PriorityBadge priority={ticket.priority} /></td>
                           <td><StatusBadge status={ticket.status} /></td>
                           <td>
-                            {ticket.assignedTo ? (
+                            {getAssignedTechnicianNames(ticket).length > 0 ? (
                               <div className="flex items-center gap-1.5">
                                 <span className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold shrink-0">
-                                  {ticket.assignedTo[0].toUpperCase()}
+                                  {getAssignedTechnicianSummary(ticket)[0].toUpperCase()}
                                 </span>
-                                <span className="text-xs truncate max-w-[90px]">{ticket.assignedTo}</span>
+                                <span className="text-xs truncate max-w-[140px]">{getAssignedTechnicianSummary(ticket)}</span>
                               </div>
                             ) : (
                               <span className="text-xs text-base-content/30 italic">Unassigned</span>
@@ -576,16 +537,18 @@ const TicketManagementPage = () => {
                               >
                                 <Icon d={icons.eye} size={13} />
                               </button>
-                              {ticket.status === 'OPEN' && (
+                              {ticket.status !== 'CLOSED' && ticket.status !== 'REJECTED' && (
                                 <>
                                   <button className="btn btn-xs btn-warning gap-1"
                                     onClick={() => { setSelectedTicket(ticket); setShowAssignModal(true); }}>
                                     <Icon d={icons.user} size={11} /> Assign
                                   </button>
-                                  <button className="btn btn-xs btn-error btn-outline gap-1"
-                                    onClick={() => { setSelectedTicket(ticket); setShowRejectModal(true); }}>
-                                    <Icon d={icons.x} size={11} /> Reject
-                                  </button>
+                                  {ticket.status === 'OPEN' && (
+                                    <button className="btn btn-xs btn-error btn-outline gap-1"
+                                      onClick={() => { setSelectedTicket(ticket); setShowRejectModal(true); }}>
+                                      <Icon d={icons.x} size={11} /> Reject
+                                    </button>
+                                  )}
                                 </>
                               )}
                               {ticket.status === 'IN_PROGRESS' && (
@@ -802,7 +765,7 @@ const TicketManagementPage = () => {
               ['Status',      <StatusBadge status={selectedTicket.status} />],
               ['Priority',    <PriorityBadge priority={selectedTicket.priority} />],
               ['Category',    selectedTicket.category],
-              ['Assigned To', selectedTicket.assignedTo || '—'],
+              ['Assigned To', getAssignedTechnicianSummary(selectedTicket)],
               ['Created',     new Date(selectedTicket.createdAt).toLocaleString()],
             ].map(([k, v]) => (
               <div key={k}>
@@ -827,21 +790,23 @@ const TicketManagementPage = () => {
       <AssignTechnicianModal
         isOpen={showAssignModal && !!selectedTicket}
         ticket={selectedTicket}
-        loading={false}
-        fallbackTechnicians={technicians}
+        loading={assigningTicket}
         onClose={() => setShowAssignModal(false)}
-        onAssign={async (technicianId, technician) => {
-          setSelectedTechnician(technicianId);
+        onAssign={async (technicianIds, selectedTechnicians) => {
           try {
-            await ticketAPI.assignTicket(selectedTicket.id, technicianId);
-            alert(`Ticket #${selectedTicket.id} assigned to ${technician?.name || technicianId}. Email sent.`);
+            setAssigningTicket(true);
+            await ticketAPI.assignTicket(selectedTicket.id, technicianIds);
+            const technicianLabel = selectedTechnicians.length > 0
+              ? selectedTechnicians.map((technician) => technician.name).join(', ')
+              : 'selected technicians';
+            alert(`Ticket #${selectedTicket.id} assigned to ${technicianLabel}. Email sent.`);
             setShowAssignModal(false);
-            setSelectedTechnician('');
-            setRecommendedTechnicians([]);
             refresh();
           } catch (error) {
             console.error(error);
             alert('Error assigning ticket.');
+          } finally {
+            setAssigningTicket(false);
           }
         }}
       />

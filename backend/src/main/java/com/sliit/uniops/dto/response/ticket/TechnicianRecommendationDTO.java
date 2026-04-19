@@ -16,5 +16,7 @@ public class TechnicianRecommendationDTO {
     private int activeTicketCount;
     private int matchScore;
     private boolean recommended;
+    private boolean alreadyAssigned;
+    private boolean available;
     private List<String> reasons;
 }

@@ -2,27 +2,50 @@ import React, { useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/ticketService';
+import { useRealTimeValidation } from '../utils/validation';
 
 const LoginPage = () => {
     const { user, login } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
-    const [form, setForm] = useState({ email: '', password: '' });
-    const [error, setError] = useState('');
+    
+    const {
+        values: form,
+        errors,
+        touched,
+        handleChange,
+        handleBlur,
+        validateAll,
+        validateField,
+        isFormValid
+    } = useRealTimeValidation({ email: '', password: '' });
+    
     const [submitting, setSubmitting] = useState(false);
+    const [serverError, setServerError] = useState('');
 
     if (user) {
         const from = location.state?.from?.pathname || "/";
         return <Navigate to={from} replace />;
     }
 
-    const handleChange = (event) => {
-        setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+    const handleFieldChange = (event) => {
+        const { name, value } = event.target;
+        handleChange(name, value);
+        // Clear server error when user starts typing
+        if (serverError) {
+            setServerError('');
+        }
     };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        setError('');
+        setServerError('');
+        
+        // Validate all fields
+        if (!validateAll()) {
+            return;
+        }
+        
         setSubmitting(true);
 
         try {
@@ -30,7 +53,7 @@ const LoginPage = () => {
             login(response.token);
             navigate(response.redirectPath || '/', { replace: true });
         } catch (err) {
-            setError(err.response?.data?.message || err.response?.data || 'Login failed');
+            setServerError(err.response?.data?.message || err.response?.data || 'Login failed');
         } finally {
             setSubmitting(false);
         }
@@ -54,31 +77,47 @@ const LoginPage = () => {
                             type="email"
                             name="email"
                             value={form.email}
-                            onChange={handleChange}
-                            className="input input-bordered w-full"
+                            onChange={handleFieldChange}
+                            onBlur={() => handleBlur('email')}
+                            className={`input input-bordered w-full ${
+                                touched.email && errors.email ? 'input-error' : ''
+                            }`}
                             placeholder="Email"
                             required
                         />
+                        {touched.email && errors.email && (
+                            <label className="label">
+                                <span className="label-text-alt text-error text-xs">{errors.email}</span>
+                            </label>
+                        )}
                         <input
                             type="password"
                             name="password"
                             value={form.password}
-                            onChange={handleChange}
-                            className="input input-bordered w-full"
+                            onChange={handleFieldChange}
+                            onBlur={() => handleBlur('password')}
+                            className={`input input-bordered w-full ${
+                                touched.password && errors.password ? 'input-error' : ''
+                            }`}
                             placeholder="Password"
                             required
                         />
+                        {touched.password && errors.password && (
+                            <label className="label">
+                                <span className="label-text-alt text-error text-xs">{errors.password}</span>
+                            </label>
+                        )}
 
-                        {error && (
+                        {(serverError || (touched.email && errors.email) || (touched.password && errors.password)) && (
                             <div className="alert alert-error text-sm">
-                                <span>{error}</span>
+                                <span>{serverError || 'Please fix the errors above'}</span>
                             </div>
                         )}
 
                         <button
                             type="submit"
                             className="btn btn-primary btn-lg w-full"
-                            disabled={submitting}
+                            disabled={submitting || !isFormValid}
                         >
                             {submitting ? 'Signing In...' : 'Login'}
                         </button>
