@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
 public class UserController {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * List all users (Admin only).
@@ -68,8 +70,9 @@ public class UserController {
     @PostMapping("/admin/users")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createUser(@RequestBody Map<String, Object> userRequest) {
-        String email = (String) userRequest.get("email");
-        String name = (String) userRequest.get("name");
+        String email = ((String) userRequest.get("email"));
+        String name = ((String) userRequest.get("name"));
+        String password = ((String) userRequest.get("password"));
         @SuppressWarnings("unchecked")
         List<String> roleNames = (List<String>) userRequest.get("roles");
         @SuppressWarnings("unchecked")
@@ -79,9 +82,15 @@ public class UserController {
         if (email == null || name == null) {
             return ResponseEntity.badRequest().body("Email and name are required");
         }
+
+        if (password == null || password.isBlank()) {
+            return ResponseEntity.badRequest().body("Password is required");
+        }
+
+        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
         
         // Check if user already exists
-        if (userRepository.findByEmail(email).isPresent()) {
+        if (userRepository.findByEmail(normalizedEmail).isPresent()) {
             return ResponseEntity.badRequest().body("User with this email already exists");
         }
         
@@ -90,8 +99,11 @@ public class UserController {
             Set.of(Role.STUDENT);
         
         User user = User.builder()
-                .email(email.toLowerCase().trim())
+                .email(normalizedEmail)
+                .username(generateUsernameFromEmail(email))
                 .name(name)
+                .password(passwordEncoder.encode(password))
+                .authProvider("LOCAL")
                 .roles(roles)
                 .technicianSkills(normalizeSkills(technicianSkills))
                 .enabled(enabled)
@@ -125,6 +137,45 @@ public class UserController {
                 .filter(user -> user.isEnabled() && user.getRoles().contains(com.sliit.uniops.model.Role.TECHNICIAN))
                 .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(technicians);
+    }
+
+    /**
+     * Create a new technician (Admin only).
+     */
+    @PostMapping("/admin/technicians")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> createTechnician(@RequestBody Map<String, Object> technicianRequest) {
+        String email = ((String) technicianRequest.get("email"));
+        String name = ((String) technicianRequest.get("name"));
+        String password = ((String) technicianRequest.get("password"));
+        @SuppressWarnings("unchecked")
+        List<String> technicianSkills = (List<String>) technicianRequest.get("technicianSkills");
+        Boolean enabled = (Boolean) technicianRequest.getOrDefault("enabled", true);
+        
+        if (email == null || name == null) {
+            return ResponseEntity.badRequest().body("Email and name are required");
+        }
+        
+        // Check if user already exists
+        if (userRepository.findByEmail(email).isPresent()) {
+            return ResponseEntity.badRequest().body("User with this email already exists");
+        }
+        
+        // Create technician with TECHNICIAN role
+        User technician = User.builder()
+                .email(email)
+                .name(name)
+                .username(generateUsernameFromEmail(email))
+                .password(passwordEncoder.encode(password))
+                .authProvider("LOCAL")
+                .roles(Set.of(com.sliit.uniops.model.Role.TECHNICIAN))
+                .technicianSkills(normalizeSkills(technicianSkills))
+                .enabled(enabled)
+                .createdAt(System.currentTimeMillis())
+                .build();
+        
+        User savedTechnician = userRepository.save(technician);
+        return ResponseEntity.ok(savedTechnician);
     }
 
     /**
@@ -164,10 +215,28 @@ public class UserController {
         }
 
         String normalizedRole = roleName.trim().toUpperCase(Locale.ROOT);
-        if ("TECHINICIAN".equals(normalizedRole)) {
+        if ("TECHNICIAN".equals(normalizedRole)) {
             normalizedRole = "TECHNICIAN";
         }
 
         return Role.valueOf(normalizedRole);
+    }
+
+    private String generateUsernameFromEmail(String email) {
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+        int atIndex = normalizedEmail.indexOf('@');
+        String baseName = atIndex > 0 ? normalizedEmail.substring(0, atIndex) : normalizedEmail;
+        String sanitized = baseName.replaceAll("[^a-z0-9._-]", "");
+
+        if (sanitized.isBlank()) {
+            sanitized = "user";
+        }
+
+        String candidate = sanitized;
+        int suffix = 1;
+        while (userRepository.existsByUsername(candidate)) {
+            candidate = sanitized + suffix++;
+        }
+        return candidate;
     }
 }

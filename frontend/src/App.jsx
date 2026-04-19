@@ -176,7 +176,7 @@ const AppContent = () => {
             </ProtectedRoute>
           } />
           <Route path="/admin/tickets" element={
-            <ProtectedRoute requiredRoles={['TECHNICIAN', 'TICKET_MANAGER', 'ADMIN']}>
+            <ProtectedRoute requiredRoles={['TICKET_MANAGER', 'ADMIN']}>
               <TicketManagemnet />
             </ProtectedRoute>
           } />

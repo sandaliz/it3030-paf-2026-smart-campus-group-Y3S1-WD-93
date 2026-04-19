@@ -828,6 +828,7 @@ const TicketManagementPage = () => {
         isOpen={showAssignModal && !!selectedTicket}
         ticket={selectedTicket}
         loading={false}
+        fallbackTechnicians={technicians}
         onClose={() => setShowAssignModal(false)}
         onAssign={async (technicianId, technician) => {
           setSelectedTechnician(technicianId);

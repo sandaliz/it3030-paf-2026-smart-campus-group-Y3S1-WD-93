@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import AdminSidebar from '../../components/admin/AdminSidebar';
+import { userService } from '../../services/userService';
 
 const UserManagement = () => {
-  const { user } = useAuth();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -15,8 +16,10 @@ const UserManagement = () => {
   const [formData, setFormData] = useState({
     email: '',
     name: '',
+    password: '',
     roles: ['USER'],
-    enabled: true
+    enabled: true,
+    technicianSkills: ''
   });
 
   // Available roles
@@ -26,15 +29,8 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/users', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data);
-      }
+      const data = await userService.getAllUsers();
+      setUsers(data);
     } catch (error) {
       console.error('Error fetching users:', error);
     } finally {
@@ -54,56 +50,60 @@ const UserManagement = () => {
 
   // Create user
   const handleCreateUser = async () => {
-    try {
-      const response = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
-      });
+    if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim()) {
+      alert('Name, email, and password are required');
+      return;
+    }
 
-      if (response.ok) {
-        setShowCreateModal(false);
-        setFormData({ email: '', name: '', roles: ['USER'], enabled: true });
-        fetchUsers();
-        alert('User created successfully');
-      } else {
-        const error = await response.text();
-        alert('Error creating user: ' + error);
-      }
+    if (formData.roles.length === 0) {
+      alert('Select at least one role');
+      return;
+    }
+
+    try {
+      const payload = {
+        ...formData,
+        email: formData.email.trim(),
+        name: formData.name.trim(),
+        password: formData.password,
+        technicianSkills: formData.roles.includes('TECHNICIAN')
+          ? formData.technicianSkills.split(',').map((skill) => skill.trim()).filter(Boolean)
+          : []
+      };
+
+      await userService.createUser(payload);
+      setShowCreateModal(false);
+      setFormData({ email: '', name: '', password: '', roles: ['USER'], enabled: true, technicianSkills: '' });
+      fetchUsers();
+      alert('User created successfully');
     } catch (error) {
       console.error('Error creating user:', error);
-      alert('Error creating user');
+      alert('Error creating user: ' + (error.response?.data || error.message));
     }
   };
 
   // Update user
   const handleUpdateUser = async () => {
-    try {
-      const response = await fetch(`/api/admin/users/${selectedUser.id}/roles`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ roles: formData.roles })
-      });
+    if (formData.roles.length === 0) {
+      alert('Select at least one role');
+      return;
+    }
 
-      if (response.ok) {
-        setShowEditModal(false);
-        setSelectedUser(null);
-        setFormData({ email: '', name: '', roles: ['USER'], enabled: true });
-        fetchUsers();
-        alert('User updated successfully');
-      } else {
-        const error = await response.text();
-        alert('Error updating user: ' + error);
-      }
+    try {
+      await userService.updateUserRoles(selectedUser.id, {
+        roles: formData.roles,
+        technicianSkills: formData.roles.includes('TECHNICIAN')
+          ? formData.technicianSkills.split(',').map((skill) => skill.trim()).filter(Boolean)
+          : []
+      });
+      setShowEditModal(false);
+      setSelectedUser(null);
+      setFormData({ email: '', name: '', password: '', roles: ['USER'], enabled: true, technicianSkills: '' });
+      fetchUsers();
+      alert('User updated successfully');
     } catch (error) {
       console.error('Error updating user:', error);
-      alert('Error updating user');
+      alert('Error updating user: ' + (error.response?.data || error.message));
     }
   };
 
@@ -112,47 +112,23 @@ const UserManagement = () => {
     if (!confirm('Are you sure you want to delete this user?')) return;
 
     try {
-      const response = await fetch(`/api/admin/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        fetchUsers();
-        alert('User deleted successfully');
-      } else {
-        const error = await response.text();
-        alert('Error deleting user: ' + error);
-      }
+      await userService.deleteUser(userId);
+      fetchUsers();
+      alert('User deleted successfully');
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert('Error deleting user');
+      alert('Error deleting user: ' + (error.response?.data || error.message));
     }
   };
 
   // Toggle user status
   const handleToggleStatus = async (userId, currentStatus) => {
     try {
-      const response = await fetch(`/api/admin/users/${userId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ enabled: !currentStatus })
-      });
-
-      if (response.ok) {
-        fetchUsers();
-      } else {
-        const error = await response.text();
-        alert('Error updating user status: ' + error);
-      }
+      await userService.updateUserStatus(userId, !currentStatus);
+      fetchUsers();
     } catch (error) {
       console.error('Error updating user status:', error);
-      alert('Error updating user status');
+      alert('Error updating user status: ' + (error.response?.data || error.message));
     }
   };
 
@@ -163,7 +139,8 @@ const UserManagement = () => {
       email: user.email,
       name: user.name,
       roles: user.roles || ['USER'],
-      enabled: user.enabled
+      enabled: user.enabled,
+      technicianSkills: Array.isArray(user.technicianSkills) ? user.technicianSkills.join(', ') : ''
     });
     setShowEditModal(true);
   };
@@ -232,13 +209,13 @@ const UserManagement = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredUsers.map((user) => (
-                        <tr key={user.id}>
-                          <td className="font-medium">{user.name}</td>
-                          <td>{user.email}</td>
+                      {filteredUsers.map((listedUser) => (
+                        <tr key={listedUser.id}>
+                          <td className="font-medium">{listedUser.name}</td>
+                          <td>{listedUser.email}</td>
                           <td>
                             <div className="flex gap-1 flex-wrap">
-                              {user.roles?.map((role) => (
+                              {listedUser.roles?.map((role) => (
                                 <span key={role} className="badge badge-sm badge-primary">
                                   {role}
                                 </span>
@@ -251,28 +228,28 @@ const UserManagement = () => {
                                 <input
                                   type="checkbox"
                                   className="toggle toggle-sm"
-                                  checked={user.enabled}
-                                  onChange={() => handleToggleStatus(user.id, user.enabled)}
+                                  checked={listedUser.enabled}
+                                  onChange={() => handleToggleStatus(listedUser.id, listedUser.enabled)}
                                 />
                                 <span className="label-text ml-2">
-                                  {user.enabled ? 'Active' : 'Inactive'}
+                                  {listedUser.enabled ? 'Active' : 'Inactive'}
                                 </span>
                               </label>
                             </div>
                           </td>
-                          <td>{new Date(user.createdAt).toLocaleDateString()}</td>
+                          <td>{new Date(listedUser.createdAt).toLocaleDateString()}</td>
                           <td>
                             <div className="flex gap-2">
                               <button
                                 className="btn btn-sm btn-outline"
-                                onClick={() => openEditModal(user)}
+                                onClick={() => openEditModal(listedUser)}
                               >
                                 Edit
                               </button>
                               <button
                                 className="btn btn-sm btn-error btn-outline"
-                                onClick={() => handleDeleteUser(user.id)}
-                                disabled={user.email === user.email} // Prevent self-deletion
+                                onClick={() => handleDeleteUser(listedUser.id)}
+                                disabled={listedUser.email === currentUser?.email}
                               >
                                 Delete
                               </button>
@@ -322,6 +299,19 @@ const UserManagement = () => {
 
               <div className="form-control mb-4">
                 <label className="label">
+                  <span className="label-text">Password</span>
+                </label>
+                <input
+                  type="password"
+                  className="input input-bordered"
+                  value={formData.password}
+                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                  placeholder="Enter a temporary password"
+                />
+              </div>
+
+              <div className="form-control mb-4">
+                <label className="label">
                   <span className="label-text">Roles</span>
                 </label>
                 <div className="space-y-2">
@@ -338,6 +328,21 @@ const UserManagement = () => {
                   ))}
                 </div>
               </div>
+
+              {formData.roles.includes('TECHNICIAN') && (
+                <div className="form-control mb-4">
+                  <label className="label">
+                    <span className="label-text">Technician Skills</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="input input-bordered"
+                    value={formData.technicianSkills}
+                    onChange={(e) => setFormData(prev => ({ ...prev, technicianSkills: e.target.value }))}
+                    placeholder="networking, hardware, electrical"
+                  />
+                </div>
+              )}
 
               <div className="form-control mb-4">
                 <label className="label cursor-pointer">

@@ -72,9 +72,10 @@ const AdminDashboard = () => {
   const fetchAllUsers = async () => {
     try {
       const response = await apiInstance.get('/api/admin/dashboard/users');
-      setAllUsers(response.data);
+      setAllUsers(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching users:', error);
+      setAllUsers([]);
     }
   };
 
@@ -135,7 +136,7 @@ const AdminDashboard = () => {
   // Toggle user status
   const handleToggleUserStatus = async (userId) => {
     try {
-      await axios.put(`/api/admin/dashboard/users/${userId}/toggle-status`);
+      await apiInstance.put(`/api/admin/dashboard/users/${userId}/toggle-status`);
       fetchAllUsers();
       fetchStats();
     } catch (error) {
@@ -411,7 +412,7 @@ const AdminDashboard = () => {
                         <h3 className="font-semibold">{user.name}</h3>
                         <p className="text-sm text-base-content/70">{user.email}</p>
                         <div className="flex gap-1 mt-1">
-                          {user.roles.map((role, index) => (
+                          {(user.roles || []).map((role, index) => (
                             <span key={index} className="badge badge-xs badge-outline">
                               {role}
                             </span>

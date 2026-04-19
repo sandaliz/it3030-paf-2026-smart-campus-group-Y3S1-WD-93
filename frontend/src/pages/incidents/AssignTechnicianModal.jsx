@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Modal from '../../components/ui/Modal';
 import { ticketService } from '../../services/ticketService';
 
-const AssignTechnicianModal = ({ isOpen, ticket, onClose, onAssign, loading }) => {
+const AssignTechnicianModal = ({ isOpen, ticket, onClose, onAssign, loading, fallbackTechnicians = [] }) => {
   const [selectedTech, setSelectedTech] = useState('');
   const [technicians, setTechnicians] = useState([]);
   const [loadingTechs, setLoadingTechs] = useState(false);
@@ -43,6 +43,29 @@ const AssignTechnicianModal = ({ isOpen, ticket, onClose, onAssign, loading }) =
     onAssign(selectedTech, tech);
   };
 
+  const techniciansToShow = (() => {
+    const normalizedFallback = (fallbackTechnicians || []).map((technician) => ({
+      id: technician.id,
+      name: technician.name,
+      email: technician.email,
+      skills: Array.isArray(technician.technicianSkills) ? technician.technicianSkills : [],
+      activeTicketCount: technician.activeTicketCount ?? 0,
+      matchScore: technician.matchScore ?? 0,
+      recommended: technician.recommended ?? false,
+      reasons: technician.reasons ?? ['Available technician'],
+    }));
+
+    if (!technicians.length) {
+      return normalizedFallback;
+    }
+
+    const existingIds = new Set(technicians.map((technician) => technician.id));
+    return [
+      ...technicians,
+      ...normalizedFallback.filter((technician) => !existingIds.has(technician.id)),
+    ];
+  })();
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Assign Technician" size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -60,11 +83,11 @@ const AssignTechnicianModal = ({ isOpen, ticket, onClose, onAssign, loading }) =
               <div key={index} className="h-24 rounded-xl border border-base-300 bg-base-200/50 animate-pulse" />
             ))}
           </div>
-        ) : technicians.length === 0 ? (
+        ) : techniciansToShow.length === 0 ? (
           <div className="alert">No active technicians are available right now.</div>
         ) : (
           <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
-            {technicians.map((technician) => {
+            {techniciansToShow.map((technician) => {
               const selected = selectedTech === technician.id;
               const skills = technician.skills?.length ? technician.skills : ['no skills'];
 

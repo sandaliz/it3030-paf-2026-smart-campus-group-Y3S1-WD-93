@@ -21,8 +21,9 @@ export const userService = {
   },
 
   // Update user roles (admin only)
-  updateUserRoles: async (userId, roles) => {
-    const response = await api.put(`/api/admin/users/${userId}/roles`, { roles });
+  updateUserRoles: async (userId, payload) => {
+    const body = Array.isArray(payload) ? { roles: payload } : payload;
+    const response = await api.put(`/api/admin/users/${userId}/roles`, body);
     return response.data;
   },
 
