@@ -1,5 +1,6 @@
 package com.sliit.uniops.controller.ticket;
 
+import com.sliit.uniops.dto.request.ticket.TicketAssignmentRequestDTO;
 import com.sliit.uniops.dto.request.ticket.TicketRequestDTO;
 import com.sliit.uniops.dto.response.ticket.TechnicianRecommendationDTO;
 import com.sliit.uniops.dto.response.ticket.TicketResponseDTO;
@@ -98,13 +99,21 @@ public class TicketController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TicketResponseDTO> assignTechnician(
             @PathVariable String id,
-            @RequestParam String technicianId,
+            @RequestBody(required = false) TicketAssignmentRequestDTO request,
+            @RequestParam(required = false) String technicianId,
             Authentication authentication) {
 
 
         String assignedBy = getUserId(authentication);
+        List<String> technicianIds = request != null ? request.getTechnicianIds() : null;
 
-        TicketResponseDTO ticket = ticketService.assignTechnician(id, technicianId, assignedBy);
+        if ((technicianIds == null || technicianIds.isEmpty())
+                && technicianId != null
+                && !technicianId.isBlank()) {
+            technicianIds = List.of(technicianId);
+        }
+
+        TicketResponseDTO ticket = ticketService.assignTechnicians(id, technicianIds, assignedBy);
         return ResponseEntity.ok(ticket);
     }
 

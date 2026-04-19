@@ -47,12 +47,17 @@ export const ticketService = {
     return response.data;
   },
 
-  // Assign technician
-  assignTechnician: async (id, technicianId) => {
-    const response = await api.patch(`/api/tickets/${id}/assign`, null, {
-      params: { technicianId }
+  // Assign one or more technicians
+  assignTechnicians: async (id, technicianIds) => {
+    const normalizedIds = Array.isArray(technicianIds) ? technicianIds : [technicianIds];
+    const response = await api.patch(`/api/tickets/${id}/assign`, {
+      technicianIds: normalizedIds.filter(Boolean)
     });
     return response.data;
+  },
+
+  assignTechnician: async (id, technicianId) => {
+    return ticketService.assignTechnicians(id, [technicianId]);
   },
 
   getRecommendedTechnicians: async (id) => {
@@ -112,8 +117,9 @@ export const ticketAPI = {
     return { data };
   },
 
-  assignTicket: async (id, technicianId) => {
-    const data = await ticketService.assignTechnician(id, technicianId);
+  assignTicket: async (id, technicianIds) => {
+    const normalizedIds = Array.isArray(technicianIds) ? technicianIds : [technicianIds];
+    const data = await ticketService.assignTechnicians(id, normalizedIds);
     return { data };
   },
 

@@ -1,20 +1,79 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { dashboardService } from '../../services/dashboardService';
 
 const StaffDashboard = () => {
   const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    myResources: 0,
+    resourceRequests: 0,
+    pendingApprovals: 0
+  });
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+
+  // Fetch dashboard data
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [statsData, activityData] = await Promise.all([
+        dashboardService.getStaffStats(),
+        dashboardService.getStaffActivity()
+      ]);
+      
+      setStats(statsData);
+      setRecentActivity(activityData);
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  // Set up polling for real-time updates (every 30 seconds)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchDashboardData();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [fetchDashboardData]);
 
   const dashboardStats = [
-    { title: 'My Resources', value: '6', icon: '📊', color: 'bg-blue-500' },
-    { title: 'Resource Requests', value: '3', icon: '📝', color: 'bg-yellow-500' },
-    { title: 'Pending Approvals', value: '2', icon: '⏳', color: 'bg-purple-500' }
+    { title: 'My Resources', value: stats.myResources.toString(), icon: '📊', color: 'bg-blue-500' },
+    { title: 'Resource Requests', value: stats.resourceRequests.toString(), icon: '📝', color: 'bg-yellow-500' },
+    { title: 'Pending Approvals', value: stats.pendingApprovals.toString(), icon: '⏳', color: 'bg-purple-500' }
   ];
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Staff Dashboard</h1>
-        <p className="text-gray-600">Welcome back, {user?.name || 'Staff Member'}!</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Staff Dashboard</h1>
+            <p className="text-gray-600">Welcome back, {user?.name || 'Staff Member'}!</p>
+          </div>
+          <div className="text-sm text-gray-500">
+            Last updated: {lastUpdated.toLocaleTimeString()}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -51,14 +110,20 @@ const StaffDashboard = () => {
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
-              <span className="text-gray-600">Resource request approved</span>
-              <span className="text-sm text-gray-500">1 hour ago</span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded">
-              <span className="text-gray-600">New booking created</span>
-              <span className="text-sm text-gray-500">3 hours ago</span>
-            </div>
+            {recentActivity.length > 0 ? (
+              recentActivity.map((activity, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                  <span className="text-gray-600">{activity.description}</span>
+                  <span className="text-sm text-gray-500">
+                    {activity.timestamp ? new Date(activity.timestamp).toLocaleString() : 'Just now'}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="text-gray-500 text-center py-4">
+                No recent activity
+              </div>
+            )}
           </div>
         </div>
       </div>

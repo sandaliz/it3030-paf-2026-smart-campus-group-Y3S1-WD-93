@@ -2,11 +2,21 @@ import React, { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/ticketService';
+import { useRealTimeValidation, validatePassword } from '../utils/validation';
 
 const RegisterPage = () => {
     const { user, login } = useAuth();
     const navigate = useNavigate();
-    const [form, setForm] = useState({
+    
+    const {
+        values: form,
+        errors,
+        touched,
+        handleChange,
+        handleBlur,
+        validateAll,
+        isFormValid
+    } = useRealTimeValidation({
         name: '',
         username: '',
         email: '',
@@ -14,26 +24,33 @@ const RegisterPage = () => {
         confirmPassword: '',
         role: 'STUDENT'
     });
-    const [error, setError] = useState('');
+    
     const [submitting, setSubmitting] = useState(false);
+    const [serverError, setServerError] = useState('');
+    const passwordValidation = validatePassword(form.password);
 
     if (user) {
         return <Navigate to="/" replace />;
     }
 
-    const handleChange = (event) => {
-        setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
+    const handleFieldChange = (event) => {
+        const { name, value } = event.target;
+        handleChange(name, value);
+        // Clear server error when user starts typing
+        if (serverError) {
+            setServerError('');
+        }
     };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        setError('');
-
-        if (form.password !== form.confirmPassword) {
-            setError('Passwords do not match');
+        setServerError('');
+        
+        // Validate all fields
+        if (!validateAll()) {
             return;
         }
-
+        
         setSubmitting(true);
 
         try {
@@ -47,7 +64,7 @@ const RegisterPage = () => {
             login(response.token);
             navigate(response.redirectPath || '/', { replace: true });
         } catch (err) {
-            setError(err.response?.data?.message || err.response?.data || 'Registration failed');
+            setServerError(err.response?.data?.message || err.response?.data || 'Registration failed');
         } finally {
             setSubmitting(false);
         }
@@ -62,9 +79,70 @@ const RegisterPage = () => {
                     <p className="text-base-content/70 text-center mb-6">This builds the base local auth flow. Once this is stable, the same backend can also accept Google OAuth sign-ins.</p>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <input className="input input-bordered w-full" name="name" placeholder="Full name" value={form.name} onChange={handleChange} required />
-                        <input className="input input-bordered w-full" name="username" placeholder="Username" value={form.username} onChange={handleChange} required />
-                        <input className="input input-bordered w-full" type="email" name="email" placeholder="Email" value={form.email} onChange={handleChange} required />
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Full name</span>
+                            </label>
+                            <input 
+                                className={`input input-bordered w-full ${
+                                    touched.name && errors.name ? 'input-error' : ''
+                                }`} 
+                                name="name" 
+                                placeholder="Full name" 
+                                value={form.name} 
+                                onChange={handleFieldChange}
+                                onBlur={() => handleBlur('name')}
+                                required 
+                            />
+                            {touched.name && errors.name && (
+                                <label className="label">
+                                    <span className="label-text-alt text-error text-xs">{errors.name}</span>
+                                </label>
+                            )}
+                        </div>
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Username</span>
+                            </label>
+                            <input 
+                                className={`input input-bordered w-full ${
+                                    touched.username && errors.username ? 'input-error' : ''
+                                }`} 
+                                name="username" 
+                                placeholder="Username" 
+                                value={form.username} 
+                                onChange={handleFieldChange}
+                                onBlur={() => handleBlur('username')}
+                                required 
+                            />
+                            {touched.username && errors.username && (
+                                <label className="label">
+                                    <span className="label-text-alt text-error text-xs">{errors.username}</span>
+                                </label>
+                            )}
+                        </div>
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Email</span>
+                            </label>
+                            <input 
+                                type="email"
+                                className={`input input-bordered w-full ${
+                                    touched.email && errors.email ? 'input-error' : ''
+                                }`} 
+                                name="email" 
+                                placeholder="Email" 
+                                value={form.email} 
+                                onChange={handleFieldChange}
+                                onBlur={() => handleBlur('email')}
+                                required 
+                            />
+                            {touched.email && errors.email && (
+                                <label className="label">
+                                    <span className="label-text-alt text-error text-xs">{errors.email}</span>
+                                </label>
+                            )}
+                        </div>
                         
                         <div className="form-control">
                             <label className="label">
@@ -74,7 +152,8 @@ const RegisterPage = () => {
                                 className="select select-bordered w-full" 
                                 name="role" 
                                 value={form.role} 
-                                onChange={handleChange} 
+                                onChange={handleFieldChange}
+                                onBlur={() => handleBlur('role')}
                                 required
                             >
                                 <option value="STUDENT">Student</option>
@@ -83,16 +162,84 @@ const RegisterPage = () => {
                             </select>
                         </div>
                         
-                        <input className="input input-bordered w-full" type="password" name="password" placeholder="Password" value={form.password} onChange={handleChange} required />
-                        <input className="input input-bordered w-full" type="password" name="confirmPassword" placeholder="Confirm password" value={form.confirmPassword} onChange={handleChange} required />
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Password</span>
+                            </label>
+                            <input 
+                                type="password"
+                                className={`input input-bordered w-full ${
+                                    touched.password && errors.password ? 'input-error' : ''
+                                }`} 
+                                name="password" 
+                                placeholder="Password" 
+                                value={form.password} 
+                                onChange={handleFieldChange}
+                                onBlur={() => handleBlur('password')}
+                                required 
+                            />
+                            {touched.password && errors.password && (
+                                <label className="label">
+                                    <span className="label-text-alt text-error text-xs">{errors.password}</span>
+                                </label>
+                            )}
+                            {/* Password strength indicator */}
+                            {touched.password && form.password && (
+                                <div className="mt-2">
+                                    <div className="flex gap-1">
+                                        <span className="text-xs">Password strength:</span>
+                                        <span className={`text-xs font-semibold ${
+                                            passwordValidation.requirements?.minLength ? 'text-success' : 'text-error'
+                                        }`}>8+ chars</span>
+                                        <span className={`text-xs font-semibold ${
+                                            passwordValidation.requirements?.hasUpperCase ? 'text-success' : 'text-error'
+                                        }`}>Upper</span>
+                                        <span className={`text-xs font-semibold ${
+                                            passwordValidation.requirements?.hasLowerCase ? 'text-success' : 'text-error'
+                                        }`}>Lower</span>
+                                        <span className={`text-xs font-semibold ${
+                                            passwordValidation.requirements?.hasNumbers ? 'text-success' : 'text-error'
+                                        }`}>Numbers</span>
+                                        <span className={`text-xs font-semibold ${
+                                            passwordValidation.requirements?.hasSpecialChar ? 'text-success' : 'text-error'
+                                        }`}>Special</span>
+                                    </div>
+                                    {passwordValidation.strength > 0 && passwordValidation.strength < 3 && (
+                                        <span className="text-xs text-warning ml-2">Weak password</span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">Confirm password</span>
+                            </label>
+                            <input 
+                                type="password"
+                                className={`input input-bordered w-full ${
+                                    touched.confirmPassword && errors.confirmPassword ? 'input-error' : ''
+                                }`} 
+                                name="confirmPassword" 
+                                placeholder="Confirm password" 
+                                value={form.confirmPassword} 
+                                onChange={handleFieldChange}
+                                onBlur={() => handleBlur('confirmPassword')}
+                                required 
+                            />
+                            {touched.confirmPassword && errors.confirmPassword && (
+                                <label className="label">
+                                    <span className="label-text-alt text-error text-xs">{errors.confirmPassword}</span>
+                                </label>
+                            )}
+                        </div>
 
-                        {error && (
+                        {(serverError || Object.keys(errors).some(key => errors[key])) && (
                             <div className="alert alert-error text-sm">
-                                <span>{error}</span>
+                                <span>{serverError || 'Please fix the errors above'}</span>
                             </div>
                         )}
 
-                        <button type="submit" className="btn btn-primary w-full" disabled={submitting}>
+                        <button type="submit" className="btn btn-primary w-full" disabled={submitting || !isFormValid}>
                             {submitting ? 'Creating Account...' : 'Register'}
                         </button>
                     </form>

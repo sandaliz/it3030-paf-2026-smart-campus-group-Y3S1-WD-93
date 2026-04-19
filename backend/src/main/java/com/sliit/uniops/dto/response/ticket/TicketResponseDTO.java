@@ -23,6 +23,8 @@ public class TicketResponseDTO {
     private String createdByName;
     private String assignedTo;
     private String assignedToName;
+    private List<String> assignedTechnicianIds;
+    private List<String> assignedTechnicianNames;
     private List<String> attachmentUrls;
     private String resolutionNotes;
     private String rejectionReason;

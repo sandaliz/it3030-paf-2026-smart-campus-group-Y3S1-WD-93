@@ -1,7 +1,11 @@
 package com.sliit.uniops.service.ticket;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
@@ -43,9 +47,10 @@ public class TicketNotificationService {
 
         storeNotification(ticket.getCreatedBy(), "STATUS_CHANGED", message, ticket.getId());
 
-        if (ticket.getAssignedTo() != null) {
-            storeNotification(ticket.getAssignedTo(), "STATUS_CHANGED", message, ticket.getId());
-        }
+        getAssignedTechnicianIds(ticket).stream()
+                .filter(assignedTechnicianId -> !Objects.equals(assignedTechnicianId, userId))
+                .forEach(assignedTechnicianId ->
+                        storeNotification(assignedTechnicianId, "STATUS_CHANGED", message, ticket.getId()));
     }
 
     // ✅ Assigned
@@ -56,26 +61,24 @@ public class TicketNotificationService {
                 ticket.getId(), technician.getName(), assignedBy,
                 ticket.getTitle(), ticket.getPriority());
 
-        if (ticket.getAssignedTo() != null) {
-            storeNotification(ticket.getAssignedTo(), "TICKET_ASSIGNED", message, ticket.getId());
-            
-            // Send email notification to technician
-            try {
-                emailService.sendTicketAssignmentNotification(
-                    technician.getEmail(),            // technician email
-                    technician.getName(),            // technician name
-                    ticket.getId(),                   // ticket ID
-                    ticket.getTitle(),                 // ticket title
-                    ticket.getDescription(),            // ticket description
-                    ticket.getPriority().toString(),  // priority
-                    ticket.getCategory().toString(),  // category
-                    ticket.getLocation()               // location
-                );
-                log.info("Email notification sent to technician: {} for ticket: {}", technician.getEmail(), ticket.getId());
-            } catch (Exception e) {
-                log.error("Failed to send email notification to technician: {} for ticket: {}", 
-                           technician.getEmail(), ticket.getId(), e);
-            }
+        storeNotification(technician.getId(), "TICKET_ASSIGNED", message, ticket.getId());
+        
+        // Send email notification to technician
+        try {
+            emailService.sendTicketAssignmentNotification(
+                technician.getEmail(),            // technician email
+                technician.getName(),            // technician name
+                ticket.getId(),                   // ticket ID
+                ticket.getTitle(),                 // ticket title
+                ticket.getDescription(),            // ticket description
+                ticket.getPriority().toString(),  // priority
+                ticket.getCategory().toString(),  // category
+                ticket.getLocation()               // location
+            );
+            log.info("Email notification sent to technician: {} for ticket: {}", technician.getEmail(), ticket.getId());
+        } catch (Exception e) {
+            log.error("Failed to send email notification to technician: {} for ticket: {}", 
+                       technician.getEmail(), ticket.getId(), e);
         }
 
         storeNotification(ticket.getCreatedBy(), "TICKET_ASSIGNED", message, ticket.getId());
@@ -92,11 +95,10 @@ public class TicketNotificationService {
             storeNotification(ticket.getCreatedBy(), "NEW_COMMENT", message, ticket.getId());
         }
 
-        if (ticket.getAssignedTo() != null &&
-                !ticket.getAssignedTo().equals(comment.getAuthorId())) {
-
-            storeNotification(ticket.getAssignedTo(), "NEW_COMMENT", message, ticket.getId());
-        }
+        getAssignedTechnicianIds(ticket).stream()
+                .filter(assignedTechnicianId -> !Objects.equals(assignedTechnicianId, comment.getAuthorId()))
+                .forEach(assignedTechnicianId ->
+                        storeNotification(assignedTechnicianId, "NEW_COMMENT", message, ticket.getId()));
     }
 
     // ✅ STORE NOTIFICATION 
@@ -164,10 +166,10 @@ public class TicketNotificationService {
         adminNotification.setCreatedAt(LocalDateTime.now());
         notificationRepository.save(adminNotification);
 
-        // Notify assigned technician
-        if (ticket.getAssignedTo() != null && !ticket.getAssignedTo().isEmpty()) {
+        // Notify assigned technicians
+        for (String technicianId : getAssignedTechnicianIds(ticket)) {
             NotificationModel technicianNotification = new NotificationModel();
-            technicianNotification.setUserId(ticket.getAssignedTo());
+            technicianNotification.setUserId(technicianId);
             technicianNotification.setTitle("Ticket Resolution Confirmed by User");
             technicianNotification.setMessage(String.format(
                 "User has confirmed resolution for your assigned ticket '%s'. Feedback: %s", 
@@ -180,5 +182,21 @@ public class TicketNotificationService {
             technicianNotification.setCreatedAt(LocalDateTime.now());
             notificationRepository.save(technicianNotification);
         }
+    }
+
+    private List<String> getAssignedTechnicianIds(TicketModel ticket) {
+        Set<String> technicianIds = new LinkedHashSet<>();
+
+        if (ticket.getAssignedTechnicianIds() != null) {
+            technicianIds.addAll(ticket.getAssignedTechnicianIds());
+        }
+
+        if (technicianIds.isEmpty()
+                && ticket.getAssignedTo() != null
+                && !ticket.getAssignedTo().isBlank()) {
+            technicianIds.add(ticket.getAssignedTo());
+        }
+
+        return new ArrayList<>(technicianIds);
     }
 }
