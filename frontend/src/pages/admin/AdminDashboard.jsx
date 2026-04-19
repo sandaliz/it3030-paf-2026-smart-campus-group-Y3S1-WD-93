@@ -98,10 +98,44 @@ const AdminDashboard = () => {
   // Fetch all users
   const fetchAllUsers = async () => {
     try {
-      const data = await userService.getAllUsers();
-      setAllUsers(Array.isArray(data) ? data.map(normalizeUser) : []);
+      console.log('DEBUG: Fetching users from /api/admin/dashboard/users');
+      console.log('DEBUG: Auth token exists:', !!localStorage.getItem('token'));
+      
+      const response = await apiInstance.get('/api/admin/dashboard/users');
+      console.log('DEBUG: Users API response status:', response.status);
+      console.log('DEBUG: Users API response headers:', response.headers);
+      console.log('DEBUG: Users API response:', response);
+      console.log('DEBUG: Users data:', response.data);
+      console.log('DEBUG: Is array?', Array.isArray(response.data));
+      console.log('DEBUG: Data length:', response.data?.length);
+      
+      // Check if response data is an error object
+      if (response.data && response.data.error) {
+        console.error('DEBUG: Server returned error:', response.data.error);
+        setAllUsers([]);
+        return;
+      }
+      
+      const usersData = Array.isArray(response.data) ? response.data : [];
+      console.log('DEBUG: Setting allUsers to:', usersData);
+      setAllUsers(usersData);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('DEBUG: Error fetching users:', error);
+      console.error('DEBUG: Error response status:', error.response?.status);
+      console.error('DEBUG: Error response data:', error.response?.data);
+      console.error('DEBUG: Full error response:', error.response);
+      console.error('DEBUG: Error message:', error.message);
+      
+      // Check for 401/403 errors (authentication/authorization)
+      if (error.response?.status === 401) {
+        console.error('DEBUG: Authentication failed - user may not be logged in or token expired');
+      } else if (error.response?.status === 403) {
+        console.error('DEBUG: Authorization failed - user may not have admin role');
+      } else if (error.response?.status === 500) {
+        console.error('DEBUG: Backend server error - check backend logs for details');
+        console.error('DEBUG: Server error details:', JSON.stringify(error.response?.data, null, 2));
+      }
+      
       setAllUsers([]);
     }
   };
@@ -631,48 +665,7 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* All Users */}
-            <div className="bg-base-100 shadow-sm rounded-lg p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold flex items-center">
-                  👥 ALL USERS
-                </h2>
-                <div className="flex gap-2">
-                  <button className="btn btn-sm btn-primary">Add User</button>
-                  <button className="btn btn-sm btn-outline">Filter by Role</button>
-                </div>
-              </div>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {allUsers.slice(0, 5).map((user) => (
-                  <div key={user.id} className="border border-base-300 rounded-lg p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="font-semibold">{user.name}</h3>
-                        <p className="text-sm text-base-content/70">{user.email}</p>
-                        <div className="flex gap-1 mt-1">
-                          {(user.roles || []).map((role, index) => (
-                            <span key={index} className="badge badge-xs badge-outline">
-                              {role}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button className="btn btn-xs btn-outline">Edit Role</button>
-                        <button
-                          className={`btn btn-xs ${user.enabled ? 'btn-warning' : 'btn-success'}`}
-                          onClick={() => handleToggleUserStatus(user.id)}
-                        >
-                          {user.enabled ? 'Disable' : 'Enable'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          
 
           {/* All Bookings */}
           <div className="bg-base-100 shadow-sm rounded-lg p-6">
