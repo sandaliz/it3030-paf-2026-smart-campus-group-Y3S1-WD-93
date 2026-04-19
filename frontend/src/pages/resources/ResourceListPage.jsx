@@ -29,6 +29,7 @@ const ResourceListPage = () => {
     totalElements: 0,
     totalPages: 0
   });
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   // Check if user can book resources
   const canBookResources = hasAnyRole(['STUDENT', 'LECTURER', 'STAFF', 'ADMIN']);
@@ -277,6 +278,25 @@ const ResourceListPage = () => {
       totalPages
     }));
   }, [allFilteredResources, pagination.page]);
+
+  // Handle scroll to show/hide scroll-to-top button
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Sort resources based on sortBy state
   useEffect(() => {
@@ -576,6 +596,19 @@ const ResourceListPage = () => {
         </div>
       )}
       </div>
+
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 btn btn-circle btn-primary shadow-lg z-50"
+          aria-label="Scroll to top"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 };
