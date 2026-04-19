@@ -332,7 +332,7 @@ const ResourceManagementPage = () => {
       <div className="flex h-full">
         <AdminSidebar />
 
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-auto">
           <div className="p-6 lg:p-8">
             {/* Header */}
             <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -484,7 +484,7 @@ const ResourceManagementPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="card bg-base-100 shadow-lg mb-6">
+      <div className="card bg-base-100 shadow-lg mb-0">
         <div className="card-body">
           <h3 className="card-title text-lg">Filters</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -583,7 +583,7 @@ const ResourceManagementPage = () => {
           </div>
 
           {/* Scrollable Table Section */}
-          <div className="flex-1 overflow-y-auto px-6 lg:px-8 pb-6">
+          <div className="flex-1 px-6 lg:px-8 pb-6">
             {/* Resources Table */}
             <div className="card bg-base-100 shadow-lg relative">
         {searching && (
