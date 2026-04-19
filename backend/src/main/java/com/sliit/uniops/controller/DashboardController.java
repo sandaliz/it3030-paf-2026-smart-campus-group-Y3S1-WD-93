@@ -296,13 +296,15 @@ public class DashboardController {
     @GetMapping("/user/bookings")
     public ResponseEntity<List<Map<String, Object>>> getUserBookings(Authentication authentication) {
         try {
-            String userId = authentication.getName();
+            String userId = getUserId(authentication);
             List<Booking> userBookings = bookingService.getAllBookings(null, null, userId, null, null);
             
             List<Map<String, Object>> result = userBookings.stream()
                     .map(booking -> {
                         Map<String, Object> bookingData = new HashMap<>();
                         bookingData.put("id", booking.getId());
+                        bookingData.put("resourceId", booking.getResourceId());
+                        bookingData.put("resource", getResourceName(booking.getResourceId()));
                         bookingData.put("startTime", booking.getStartTime());
                         bookingData.put("endTime", booking.getEndTime());
                         bookingData.put("status", booking.getStatus());
@@ -316,6 +318,19 @@ public class DashboardController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body(List.of(Map.of("error", "Failed to fetch user bookings: " + e.getMessage())));
         }
+    }
+
+    private String getResourceName(String resourceId) {
+        try {
+            var resource = resourceService.getResourceById(resourceId);
+            if (resource != null) {
+                Object name = resource.getClass().getMethod("getName").invoke(resource);
+                return name != null ? name.toString() : "Unknown Resource";
+            }
+        } catch (Exception e) {
+            // Ignore and return placeholder
+        }
+        return "Resource Name";
     }
 
     /**
@@ -352,7 +367,7 @@ public class DashboardController {
     @GetMapping("/user/tickets")
     public ResponseEntity<List<Map<String, Object>>> getUserTickets(Authentication authentication) {
         try {
-            String userId = authentication.getName();
+            String userId = getUserId(authentication);
             var userTickets = ticketService.getAllTickets(org.springframework.data.domain.PageRequest.of(0, 1000));
             
             List<Map<String, Object>> result = userTickets.getContent().stream()
@@ -371,6 +386,7 @@ public class DashboardController {
                             ticketData.put("title", ticket.getClass().getMethod("getTitle").invoke(ticket));
                             ticketData.put("status", ticket.getClass().getMethod("getStatus").invoke(ticket));
                             ticketData.put("priority", ticket.getClass().getMethod("getPriority").invoke(ticket));
+                            ticketData.put("category", ticket.getClass().getMethod("getCategory").invoke(ticket));
                             ticketData.put("createdAt", ticket.getClass().getMethod("getCreatedAt").invoke(ticket));
                             return ticketData;
                         } catch (Exception e) {
@@ -384,5 +400,13 @@ public class DashboardController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body(List.of(Map.of("error", "Failed to fetch user tickets: " + e.getMessage())));
         }
+    }
+
+    private String getUserId(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof com.sliit.uniops.security.UserPrincipal user) {
+            return user.getId();
+        }
+        return authentication.getName();
     }
 }
