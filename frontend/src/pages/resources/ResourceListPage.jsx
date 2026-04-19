@@ -76,24 +76,11 @@ const ResourceListPage = () => {
     amenities: ''
   });
 
+  const [sortBy, setSortBy] = useState('name_asc');
+
   // Get card styling based on resource type
   const getCardStyle = (type) => {
-    switch (type) {
-      case 'LECTURE_HALL':
-        return 'bg-primary text-primary-content';
-      case 'LAB':
-        return 'bg-secondary text-secondary-content';
-      case 'MEETING_ROOM':
-        return 'bg-accent text-accent-content';
-      case 'EQUIPMENT':
-        return 'bg-warning text-warning-content';
-      case 'OFFICE':
-        return 'bg-info text-info-content';
-      case 'AUDITORIUM':
-        return 'bg-error text-error-content';
-      default:
-        return 'bg-neutral text-neutral-content';
-    }
+    return 'bg-base-100 text-base-content';
   };
 
   // Get icon for resource type
@@ -282,7 +269,7 @@ const ResourceListPage = () => {
     const totalPages = Math.ceil(totalElements / pagination.size);
     const startIndex = pagination.page * pagination.size;
     const paginatedData = allFilteredResources.slice(startIndex, startIndex + pagination.size);
-    
+
     setResources(paginatedData);
     setPagination(prev => ({
       ...prev,
@@ -290,6 +277,32 @@ const ResourceListPage = () => {
       totalPages
     }));
   }, [allFilteredResources, pagination.page]);
+
+  // Sort resources based on sortBy state
+  useEffect(() => {
+    const sortResources = (resources) => {
+      const sorted = [...resources];
+      switch (sortBy) {
+        case 'popular':
+          sorted.sort((a, b) => (b.shareCount || 0) - (a.shareCount || 0));
+          break;
+        case 'least_popular':
+          sorted.sort((a, b) => (a.shareCount || 0) - (b.shareCount || 0));
+          break;
+        case 'name_asc':
+          sorted.sort((a, b) => a.name.localeCompare(b.name));
+          break;
+        case 'name_desc':
+          sorted.sort((a, b) => b.name.localeCompare(a.name));
+          break;
+        default:
+          break;
+      }
+      return sorted;
+    };
+
+    setAllFilteredResources(prev => sortResources(prev));
+  }, [sortBy]);
 
   // Group resources by type for display
   const groupResourcesByType = (resourceList) => {
@@ -307,142 +320,107 @@ const ResourceListPage = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Campus Resources</h1>
-      
-      {/* Search and Filters */}
-      <div className="card bg-base-100 shadow-lg mb-6">
-        <div className="card-body">
-          <div className="flex flex-col lg:flex-row gap-4 mb-6">
-            {/* Search Bar */}
-            <div className="form-control flex-1">
-              <label className="label mb-2">
-                <span className="label-text">Search Resources</span>
-              </label>
-              <div className="flex gap-4">
+    <div className="min-h-screen bg-base-200">
+      {/* Hero Section with Search */}
+      <div className="bg-primary/90 text-primary-content">
+        <div className="container mx-auto px-4 py-12">
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-4xl md:text-5xl font-bold mb-12">What Resources Are You Looking For?</h1>
+
+            {/* Search and Type Filter */}
+            <div className="flex gap-4 mb-4">
+              <input
+                type="text"
+                placeholder="Search resources by name, location, or amenities..."
+                className="input input-bordered flex-1 bg-base-100 text-base-content"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+
+              <select
+                className="select select-bordered bg-base-100 text-base-content"
+                value={filters.type}
+                onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
+              >
+                <option value="">All Types</option>
+                <option value="LECTURE_HALL">Lecture Hall</option>
+                <option value="LAB">Lab</option>
+                <option value="MEETING_ROOM">Meeting Room</option>
+                <option value="EQUIPMENT">Equipment</option>
+                <option value="OFFICE">Office</option>
+                <option value="AUDITORIUM">Auditorium</option>
+              </select>
+            </div>
+
+            {/* Advanced Filters */}
+            {showAdvancedFilters && (
+              <div className="flex flex-wrap gap-3 mb-4">
+                <select
+                  className="select select-bordered bg-base-100 text-base-content flex-1 min-w-32"
+                  value={filters.status}
+                  onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                >
+                  <option value="">All Status</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="OUT_OF_SERVICE">Out of Service</option>
+                  <option value="UNDER_MAINTENANCE">Under Maintenance</option>
+                </select>
+
                 <input
                   type="text"
-                  placeholder="Search by name..."
-                  className="input input-bordered flex-1"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Location..."
+                  className="input input-bordered bg-base-100 text-base-content flex-1 min-w-40"
+                  value={filters.location}
+                  onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
                 />
-                
-                {/* Clear Filters Button */}
-                {(searchTerm.trim() !== '' || filters.type !== '' || filters.status !== '' || filters.location !== '' || filters.minCapacity !== '' || filters.amenities !== '') && (
-                  <button 
-                    className="btn btn-outline"
-                    onClick={() => {
-                      setSearchTerm('');
-                      setFilters({
-                        type: '',
-                        status: '',
-                        location: '',
-                        minCapacity: '',
-                        amenities: ''
-                      });
-                      setSearching(true);
-                      setPagination(prev => ({ ...prev, page: 0 }));
-                    }}
-                  >
-                    Clear
-                  </button>
-                )}
-                
-                {/* Type Filter - always visible */}
-                <select 
-                  className="select select-bordered w-40"
-                  value={filters.type}
-                  onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
+
+                <input
+                  type="number"
+                  placeholder="Min capacity..."
+                  className="input input-bordered bg-base-100 text-base-content flex-1 min-w-32"
+                  value={filters.minCapacity}
+                  onChange={(e) => setFilters(prev => ({ ...prev, minCapacity: e.target.value }))}
+                />
+
+                <input
+                  type="text"
+                  placeholder="Amenities..."
+                  className="input input-bordered bg-base-100 text-base-content flex-1 min-w-40"
+                  value={filters.amenities}
+                  onChange={(e) => setFilters(prev => ({ ...prev, amenities: e.target.value }))}
+                />
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-between items-center">
+              {/* Total Resources Count */}
+              <div className="text-lg font-semibold">
+                {allFilteredResources.length} Resources Available
+              </div>
+
+              <div className="flex items-center gap-3">
+                {/* Sort Dropdown */}
+                <select
+                  className="select select-bordered select-sm bg-base-100 text-base-content"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
                 >
-                  <option value="">All Types</option>
-                  <option value="LECTURE_HALL">Lecture Hall</option>
-                  <option value="LAB">Lab</option>
-                  <option value="MEETING_ROOM">Meeting Room</option>
-                  <option value="EQUIPMENT">Equipment</option>
-                  <option value="OFFICE">Office</option>
-                  <option value="AUDITORIUM">Auditorium</option>
+                  <option value="popular">Most Popular</option>
+                  <option value="least_popular">Least Popular</option>
+                  <option value="name_asc">Name (A-Z)</option>
+                  <option value="name_desc">Name (Z-A)</option>
                 </select>
-                
-                {/* Advanced Filters Button */}
-                <button 
-                  className="btn btn-outline"
+
+                <button
+                  className="btn btn-sm btn-outline bg-base-100 text-base-content border-base-content/20"
                   onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                 >
-                  {showAdvancedFilters ? 'Hide' : 'Advanced'} Filters
+                  {showAdvancedFilters ? 'Less Filters' : 'More Filters'}
                 </button>
-              </div>
-            </div>
-          </div>
 
-          {/* Advanced Filters - Collapsible */}
-          {showAdvancedFilters && (
-            <div className="card bg-base-200/50 p-4 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Status Filter */}
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Status</span>
-                  </label>
-                  <select 
-                    className="select select-bordered"
-                    value={filters.status}
-                    onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                  >
-                    <option value="">All Status</option>
-                    <option value="ACTIVE">Active</option>
-                    <option value="OUT_OF_SERVICE">Out of Service</option>
-                    <option value="UNDER_MAINTENANCE">Under Maintenance</option>
-                  </select>
-                </div>
-
-                {/* Location Filter */}
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Location</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Filter by location..."
-                    className="input input-bordered"
-                    value={filters.location}
-                    onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
-                  />
-                </div>
-
-                {/* Min Capacity Filter */}
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Min Capacity</span>
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="Min capacity..."
-                    className="input input-bordered"
-                    value={filters.minCapacity}
-                    onChange={(e) => setFilters(prev => ({ ...prev, minCapacity: e.target.value }))}
-                  />
-                </div>
-
-                {/* Amenities Filter */}
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Amenities</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Filter by amenities..."
-                    className="input input-bordered"
-                    value={filters.amenities}
-                    onChange={(e) => setFilters(prev => ({ ...prev, amenities: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              {/* Clear button */}
-              <div className="flex gap-2 mt-4">
-                <button 
-                  className="btn btn-outline"
+                <button
+                  className="btn btn-sm btn-outline bg-base-100 text-error border-error/50 hover:bg-error/10"
                   onClick={() => {
                     setSearchTerm('');
                     setFilters({
@@ -452,19 +430,22 @@ const ResourceListPage = () => {
                       minCapacity: '',
                       amenities: ''
                     });
+                    setSortBy('name_asc');
                     setSearching(true);
                     setPagination(prev => ({ ...prev, page: 0 }));
                   }}
                 >
-                  Clear All
+                  Reset Filters
                 </button>
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
-      
-      {error && (
+
+      {/* Content */}
+      <div className="container mx-auto px-4 py-8">
+        {error && (
         <div className="alert alert-error mb-6">
           <svg className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -531,6 +512,12 @@ const ResourceListPage = () => {
                         <span>{resource.location}</span>
                         <span className="ml-auto">Capacity: {resource.capacity}</span>
                       </div>
+                      <div className="flex items-center gap-2 text-sm mt-2 opacity-60">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>{resource.createdAt || resource.updatedAt ? new Date(resource.createdAt || resource.updatedAt).toLocaleDateString() : 'N/A'}</span>
+                      </div>
                     </div>
                     
                     <div className="card-actions justify-end gap-2">
@@ -585,6 +572,7 @@ const ResourceListPage = () => {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 };
