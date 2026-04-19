@@ -1,5 +1,6 @@
 package com.sliit.uniops.controller;
 
+import com.sliit.uniops.dto.request.ResourceRequestDTO;
 import com.sliit.uniops.model.Resource;
 import com.sliit.uniops.service.ResourceService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 public class ResourceController {
 
     private final ResourceService resourceService;
-    
+
     // Get all resources with filtering (public)
     @GetMapping
     @Operation(
@@ -106,20 +107,36 @@ public class ResourceController {
 
     // Create resource (admin and staff)
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('RESOURCE_MANAGER', 'ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Create a new resource", description = "Create a new resource (requires ADMIN or STAFF role)")
+    @Operation(summary = "Create a new resource", description = "Create a new resource (requires RESOURCE_MANAGER or ADMIN role)")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Resource created successfully",
             content = @Content(schema = @Schema(implementation = Resource.class))),
         @ApiResponse(responseCode = "400", description = "Invalid input data"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "403", description = "Insufficient permissions")
     })
     public ResponseEntity<Resource> createResource(
             @Parameter(description = "Resource data to create")
-            @Valid @RequestBody Resource resource, Authentication authentication) {
+            @Valid @RequestBody ResourceRequestDTO resourceRequestDTO, Authentication authentication) {
+        // Convert DTO to entity
+        Resource resource = convertToEntity(resourceRequestDTO);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(resourceService.createResource(resource, authentication));
+    }
+
+    private Resource convertToEntity(ResourceRequestDTO dto) {
+        return Resource.builder()
+                .name(dto.getName())
+                .type(dto.getType())
+                .capacity(dto.getCapacity())
+                .location(dto.getLocation())
+                .description(dto.getDescription())
+                .status(dto.getStatus())
+                .availabilityWindows(dto.getAvailabilityWindows())
+                .amenities(dto.getAmenities())
+                .build();
     }
 
     // Get resources created by current user (staff and admin)
@@ -154,9 +171,9 @@ public class ResourceController {
 
     // Update resource (admin and owner)
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('RESOURCE_MANAGER', 'ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Update a resource", description = "Update an existing resource (ADMIN or resource owner)")
+    @Operation(summary = "Update a resource", description = "Update an existing resource (RESOURCE_MANAGER or ADMIN)")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Resource updated successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid input data"),
@@ -167,15 +184,16 @@ public class ResourceController {
             @Parameter(description = "Resource ID")
             @PathVariable String id,
             @Parameter(description = "Updated resource data")
-            @Valid @RequestBody Resource resource, Authentication authentication) {
+            @Valid @RequestBody ResourceRequestDTO resourceRequestDTO, Authentication authentication) {
+        Resource resource = convertToEntity(resourceRequestDTO);
         return ResponseEntity.ok(resourceService.updateResource(id, resource, authentication));
     }
 
     // Update resource status (admin and owner)
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('RESOURCE_MANAGER', 'ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Update resource status", description = "Update the status of a resource (ADMIN or resource owner)")
+    @Operation(summary = "Update resource status", description = "Update the status of a resource (RESOURCE_MANAGER or ADMIN)")
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Status updated successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid status value"),
