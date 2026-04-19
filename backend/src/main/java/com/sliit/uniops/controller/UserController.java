@@ -140,6 +140,18 @@ public class UserController {
     }
 
     /**
+     * Get all NON_ACADEMIC staff (for resource assignment).
+     */
+    @GetMapping("/admin/staff")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<User>> getStaff() {
+        List<User> staff = userRepository.findAll().stream()
+                .filter(user -> user.isEnabled() && user.getRoles().contains(com.sliit.uniops.model.Role.NON_ACADEMIC))
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(staff);
+    }
+
+    /**
      * Create a new technician (Admin only).
      */
     @PostMapping("/admin/technicians")
