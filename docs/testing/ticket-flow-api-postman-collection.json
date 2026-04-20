@@ -1,0 +1,1933 @@
+{
+	"info": {
+		"_postman_id": "ticket-flow-collection",
+		"name": "Ticket Flow API - Complete",
+		"description": "Comprehensive API test collection for the University Operations Ticket Flow. This collection includes all endpoints for ticket management, comments, attachments, and technician assignment.\n\n**Base URL**: http://localhost:8080\n\n**Authentication**: JWT Bearer Token (Required for all endpoints)\n\n**Setup Instructions**:\n1. Import this collection into Postman\n2. Set up environment variables:\n   - `baseUrl`: http://localhost:8080\n   - `jwtToken`: Your JWT authentication token\n   - `createdTicketId`: Will be set automatically during tests\n   - `createdCommentId`: Will be set automatically during tests\n   - `createdAttachmentId`: Will be set automatically during tests\n3. Use the \"Login\" request to get JWT token\n4. Set the `jwtToken` environment variable from login response\n\n**Workflow Order**:\n1. Authentication\n2. Create Ticket\n3. Upload Attachments\n4. Add Comments\n5. Assign Technician\n6. Update Status\n7. Confirm Resolution\n\n**User Roles**:\n- ADMIN: Full access to all endpoints\n- TECHNICIAN: Access to assigned tickets and comments\n- USER/LECTURER/STUDENT: Access to own tickets and public comments",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "ticket-flow-export"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login (Get JWT Token)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract JWT token from response and set environment variable",
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.token) {",
+									"        pm.environment.set('jwtToken', response.token);",
+									"        pm.collectionVariables.set('jwtToken', response.token);",
+									"        console.log('JWT token set successfully');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@uniops.edu\",\n    \"password\": \"admin123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication endpoints for getting JWT tokens"
+		},
+		{
+			"name": "Ticket Management",
+			"item": [
+				{
+					"name": "Create Ticket (with Form Data)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Test ticket creation",
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has ticket data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('title');",
+									"    pm.expect(responseJson).to.have.property('status');",
+									"});",
+									"",
+									"// Store ticket ID for later tests",
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('createdTicketId', response.id);",
+									"    console.log('Ticket ID stored:', response.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Network connectivity issue in Lab A",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Students are unable to connect to the network in Lab A. All computers show 'No internet access' error. This is affecting the scheduled programming class.",
+									"type": "text"
+								},
+								{
+									"key": "category",
+									"value": "IT",
+									"type": "text"
+								},
+								{
+									"key": "priority",
+									"value": "HIGH",
+									"type": "text"
+								},
+								{
+									"key": "location",
+									"value": "Lab A, Building 2, Floor 3",
+									"type": "text"
+								},
+								{
+									"key": "preferredContactMethod",
+									"value": "EMAIL",
+									"type": "text"
+								},
+								{
+									"key": "contactDetails",
+									"value": "lecturer@uniops.edu",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Tickets",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has pagination data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('content');",
+									"    pm.expect(responseJson).to.have.property('totalElements');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/my-tickets?page=0&size=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"my-tickets"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Ticket by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has ticket details\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('title');",
+									"    pm.expect(responseJson).to.have.property('status');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{createdTicketId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{createdTicketId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Tickets (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has pagination data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('content');",
+									"    pm.expect(responseJson).to.have.property('totalElements');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets?page=0&size=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Assigned Tickets (Technician)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has pagination data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('content');",
+									"    pm.expect(responseJson).to.have.property('totalElements');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/assigned-to-me?page=0&size=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"assigned-to-me"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Tickets",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/search?keyword=network",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"search"
+							],
+							"query": [
+								{
+									"key": "keyword",
+									"value": "network"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Ticket Status",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has updated status\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('status');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{createdTicketId}}/status?status=IN_PROGRESS&reason=Started working on the issue",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{createdTicketId}}",
+								"status"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "IN_PROGRESS"
+								},
+								{
+									"key": "reason",
+									"value": "Started working on the issue"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Confirm Ticket Resolution",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has confirmed status\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('status');",
+									"    pm.expect(['CLOSED', 'RESOLVED']).to.include(responseJson.status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{createdTicketId}}/confirm?feedback=Issue resolved successfully. Network is working fine now.",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{createdTicketId}}",
+								"confirm"
+							],
+							"query": [
+								{
+									"key": "feedback",
+									"value": "Issue resolved successfully. Network is working fine now."
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Core ticket management operations"
+		},
+		{
+			"name": "Technician Assignment",
+			"item": [
+				{
+					"name": "Get Recommended Technicians",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array of technicians\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"    if (responseJson.length > 0) {",
+									"        pm.expect(responseJson[0]).to.have.property('id');",
+									"        pm.expect(responseJson[0]).to.have.property('name');",
+									"        pm.expect(responseJson[0]).to.have.property('skills');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{createdTicketId}}/recommended-technicians",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{createdTicketId}}",
+								"recommended-technicians"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Assign Single Technician",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has assigned technicians\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('assignedTechnicianNames');",
+									"    pm.expect(responseJson).to.have.property('assignedTechnicianIds');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{createdTicketId}}/assign?technicianId=tech-001",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{createdTicketId}}",
+								"assign"
+							],
+							"query": [
+								{
+									"key": "technicianId",
+									"value": "tech-001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Assign Multiple Technicians",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has assigned technicians\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('assignedTechnicianNames');",
+									"    pm.expect(responseJson).to.have.property('assignedTechnicianIds');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"technicianIds\": [\"tech-001\", \"tech-002\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{createdTicketId}}/assign",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{createdTicketId}}",
+								"assign"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Technician assignment and recommendation endpoints"
+		},
+		{
+			"name": "Comments Management",
+			"item": [
+				{
+					"name": "Add Public Comment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has comment data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('content');",
+									"    pm.expect(responseJson).to.have.property('authorName');",
+									"    pm.expect(responseJson.isInternal).to.be.false;",
+									"});",
+									"",
+									"// Store comment ID for later tests",
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('createdCommentId', response.id);",
+									"    console.log('Comment ID stored:', response.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"I have checked the network switch and restarted the router. The issue seems to be with the DHCP server not assigning IP addresses properly.\",\n    \"isInternal\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{createdTicketId}}/comments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{createdTicketId}}",
+								"comments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add Internal Comment (Admin/Technician)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has internal comment data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('content');",
+									"    pm.expect(responseJson.isInternal).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"Internal note: Need to check if this is related to the recent network infrastructure upgrade. Contact network team for verification.\",\n    \"isInternal\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{createdTicketId}}/comments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{createdTicketId}}",
+								"comments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Comments",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});",
+									"",
+									"pm.test(\"Comments have required fields\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.length > 0) {",
+									"        pm.expect(responseJson[0]).to.have.property('id');",
+									"        pm.expect(responseJson[0]).to.have.property('content');",
+									"        pm.expect(responseJson[0]).to.have.property('authorName');",
+									"        pm.expect(responseJson[0]).to.have.property('createdAt');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{createdTicketId}}/comments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{createdTicketId}}",
+								"comments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Public Comments Only",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"All comments are public\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    responseJson.forEach(comment => {",
+									"        pm.expect(comment.isInternal).to.be.false;",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{createdTicketId}}/comments/public",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{createdTicketId}}",
+								"comments",
+								"public"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Comment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has updated comment\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('content');",
+									"    pm.expect(responseJson.isEdited).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"Updated comment: I have checked the network switch and restarted the router. The issue seems to be with the DHCP server not assigning IP addresses properly. Also verified cable connections.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{createdTicketId}}/comments/{{createdCommentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{createdTicketId}}",
+								"comments",
+								"{{createdCommentId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Comment (Soft Delete)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 204 No Content\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{createdTicketId}}/comments/{{createdCommentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{createdTicketId}}",
+								"comments",
+								"{{createdCommentId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Hard Delete Comment (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 204 No Content\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{createdTicketId}}/comments/{{createdCommentId}}/permanent",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{createdTicketId}}",
+								"comments",
+								"{{createdCommentId}}",
+								"permanent"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Comment Count",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is a number\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(typeof responseJson).to.eql('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{createdTicketId}}/comments/count",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{createdTicketId}}",
+								"comments",
+								"count"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Internal Comment Count (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is a number\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(typeof responseJson).to.eql('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{createdTicketId}}/comments/count/internal",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{createdTicketId}}",
+								"comments",
+								"count",
+								"internal"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Comment management with public/internal comments support"
+		},
+		{
+			"name": "Attachments Management",
+			"item": [
+				{
+					"name": "Upload Attachment (Form Data)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has attachment data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('fileName');",
+									"    pm.expect(responseJson).to.have.property('fileType');",
+									"    pm.expect(responseJson).to.have.property('fileSize');",
+									"});",
+									"",
+									"// Store attachment ID for later tests",
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('createdAttachmentId', response.id);",
+									"    console.log('Attachment ID stored:', response.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "sample-test-file.txt"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/attachments/upload/{{createdTicketId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"attachments",
+								"upload",
+								"{{createdTicketId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Upload Attachment (Base64)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has attachment data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('fileName');",
+									"    pm.expect(responseJson).to.have.property('base64Content');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"fileName\": \"error-screenshot.png\",\n    \"base64Content\": \"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==\",\n    \"fileType\": \"image/png\",\n    \"fileSize\": 67\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/attachments/upload-base64/{{createdTicketId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"attachments",
+								"upload-base64",
+								"{{createdTicketId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Attachments by Ticket",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});",
+									"",
+									"pm.test(\"Attachments have required fields\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.length > 0) {",
+									"        pm.expect(responseJson[0]).to.have.property('id');",
+									"        pm.expect(responseJson[0]).to.have.property('fileName');",
+									"        pm.expect(responseJson[0]).to.have.property('fileType');",
+									"        pm.expect(responseJson[0]).to.have.property('uploadedBy');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attachments/ticket/{{createdTicketId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"attachments",
+								"ticket",
+								"{{createdTicketId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Attachment by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has attachment details\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('fileName');",
+									"    pm.expect(responseJson).to.have.property('fileType');",
+									"    pm.expect(responseJson).to.have.property('uploadedAt');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attachments/{{createdAttachmentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"attachments",
+								"{{createdAttachmentId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Attachment Base64 Content",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is base64 string\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(typeof responseJson).to.eql('string');",
+									"    // Basic base64 validation",
+									"    pm.expect(responseJson.length % 4).to.eql(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attachments/content/{{createdAttachmentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"attachments",
+								"content",
+								"{{createdAttachmentId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Attachment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 204 No Content\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attachments/{{createdAttachmentId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"attachments",
+								"{{createdAttachmentId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Attachment Count",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is a number\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(typeof responseJson).to.eql('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/attachments/count/{{createdTicketId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"attachments",
+								"count",
+								"{{createdTicketId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "File attachment management with upload and download support"
+		},
+		{
+			"name": "Complete Ticket Flow Test",
+			"item": [
+				{
+					"name": "1. Create Ticket with Attachment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"// Store ticket ID for flow",
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('flowTicketId', response.id);",
+									"    console.log('Flow Ticket ID:', response.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Complete Flow Test - Printer Not Working",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "The main printer in the library is not working. Students are unable to print their assignments. This is affecting multiple users and needs urgent attention.",
+									"type": "text"
+								},
+								{
+									"key": "category",
+									"value": "IT",
+									"type": "text"
+								},
+								{
+									"key": "priority",
+									"value": "HIGH",
+									"type": "text"
+								},
+								{
+									"key": "location",
+									"value": "Library, Building 1, Ground Floor",
+									"type": "text"
+								},
+								{
+									"key": "preferredContactMethod",
+									"value": "EMAIL",
+									"type": "text"
+								},
+								{
+									"key": "contactDetails",
+									"value": "library@uniops.edu",
+									"type": "text"
+								},
+								{
+									"key": "attachments",
+									"type": "file",
+									"src": "printer-error-log.txt"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Assign Technician",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Technician assigned successfully\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('assignedTechnicianNames');",
+									"    pm.expect(responseJson.assignedTechnicianNames.length).to.be.greaterThan(0);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{flowTicketId}}/assign?technicianId=tech-001",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{flowTicketId}}",
+								"assign"
+							],
+							"query": [
+								{
+									"key": "technicianId",
+									"value": "tech-001"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Update Status to In Progress",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Status updated to IN_PROGRESS\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.status).to.eql('IN_PROGRESS');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{flowTicketId}}/status?status=IN_PROGRESS&reason=Started diagnosing the printer issue",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{flowTicketId}}",
+								"status"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "IN_PROGRESS"
+								},
+								{
+									"key": "reason",
+									"value": "Started diagnosing the printer issue"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Add Public Comment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Public comment added\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.isInternal).to.be.false;",
+									"    pm.expect(responseJson.content).to.include('toner');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"I have checked the printer and found that the toner cartridge is empty. I have ordered a new toner which should arrive tomorrow. In the meantime, I have configured the backup printer as the default.\",\n    \"isInternal\": false\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{flowTicketId}}/comments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{flowTicketId}}",
+								"comments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Add Internal Comment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Internal comment added\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.isInternal).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"Internal note: This printer model (HP LaserJet 4000) has been having frequent toner issues. Consider recommending a replacement in the next budget cycle.\",\n    \"isInternal\": true\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{flowTicketId}}/comments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{flowTicketId}}",
+								"comments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Update Status to Resolved",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Status updated to RESOLVED\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.status).to.eql('RESOLVED');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{flowTicketId}}/status?status=RESOLVED&reason=Toner replaced and printer is working normally",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{flowTicketId}}",
+								"status"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "RESOLVED"
+								},
+								{
+									"key": "reason",
+									"value": "Toner replaced and printer is working normally"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Confirm Resolution",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Ticket confirmed and closed\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(['CLOSED', 'RESOLVED']).to.include(responseJson.status);",
+									"});",
+									"",
+									"// Clean up flow variables",
+									"pm.environment.unset('flowTicketId');",
+									"console.log('Complete flow test finished successfully');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/tickets/{{flowTicketId}}/confirm?feedback=Printer is working perfectly now. Thank you for the quick resolution!",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tickets",
+								"{{flowTicketId}}",
+								"confirm"
+							],
+							"query": [
+								{
+									"key": "feedback",
+									"value": "Printer is working perfectly now. Thank you for the quick resolution!"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "End-to-end ticket flow test covering all major operations"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global pre-request script",
+					"// Add JWT token to all requests if not already present",
+					"if (pm.request.headers.has('Authorization') === false) {",
+					"    const token = pm.environment.get('jwtToken') || pm.collectionVariables.get('jwtToken');",
+					"    if (token) {",
+					"        pm.request.headers.add({",
+					"            key: 'Authorization',",
+					"            value: 'Bearer ' + token",
+					"        });",
+					"    }",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script",
+					"// Log response details for debugging",
+					"console.log('Response Status:', pm.response.code);",
+					"console.log('Response Time:', pm.response.responseTime);",
+					"console.log('Response Size:', pm.response.responseSize);",
+					"",
+					"// Check for common error patterns",
+					"if (pm.response.code >= 400) {",
+					"    console.log('Error Response:', pm.response.json());",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "jwtToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "createdTicketId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "createdCommentId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "createdAttachmentId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "flowTicketId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

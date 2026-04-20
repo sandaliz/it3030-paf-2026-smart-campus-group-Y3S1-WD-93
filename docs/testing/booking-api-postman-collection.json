@@ -1,0 +1,1672 @@
+{
+	"info": {
+		"_postman_id": "booking-api-collection",
+		"name": "Booking Module API",
+		"description": "Complete API test collection for the University Operations Booking Module. This collection includes all endpoints for booking management, resource scheduling, and administrative operations.\n\n**Base URL**: http://localhost:8080\n\n**Authentication**: JWT Bearer Token (Required for all endpoints)\n\n**Setup Instructions**:\n1. Import this collection into Postman\n2. Set up environment variables:\n   - `baseUrl`: http://localhost:8080\n   - `jwtToken`: Your JWT authentication token\n3. Use the \"Login\" request to get JWT token\n4. Set the `jwtToken` environment variable from login response\n\n**User Roles**:\n- ADMIN: Full access to all endpoints\n- LECTURER/STUDENT: Limited access to own bookings and public resources\n- BOOKING_MANAGER: Administrative booking management",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "booking-module-export"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login (Get JWT Token)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract JWT token from response and set environment variable",
+									"if (pm.response.code === 200) {",
+									"    const response = pm.response.json();",
+									"    if (response.token) {",
+									"        pm.environment.set('jwtToken', response.token);",
+									"        pm.collectionVariables.set('jwtToken', response.token);",
+									"        console.log('JWT token set successfully');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@uniops.edu\",\n    \"password\": \"admin123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication endpoints for getting JWT tokens"
+		},
+		{
+			"name": "Booking Management",
+			"item": [
+				{
+					"name": "Create Booking",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Test booking creation",
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has booking data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('status');",
+									"    pm.expect(responseJson).to.have.property('resourceId');",
+									"});",
+									"",
+									"// Store booking ID for later tests",
+									"if (pm.response.code === 201) {",
+									"    const response = pm.response.json();",
+									"    pm.environment.set('createdBookingId', response.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"resourceId\": \"res-001\",\n    \"date\": \"2024-12-25\",\n    \"startTime\": \"09:00\",\n    \"endTime\": \"11:00\",\n    \"purpose\": \"Team Meeting\",\n    \"expectedAttendees\": 5,\n    \"specialRequirements\": \"Projector needed\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Bookings",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/my-bookings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"my-bookings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Booking by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has booking details\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('status');",
+									"    pm.expect(responseJson).to.have.property('resourceId');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/{{createdBookingId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"{{createdBookingId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Booking (Full)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has updated booking\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('id');",
+									"    pm.expect(responseJson).to.have.property('purpose');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"resourceId\": \"res-001\",\n    \"date\": \"2024-12-25\",\n    \"startTime\": \"10:00\",\n    \"endTime\": \"12:00\",\n    \"purpose\": \"Updated Team Meeting\",\n    \"expectedAttendees\": 8,\n    \"specialRequirements\": \"Projector and whiteboard needed\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/{{createdBookingId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"{{createdBookingId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Partial Update Booking",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"purpose\": \"Partially Updated Meeting\",\n    \"expectedAttendees\": 10\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/{{createdBookingId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"{{createdBookingId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Reschedule Booking",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/{{createdBookingId}}/reschedule?newDate=2024-12-26&newStartTime=14:00&newEndTime=16:00",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"{{createdBookingId}}",
+								"reschedule"
+							],
+							"query": [
+								{
+									"key": "newDate",
+									"value": "2024-12-26"
+								},
+								{
+									"key": "newStartTime",
+									"value": "14:00"
+								},
+								{
+									"key": "newEndTime",
+									"value": "16:00"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Booking Details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/{{createdBookingId}}/details?purpose=Updated Purpose&expectedAttendees=15",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"{{createdBookingId}}",
+								"details"
+							],
+							"query": [
+								{
+									"key": "purpose",
+									"value": "Updated Purpose"
+								},
+								{
+									"key": "expectedAttendees",
+									"value": "15"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Booking",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 204 No Content\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/{{createdBookingId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"{{createdBookingId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Bookings by Date Range",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/date-range?startDate=2024-12-01&endDate=2024-12-31",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"date-range"
+							],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2024-12-01"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-12-31"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Core booking management operations"
+		},
+		{
+			"name": "Resource Management",
+			"item": [
+				{
+					"name": "Check Availability",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is boolean\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(typeof responseJson).to.eql('boolean');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/check-availability?resourceId=res-001&date=2024-12-25&startTime=09:00&endTime=11:00",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"check-availability"
+							],
+							"query": [
+								{
+									"key": "resourceId",
+									"value": "res-001"
+								},
+								{
+									"key": "date",
+									"value": "2024-12-25"
+								},
+								{
+									"key": "startTime",
+									"value": "09:00"
+								},
+								{
+									"key": "endTime",
+									"value": "11:00"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Available Time Slots",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array of time slots\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/available-slots?resourceId=res-001&date=2024-12-25",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"available-slots"
+							],
+							"query": [
+								{
+									"key": "resourceId",
+									"value": "res-001"
+								},
+								{
+									"key": "date",
+									"value": "2024-12-25"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Resource Bookings",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/resource/res-001?date=2024-12-25",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"resource",
+								"res-001"
+							],
+							"query": [
+								{
+									"key": "date",
+									"value": "2024-12-25"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Available Resources",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array of resources\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/available-resources?type=LECTURE_HALL&minCapacity=20&date=2024-12-25&startTime=09:00&endTime=11:00",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"available-resources"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "LECTURE_HALL"
+								},
+								{
+									"key": "minCapacity",
+									"value": "20"
+								},
+								{
+									"key": "date",
+									"value": "2024-12-25"
+								},
+								{
+									"key": "startTime",
+									"value": "09:00"
+								},
+								{
+									"key": "endTime",
+									"value": "11:00"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Alternative Resources",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array of alternative resources\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/alternative-resources?unavailableResourceId=res-001&date=2024-12-25&startTime=09:00&endTime=11:00&minCapacity=15",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"alternative-resources"
+							],
+							"query": [
+								{
+									"key": "unavailableResourceId",
+									"value": "res-001"
+								},
+								{
+									"key": "date",
+									"value": "2024-12-25"
+								},
+								{
+									"key": "startTime",
+									"value": "09:00"
+								},
+								{
+									"key": "endTime",
+									"value": "11:00"
+								},
+								{
+									"key": "minCapacity",
+									"value": "15"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Resource availability and management endpoints"
+		},
+		{
+			"name": "Admin Operations",
+			"item": [
+				{
+					"name": "Get All Bookings (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/all",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"all"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Bookings with Filters",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/all?status=PENDING&resourceId=res-001&startDate=2024-12-01&endDate=2024-12-31",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"all"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "PENDING"
+								},
+								{
+									"key": "resourceId",
+									"value": "res-001"
+								},
+								{
+									"key": "startDate",
+									"value": "2024-12-01"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-12-31"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Booking Status (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has updated status\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property('status');",
+									"    pm.expect(['APPROVED', 'REJECTED']).to.include(responseJson.status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"APPROVED\",\n    \"reason\": \"Resource available and requirements met\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/{{createdBookingId}}/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"{{createdBookingId}}",
+								"status"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Reject Booking (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has REJECTED status\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.status).to.eql('REJECTED');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"REJECTED\",\n    \"reason\": \"Resource already booked for this time slot\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/{{createdBookingId}}/status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"{{createdBookingId}}",
+								"status"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Bulk Create Bookings (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"resourceId\": \"res-001\",\n        \"date\": \"2024-12-26\",\n        \"startTime\": \"09:00\",\n        \"endTime\": \"11:00\",\n        \"purpose\": \"Morning Session\",\n        \"expectedAttendees\": 10\n    },\n    {\n        \"resourceId\": \"res-002\",\n        \"date\": \"2024-12-26\",\n        \"startTime\": \"14:00\",\n        \"endTime\": \"16:00\",\n        \"purpose\": \"Afternoon Session\",\n        \"expectedAttendees\": 15\n    }\n]"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/bulk",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"bulk"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Bulk Update Status (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"bookingIds\": [\"{{createdBookingId}}\"],\n    \"status\": \"APPROVED\",\n    \"reason\": \"Bulk approval for testing\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/bulk-status",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"bulk-status"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Permanent Delete Booking (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 204 No Content\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/{{createdBookingId}}/permanent",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"{{createdBookingId}}",
+								"permanent"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete All User Bookings (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 204 No Content\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/user/user-123/bookings",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"user",
+								"user-123",
+								"bookings"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete All Cancelled Bookings (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is a number (deleted count)\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(typeof responseJson).to.eql('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/cleanup/cancelled",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"cleanup",
+								"cancelled"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Administrative booking operations"
+		},
+		{
+			"name": "Reports & Analytics",
+			"item": [
+				{
+					"name": "Get Booking Statistics (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains statistics\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.be.an('object');",
+									"    pm.expect(responseJson).to.have.property('totalBookings');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/stats",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"stats"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Paginated Bookings (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains pagination data\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.be.an('object');",
+									"    pm.expect(responseJson).to.have.property('content');",
+									"    pm.expect(responseJson).to.have.property('totalElements');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/paginated?page=0&size=10&status=APPROVED",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"paginated"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								},
+								{
+									"key": "status",
+									"value": "APPROVED"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Booking Conflicts (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/conflicts?startDate=2024-12-01&endDate=2024-12-31",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"conflicts"
+							],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2024-12-01"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-12-31"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Resource Utilization (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/utilization?startDate=2024-12-01&endDate=2024-12-31",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"utilization"
+							],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2024-12-01"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-12-31"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Booking History (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains user history\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.be.an('object');",
+									"    pm.expect(responseJson).to.have.property('bookings');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/user/user-123/history?page=0&size=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"user",
+								"user-123",
+								"history"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Export Bookings to CSV (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has CSV content type\", function () {",
+									"    pm.expect(pm.response.headers.get('Content-Type')).to.include('text/csv');",
+									"});",
+									"",
+									"pm.test(\"Response has content disposition\", function () {",
+									"    pm.expect(pm.response.headers.get('Content-Disposition')).to.include('attachment');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/export?status=APPROVED&startDate=2024-12-01&endDate=2024-12-31",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"export"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "APPROVED"
+								},
+								{
+									"key": "startDate",
+									"value": "2024-12-01"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-12-31"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Recurring Bookings (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(Array.isArray(responseJson)).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"bookings\": [\n        {\n            \"resourceId\": \"res-001\",\n            \"date\": \"2024-12-27\",\n            \"startTime\": \"09:00\",\n            \"endTime\": \"11:00\",\n            \"purpose\": \"Weekly Team Meeting\",\n            \"expectedAttendees\": 8\n        },\n        {\n            \"resourceId\": \"res-001\",\n            \"date\": \"2024-12-28\",\n            \"startTime\": \"09:00\",\n            \"endTime\": \"11:00\",\n            \"purpose\": \"Weekly Team Meeting\",\n            \"expectedAttendees\": 8\n        }\n    ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/bookings/admin/recurring",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"bookings",
+								"admin",
+								"recurring"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Administrative reports and analytics endpoints"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global pre-request script",
+					"// Add JWT token to all requests if not already present",
+					"if (pm.request.headers.has('Authorization') === false) {",
+					"    const token = pm.environment.get('jwtToken') || pm.collectionVariables.get('jwtToken');",
+					"    if (token) {",
+					"        pm.request.headers.add({",
+					"            key: 'Authorization',",
+					"            value: 'Bearer ' + token",
+					"        });",
+					"    }",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script",
+					"// Log response details for debugging",
+					"console.log('Response Status:', pm.response.code);",
+					"console.log('Response Time:', pm.response.responseTime);",
+					"console.log('Response Size:', pm.response.responseSize);",
+					"",
+					"// Check for common error patterns",
+					"if (pm.response.code >= 400) {",
+					"    console.log('Error Response:', pm.response.json());",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "jwtToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "createdBookingId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
