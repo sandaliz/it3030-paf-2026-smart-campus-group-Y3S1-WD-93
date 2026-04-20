@@ -140,19 +140,6 @@ public class ResourceController {
                 .build();
     }
 
-    // Get resources created by current user (staff and admin)
-    @GetMapping("/my")
-    @PreAuthorize("isAuthenticated()")
-    @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Get my resources", description = "Retrieve resources created by the authenticated user")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Successfully retrieved user's resources"),
-        @ApiResponse(responseCode = "401", description = "Unauthorized")
-    })
-    public ResponseEntity<List<Resource>> getMyResources(Authentication authentication) {
-        return ResponseEntity.ok(resourceService.getResourcesByCreator(authentication));
-    }
-
     // Create multiple resources (admin only)
     @PostMapping("/bulk")
     @PreAuthorize("hasRole('ADMIN')")
