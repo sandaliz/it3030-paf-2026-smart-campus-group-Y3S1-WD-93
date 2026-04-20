@@ -68,7 +68,7 @@ const AdminSidebar = () => {
   return (
     <div className="w-64 bg-base-100 h-screen shadow-lg sticky top-0">
       <div className="p-4">
-        <h2 className="text-lg font-bold mb-6 text-base-content">Admin Panel</h2>
+        <h2 className="text-lg font-bold mb-6 text-base-content text-center">Admin Panel</h2>
         
         <nav className="space-y-2">
           {menuItems.map((item) => (

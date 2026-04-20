@@ -9,6 +9,7 @@ public enum TicketCategory {
     FURNITURE("Furniture"),
     CLEANING("Cleaning"),
     SECURITY("Security"),
+    RESOURCE_MANAGEMENT("Resource Management"),
     OTHER("Other");
     
     private final String displayName;

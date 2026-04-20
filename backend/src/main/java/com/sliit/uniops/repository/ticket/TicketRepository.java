@@ -51,6 +51,9 @@ public interface TicketRepository extends MongoRepository<TicketModel, String> {
     // Find by category and status
     List<TicketModel> findByCategoryAndStatus(String category, String status);
 
+    // Find by resource ID
+    List<TicketModel> findByResourceId(String resourceId);
+
     // Count tickets by assignee
     long countByAssignedToAndStatusIn(String technicianId, List<String> statuses);
 

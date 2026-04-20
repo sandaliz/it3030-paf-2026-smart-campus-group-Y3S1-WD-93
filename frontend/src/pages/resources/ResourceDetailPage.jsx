@@ -4,6 +4,7 @@ import axios from 'axios';
 import { resourceService } from '../../services/resourceService';
 import ResourceCard from '../../components/cards/ResourceCard';
 import { DetailSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
+import Toast from '../../components/ui/Toast';
 import ShareModal from '../../components/common/ShareModal';
 
 const ResourceDetailPage = () => {
@@ -15,6 +16,7 @@ const ResourceDetailPage = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [savedResources, setSavedResources] = useState([]);
+  const [toast, setToast] = useState(null);
 
     const [similarResources, setSimilarResources] = useState([]);
 
@@ -102,8 +104,10 @@ const ResourceDetailPage = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSavedResources(response.data || []);
+      setToast({ message: 'Resource saved! View in dashboard saved resources section', type: 'success' });
     } catch (error) {
       console.error('Error saving resource:', error);
+      setToast({ message: 'Failed to save resource', type: 'error' });
     }
   };
 
@@ -118,8 +122,10 @@ const ResourceDetailPage = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSavedResources(response.data || []);
+      setToast({ message: 'Resource removed from saved', type: 'error' });
     } catch (error) {
       console.error('Error unsaving resource:', error);
+      setToast({ message: 'Failed to remove resource', type: 'error' });
     }
   };
 
@@ -395,6 +401,15 @@ const ResourceDetailPage = () => {
         onClose={() => setShowShareModal(false)}
         resource={resource}
       />
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 };

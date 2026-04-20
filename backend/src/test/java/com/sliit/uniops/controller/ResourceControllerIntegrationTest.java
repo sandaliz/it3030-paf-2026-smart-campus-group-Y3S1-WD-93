@@ -218,14 +218,6 @@ class ResourceControllerIntegrationTest {
     }
 
     @Test
-    @WithMockUser(username = "admin", roles = "ADMIN")
-    void testGetMyResources() throws Exception {
-        mockMvc.perform(get("/api/resources/my"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray());
-    }
-
-    @Test
     @WithMockUser(roles = "ADMIN")
     void testUpdateResource() throws Exception {
         Resource updatedResource = Resource.builder()

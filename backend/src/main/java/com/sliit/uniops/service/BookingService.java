@@ -123,7 +123,12 @@ public class BookingService {
             return bookingRepository.findAll();
         }
     }
-    
+
+    // Get bookings by resource ID (for tracking)
+    public List<Booking> getBookingsByResourceId(String resourceId) {
+        return bookingRepository.findByResourceId(resourceId);
+    }
+
     // Get single booking by ID with authorization check
     public Booking getBookingById(String bookingId, String userId, boolean isAdmin) {
         Booking booking = bookingRepository.findById(bookingId)

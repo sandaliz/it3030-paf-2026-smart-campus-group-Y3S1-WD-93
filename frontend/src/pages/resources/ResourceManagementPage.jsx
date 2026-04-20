@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { resourceService } from '../../services/resourceService';
-import { userService } from '../../services/userService';
+import { bookingService } from '../../services/bookingService';
 import ResourceForm from '../../components/forms/ResourceForm';
 import { TableRowSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
@@ -28,14 +28,21 @@ const ResourceManagementPage = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assigningResource, setAssigningResource] = useState(null);
   const [viewMode, setViewMode] = useState('all'); // 'all', 'my', 'assigned'
-  const [staffUsers, setStaffUsers] = useState({});
+  const [showBookingsModal, setShowBookingsModal] = useState(false);
+  const [selectedResourceForBookings, setSelectedResourceForBookings] = useState(null);
+  const [resourceBookings, setResourceBookings] = useState([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
   const [filters, setFilters] = useState({
     type: '',
     status: '',
     location: '',
     minCapacity: ''
   });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchType, setSearchType] = useState('all'); // 'all', 'name', 'location', 'amenities'
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [debouncedLocation, setDebouncedLocation] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [selectedType, setSelectedType] = useState(null);
   const [pagination, setPagination] = useState({
@@ -47,29 +54,11 @@ const ResourceManagementPage = () => {
 
   useEffect(() => {
     fetchResources();
-  }, [viewMode, filters.type, filters.status, filters.minCapacity, debouncedLocation, pagination.page]);
+  }, [viewMode, filters.type, filters.status, filters.minCapacity, debouncedLocation, debouncedSearchTerm, pagination.page]);
 
   useEffect(() => {
     fetchAllResources();
   }, []);
-
-  useEffect(() => {
-    const fetchStaffUsers = async () => {
-      if (hasRole('ADMIN')) {
-        try {
-          const staff = await userService.getStaff();
-          const staffMap = {};
-          staff.forEach(s => {
-            staffMap[s.id] = { name: s.name, email: s.email };
-          });
-          setStaffUsers(staffMap);
-        } catch (err) {
-          console.error('Error fetching staff users:', err);
-        }
-      }
-    };
-    fetchStaffUsers();
-  }, [hasRole]);
 
   const fetchAllResources = async () => {
     try {
@@ -89,10 +78,19 @@ const ResourceManagementPage = () => {
     return () => clearTimeout(timer);
   }, [filters.location]);
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const fetchResources = async () => {
     try {
       // Use searching state for filter operations, loading for initial load
-      const hasFilters = Object.values(filters).some(value => value !== '');
+      const hasFilters = Object.values(filters).some(value => value !== '') || debouncedSearchTerm.trim() !== '';
       if (hasFilters) {
         setSearching(true);
       } else {
@@ -129,6 +127,21 @@ const ResourceManagementPage = () => {
           ...filters,
           location: debouncedLocation
         };
+        
+        // Add search term based on search type
+        if (debouncedSearchTerm.trim() !== '') {
+          if (searchType === 'all') {
+            // Search all fields
+            searchFilters.search = debouncedSearchTerm;
+          } else if (searchType === 'name') {
+            searchFilters.name = debouncedSearchTerm;
+          } else if (searchType === 'location') {
+            searchFilters.location = debouncedSearchTerm;
+          } else if (searchType === 'amenities') {
+            searchFilters.amenities = debouncedSearchTerm;
+          }
+        }
+        
         data = await resourceService.searchResources(searchFilters);
         // Convert to paginated format
         data = {
@@ -192,24 +205,61 @@ const ResourceManagementPage = () => {
     setShowAssignModal(true);
   };
 
-  const handleAssignStaffSubmit = async (staffIds) => {
+  const handleTrackBookings = async (resource) => {
+    setSelectedResourceForBookings(resource);
+    setShowBookingsModal(true);
+    setLoadingBookings(true);
     try {
-      await resourceService.assignStaffToResource(assigningResource.id, staffIds);
-      setSuccess('Staff assigned successfully');
-      setError(null);
-      setShowAssignModal(false);
-      setAssigningResource(null);
-      await fetchResources();
-      setTimeout(() => setSuccess(null), 3000);
+      const bookings = await bookingService.getBookingsByResourceId(resource.id);
+      setResourceBookings(bookings || []);
     } catch (err) {
-      setError('Failed to assign staff');
-      setSuccess(null);
-      console.error('Error assigning staff:', err);
+      console.error('Error fetching bookings:', err);
+      setResourceBookings([]);
+    } finally {
+      setLoadingBookings(false);
     }
   };
 
-  const handleUnassignStaff = async () => {
-    await fetchResources();
+  const handleAssignStaffSubmit = async (staffIds, description) => {
+    try {
+      const formData = new FormData();
+      formData.append('title', `Resource Assignment: ${assigningResource.name}`);
+      
+      // Ensure description is at least 10 characters
+      const defaultDesc = `Staff assignment request for resource: ${assigningResource.name} at ${assigningResource.location || 'campus'}`;
+      const finalDesc = description && description.length >= 10 ? description : defaultDesc;
+      formData.append('description', finalDesc);
+      
+      formData.append('category', 'RESOURCE_MANAGEMENT');
+      formData.append('priority', 'MEDIUM');
+      formData.append('location', assigningResource.location || 'Campus');
+      formData.append('resourceId', assigningResource.id);
+      formData.append('preferredContactMethod', 'EMAIL');
+      formData.append('contactDetails', user?.email || 'admin@uniops.com');
+
+      console.log('Creating ticket with data:', {
+        title: formData.get('title'),
+        description: formData.get('description'),
+        category: formData.get('category'),
+        priority: formData.get('priority'),
+        location: formData.get('location'),
+        resourceId: formData.get('resourceId')
+      });
+
+      await ticketService.createTicket(formData);
+
+      setSuccess('Resource management ticket created successfully');
+      setError(null);
+      setShowAssignModal(false);
+      setAssigningResource(null);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError('Failed to create resource management ticket');
+      setSuccess(null);
+      console.error('Error creating ticket:', err);
+      console.error('Error response:', err.response?.data);
+      console.error('Error status:', err.response?.status);
+    }
   };
 
   const handleDeleteResource = async (resourceId) => {
@@ -269,6 +319,8 @@ const ResourceManagementPage = () => {
 
   const handleClearFilters = () => {
     setFilters({ type: '', status: '', location: '', minCapacity: '' });
+    setSearchTerm('');
+    setSearchType('all');
     setSearching(true);
   };
 
@@ -311,15 +363,13 @@ const ResourceManagementPage = () => {
   };
 
   const getStatusBadgeColor = (status) => {
+    if (!status) return 'badge-neutral';
     switch (status) {
-      case 'ACTIVE':
-        return 'badge-success';
-      case 'OUT_OF_SERVICE':
-        return 'badge-error';
-      case 'UNDER_MAINTENANCE':
-        return 'badge-warning';
-      default:
-        return 'badge-neutral';
+      case 'ACTIVE': return 'badge-success';
+      case 'OUT_OF_SERVICE': return 'badge-error';
+      case 'UNDER_MAINTENANCE': return 'badge-warning';
+      case 'RESERVED': return 'badge-info';
+      default: return 'badge-neutral';
     }
   };
 
@@ -457,7 +507,7 @@ const ResourceManagementPage = () => {
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
-                  Share Analytics
+                  Resource Analytics
                 </button>
                 <button
                   className="btn btn-outline"
@@ -596,7 +646,49 @@ const ResourceManagementPage = () => {
       <div className="card bg-base-100 shadow-lg mb-0">
         <div className="card-body">
           <h3 className="card-title text-lg">Filters</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          {/* Search Bar */}
+          <div className="flex gap-4 mb-4">
+            <input
+              type="text"
+              placeholder="Search by name, location, or amenities..."
+              className="input input-bordered flex-1"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <select
+              className="select select-bordered w-48"
+              value={searchType}
+              onChange={(e) => setSearchType(e.target.value)}
+            >
+              <option value="all">All Fields</option>
+              <option value="name">Name</option>
+              <option value="location">Location</option>
+              <option value="amenities">Amenities</option>
+            </select>
+            <button
+              className="btn btn-outline btn-circle btn-sm"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              title={showAdvancedFilters ? 'Hide Filters' : 'Show Filters'}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {showAdvancedFilters ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                )}
+              </svg>
+            </button>
+            <button
+              className="btn btn-error btn-outline btn-sm"
+              onClick={handleClearFilters}
+            >
+              Clear Filters
+            </button>
+          </div>
+
+          {showAdvancedFilters && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="form-control">
               <label className="label">
                 <span className="label-text">Type</span>
@@ -658,15 +750,7 @@ const ResourceManagementPage = () => {
               />
             </div>
           </div>
-
-          <div className="flex justify-end mt-4">
-            <button 
-              className="btn btn-outline btn-sm"
-              onClick={handleClearFilters}
-            >
-              Clear Filters
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
@@ -708,7 +792,7 @@ const ResourceManagementPage = () => {
             <table className="table table-zebra">
               <thead>
                 <tr>
-                  <th>
+                  <th className="w-12">
                     <label>
                       <input
                         type="checkbox"
@@ -718,13 +802,12 @@ const ResourceManagementPage = () => {
                       />
                     </label>
                   </th>
-                  <th className="w-140">Resource</th>
-                  <th>Type</th>
-                  <th>Location</th>
-                  <th>Capacity</th>
-                  <th className="w-48">Status</th>
-                  <th>Assigned Staff</th>
-                  <th>Actions</th>
+                  <th className="w-80 min-w-72">Resource</th>
+                  <th className="w-36 min-w-32">Type</th>
+                  <th className="w-40 min-w-36">Location</th>
+                  <th className="w-24 min-w-20 text-center">Capacity</th>
+                  <th className="w-40 min-w-36">Status</th>
+                  <th className="w-auto min-w-max">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -766,12 +849,12 @@ const ResourceManagementPage = () => {
                         </label>
                       </td>
                       <td>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xl">{resource.type ? getResourceIcon(resource.type) : '📦'}</span>
-                          <div className="flex-1">
-                            <div className="font-semibold">{resource.name || 'N/A'}</div>
+                        <div className="flex items-center gap-3 max-w-80">
+                          <span className="text-xl shrink-0">{resource.type ? getResourceIcon(resource.type) : '📦'}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold truncate">{resource.name || 'N/A'}</div>
                             {resource.description && (
-                              <div className="text-sm text-base-content/70 line-clamp-1">
+                              <div className="text-sm text-base-content/70 truncate" title={resource.description}>
                                 {resource.description}
                               </div>
                             )}
@@ -791,30 +874,26 @@ const ResourceManagementPage = () => {
                         </span>
                       </td>
                       <td>
-                        {resource.assignedStaff && resource.assignedStaff.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {resource.assignedStaff.map((staffId) => {
-                              const staff = staffUsers[staffId];
-                              return (
-                                <span key={staffId} className="badge badge-outline badge-xs" title={staff?.email || staffId}>
-                                  {staff?.name || staffId}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-base-content/50">Unassigned</span>
-                        )}
-                      </td>
-                      <td>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           {hasRole('ADMIN') && (
-                            <button
-                              className="btn btn-sm btn-info"
-                              onClick={() => handleAssignStaff(resource)}
-                            >
-                              Assign
-                            </button>
+                            <>
+                              <button
+                                className="btn btn-sm btn-info"
+                                onClick={() => handleAssignStaff(resource)}
+                              >
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                Requests
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline"
+                                onClick={() => handleTrackBookings(resource)}
+                              >
+                                Track Bookings
+                              </button>
+                            </>
                           )}
                           {canAddEditResources && (
                             <button
@@ -898,8 +977,9 @@ const ResourceManagementPage = () => {
         isOpen={showAnalyticsModal}
         onClose={() => setShowAnalyticsModal(false)}
       />
+        </div>
+      </div>
 
-      {/* Assign Staff Modal */}
       <AssignResourceStaffModal
         isOpen={showAssignModal}
         resource={assigningResource}
@@ -908,9 +988,55 @@ const ResourceManagementPage = () => {
           setAssigningResource(null);
         }}
         onAssign={handleAssignStaffSubmit}
-        onUnassign={handleUnassignStaff}
       />
+
+      {/* Resource Bookings Modal */}
+      <div className={`modal ${showBookingsModal ? 'modal-open' : ''}`}>
+        <div className="modal-box max-w-4xl">
+          <h3 className="font-bold text-lg mb-4">
+            Bookings for {selectedResourceForBookings?.name}
+          </h3>
+          <p className="text-sm text-base-content/70 mb-4">
+            Total bookings: {resourceBookings.length}
+          </p>
+          {loadingBookings ? (
+            <div className="flex justify-center py-8">
+              <span className="loading loading-spinner loading-md"></span>
+            </div>
+          ) : resourceBookings.length > 0 ? (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {resourceBookings.map(booking => (
+                <div key={booking.id} className="border border-base-300 rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-semibold">
+                      {booking.date} ({booking.startTime} - {booking.endTime})
+                    </h4>
+                    <span className={`badge badge-sm ${booking.status === 'APPROVED' ? 'badge-success' : booking.status === 'PENDING' ? 'badge-warning' : booking.status === 'REJECTED' ? 'badge-error' : 'badge-neutral'}`}>
+                      {booking.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-base-content/70 mb-2">
+                    <span className="font-medium">Purpose:</span> {booking.purpose || 'N/A'}
+                  </p>
+                  <p className="text-sm text-base-content/70 mb-2">
+                    <span className="font-medium">Expected Attendees:</span> {booking.expectedAttendees || 'N/A'}
+                  </p>
+                  <p className="text-sm text-base-content/60 mb-2">
+                    Booked by: {booking.userName || 'Unknown'} ({booking.date})
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-base-content/70">No bookings found for this resource.</p>
+          )}
+          <div className="modal-action">
+            <button className="btn" onClick={() => setShowBookingsModal(false)}>
+              Close
+            </button>
+          </div>
         </div>
+        <div className="modal-backdrop" onClick={() => setShowBookingsModal(false)}></div>
       </div>
     </div>
   );

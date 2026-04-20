@@ -143,6 +143,12 @@ export const bookingService = {
     return response.data;
   },
 
+  // Get all bookings for a resource (all dates)
+  getBookingsByResourceId: async (resourceId) => {
+    const response = await api.get(`/api/bookings/resource/${resourceId}/all`);
+    return response.data;
+  },
+
   // Get available resources
   getAvailableResources: async (filters = {}) => {
     const response = await api.get('/api/bookings/available-resources', {

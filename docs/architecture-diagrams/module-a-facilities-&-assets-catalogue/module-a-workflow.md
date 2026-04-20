@@ -93,20 +93,18 @@ User applies filters:
 ├─ Status (ACTIVE, OUT_OF_SERVICE, UNDER_MAINTENANCE)
 ├─ Location (text search)
 ├─ Minimum Capacity (number)
-└─ Amenities (text search)
+└─ Creator (for "My Resources" view)
 
 Filtering Flow:
 1. User changes filter value
-2. Debounce: 500ms delay
+2. Debounce: 500ms delay (location) / 300ms delay (search term)
 3. Frontend: fetchResources()
-4. GET /api/resources/search?status=X&type=Y&location=Z&minCapacity=N
-   → Backend: ResourceController.searchResources()
-   → Service: ResourceService.searchResources()
-   → Repository: ResourceRepository.findBy*() methods
-   → MongoDB: Query with filters
+4. GET /api/resources?status=X&type=Y&location=Z&minCapacity=N&search=S&creator=C
+   → Backend: ResourceController.getAllResources()
+   → Service: ResourceService.getAllResources()
+   → MongoDB: Dynamic query with filters using MongoTemplate
 5. Response: Filtered array
-6. Client-side: Apply additional filters (location, capacity, amenities)
-7. Update UI with filtered results
+6. Update UI with filtered results
 
 **Pagination:**
 1. User changes page (Next/Previous buttons)
@@ -201,24 +199,35 @@ Card Layout by Type:
 
 | Method | Endpoint | Description | Access |
 |--------|----------|-------------|--------|
-| GET | /api/resources | Get all resources | All Users |
+| GET | /api/resources | Get all resources with filtering | All Users |
 | GET | /api/resources/{id} | Get resource by ID | All Users |
-| POST | /api/resources | Create new resource | Admin/Technician/Lecturer |
-| PUT | /api/resources/{id} | Update resource | Admin/Technician/Lecturer |
-| DELETE | /api/resources/{id} | Delete resource | Admin Only |
-| POST | /api/resources/bulk | Create multiple resources | Admin Only |
-| GET | /api/resources/search | Search resources with filters | All Users |
+| GET | /api/resources/paginated | Get paginated resources with sorting | All Users |
 | GET | /api/resources/{id}/availability | Get resource availability for date | All Users |
-| GET | /api/resources/paginated | Get paginated resources | All Users |
+| GET | /api/resources/{id}/availability/check | Check resource availability for time slot | All Users |
+| GET | /api/resources/{id}/audit | Get resource audit log | All Users |
+| POST | /api/resources | Create new resource | RESOURCE_MANAGER, ADMIN |
+| POST | /api/resources/bulk | Create multiple resources | ADMIN |
+| PUT | /api/resources/{id} | Update resource | RESOURCE_MANAGER, ADMIN |
+| PATCH | /api/resources/{id}/status | Update resource status | RESOURCE_MANAGER, ADMIN |
+| PATCH | /api/resources/{id}/share | Track resource share count | All Users |
+| DELETE | /api/resources/{id} | Delete resource | ADMIN, STAFF (owner only) |
 
-**Query Parameters:**
-- `status`: Filter by status (ACTIVE, OUT_OF_SERVICE, UNDER_MAINTENANCE)
-- `type`: Filter by type (LECTURE_HALL, LAB, MEETING_ROOM, EQUIPMENT, OFFICE, AUDITORIUM)
-- `location`: Filter by location (partial match)
+**Query Parameters (for GET /api/resources):**
+- `status`: Filter by status (ACTIVE, OUT_OF_SERVICE, UNDER_MAINTENANCE, RESERVED)
+- `type`: Filter by type (LECTURE_HALL, LAB, MEETING_ROOM, EQUIPMENT, OFFICE, AUDITORIUM, CLASSROOM)
+- `location`: Filter by location (partial match, case-insensitive)
 - `minCapacity`: Filter by minimum capacity
-- `page`: Page number for pagination
-- `size`: Page size for pagination
+- `search`: Search term (name, location, description - case-insensitive)
+- `creator`: Filter by creator user ID
+
+**Query Parameters (for GET /api/resources/paginated):**
+- `page`: Page number (0-indexed, default: 0)
+- `size`: Page size (default: 10)
 - `search`: Search term (name, location, description)
+- `status`: Filter by status
+- `type`: Filter by type
+- `sortBy`: Sort field (default: name)
+- `sortDir`: Sort direction (asc/desc, default: asc)
 
 ## Database Schema
 
@@ -229,14 +238,16 @@ Card Layout by Type:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | _id | ObjectId | Auto | Unique identifier |
-| name | String | Yes | Resource name |
-| type | Enum | Yes | LECTURE_HALL, LAB, MEETING_ROOM, EQUIPMENT, OFFICE, AUDITORIUM |
-| capacity | Integer | No | Maximum capacity |
-| location | String | Yes | Physical location |
-| status | Enum | Yes | ACTIVE, OUT_OF_SERVICE, UNDER_MAINTENANCE |
+| name | String | Yes | Resource name (indexed) |
+| type | Enum | Yes | LECTURE_HALL, LAB, MEETING_ROOM, EQUIPMENT, OFFICE, AUDITORIUM, CLASSROOM (indexed) |
+| capacity | Integer | No | Maximum capacity (indexed) |
+| location | String | Yes | Physical location (indexed) |
+| status | Enum | Yes | ACTIVE, OUT_OF_SERVICE, UNDER_MAINTENANCE, RESERVED (indexed) |
 | description | String | No | Detailed description |
 | amenities | Array<String> | No | List of amenities |
 | availabilityWindows | Array<Object> | No | Day/time availability windows |
+| shareCount | Integer | No | Number of times resource was shared |
+| createdBy | String | No | User ID of creator |
 | createdAt | LocalDateTime | Auto | Creation timestamp |
 | updatedAt | LocalDateTime | Auto | Last update timestamp |
 
@@ -377,37 +388,32 @@ App.jsx
 
 ## Future Enhancements
 
-**1. Server-Side Pagination**
-- Implement /api/resources/paginated endpoint
-- Reduce data transfer
-- Improve load times for large datasets
-
-**2. Advanced Search**
+**1. Advanced Search**
 - Full-text search with MongoDB Atlas Search
 - Faceted search
 - Search suggestions/autocomplete
 
-**3. Resource Analytics**
+**2. Resource Analytics**
 - Usage statistics per resource
 - Booking frequency analysis
 - Maintenance scheduling
 
-**4. Resource Images**
+**3. Resource Images**
 - Upload/display resource images
 - Image gallery
 - Floor plans
 
-**5. Bulk Operations**
+**4. Bulk Operations**
 - Bulk edit
 - Bulk import (CSV/Excel)
 - Bulk export
 
-**6. Resource Categories**
+**5. Resource Categories**
 - Hierarchical categories
 - Tags system
 - Advanced filtering
 
-**7. Real-time Updates**
+**6. Real-time Updates**
 - WebSocket integration
 - Live availability status
 - Real-time booking conflicts
@@ -505,17 +511,19 @@ MongoDB Database
 
 | Component | Implemented By | Description |
 |-----------|---------------|-------------|
-| Backend API | [Team Member Name] | REST API endpoints for resources |
-| Database Design | [Team Member Name] | MongoDB schema and indexes |
-| Frontend Components | [Team Member Name] | Resource management UI |
-| Authentication Integration | [Team Member Name] | Role-based access control |
-| Testing & Documentation | [Team Member Name] | API testing and documentation |
+| Backend API | Member 1 | REST API endpoints for resources (13 endpoints implemented) |
+| Database Design | Member 1 | MongoDB schema and indexes |
+| Frontend Components | Member 1 | Resource management UI (ResourceManagementPage, ResourceDetailPage) |
+| Authentication Integration | Team | Role-based access control integration |
+| Testing & Documentation | Member 1 | API testing and documentation |
 
-**Individual Contributions:**
-- Each team member implemented at least 4 REST API endpoints using different HTTP methods
-- Consistent API naming conventions followed
-- Correct HTTP status codes used
-- Meaningful error responses implemented
+**Individual Contributions (Member 1 - Module A Lead):**
+- Implemented 13 REST API endpoints using different HTTP methods (GET, POST, PUT, PATCH, DELETE)
+- Proper RESTful naming conventions followed
+- Correct HTTP status codes used (200, 201, 204, 400, 401, 403, 404, 409)
+- Meaningful error responses with GlobalExceptionHandler
+- Integration tests with ResourceControllerIntegrationTest
+- Swagger/OpenAPI documentation for all endpoints
 - Commit history reflects individual work
 
 ---
@@ -553,17 +561,27 @@ MongoDB Database
 
 ## Conclusion
 
-**Module A: Facilities & Assets Catalogue** is fully implemented with all required features:
+**Module A: Facilities & Assets Catalogue** is fully implemented with all required features plus additional enhancements:
 
-✅ Maintain a catalogue of bookable resources  
-✅ Resource metadata (type, capacity, location, availability windows, status)  
-✅ Search and filtering by type, capacity, and location  
-✅ Role-based access control  
-✅ RESTful API with proper HTTP methods  
-✅ MongoDB database with indexes  
-✅ React frontend with modern UI  
+✅ Maintain a catalogue of bookable resources (LECTURE_HALL, LAB, MEETING_ROOM, EQUIPMENT, CLASSROOM, AUDITORIUM, OFFICE)
+✅ Resource metadata (type, capacity, location, availability windows, status: ACTIVE/OUT_OF_SERVICE/UNDER_MAINTENANCE/RESERVED)
+✅ Search and filtering by type, capacity, location, status, creator, and full-text search
+✅ Role-based access control (ADMIN, RESOURCE_MANAGER, STAFF, LECTURER, STUDENT)
+✅ RESTful API with proper HTTP methods (GET, POST, PUT, PATCH, DELETE) and status codes
+✅ MongoDB database with indexes for performance optimization
+✅ React frontend with modern UI (DaisyUI + Tailwind CSS)
 ✅ Integration with other modules (Booking, Tickets, Notifications, Authentication)
 
-**Technology Stack:** React 18, Spring Boot 3.x, MongoDB Atlas, DaisyUI, Tailwind CSS  
-**Status:** ✅ Complete  
-**Assignment Compliance:** ✅ All minimum requirements satisfied
+**Additional Features Implemented:**
+- Server-side pagination with sorting
+- Resource availability checking by date and time slot
+- Resource audit log tracking
+- Resource share tracking
+- Resource analytics dashboard
+- Bulk delete operations (parallel individual deletes)
+- Client-side resource save/favorite functionality
+- Saved resources with notes capability
+
+**Technology Stack:** React 18, Spring Boot 3.x, MongoDB Atlas, DaisyUI, Tailwind CSS
+**Status:** ✅ Complete
+**Assignment Compliance:** ✅ All minimum requirements satisfied with additional value-added features

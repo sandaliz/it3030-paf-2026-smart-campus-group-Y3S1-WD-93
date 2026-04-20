@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
+import Toast from '../components/ui/Toast';
 
 const LecturerDashboard = () => {
     const [stats, setStats] = useState({
@@ -20,6 +21,7 @@ const LecturerDashboard = () => {
     const [noteModalOpen, setNoteModalOpen] = useState(false);
     const [selectedResource, setSelectedResource] = useState(null);
     const [noteText, setNoteText] = useState('');
+    const [toast, setToast] = useState(null);
     const { user } = useAuth();
     const navigate = useNavigate();
     const { 
@@ -94,8 +96,10 @@ const LecturerDashboard = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setSavedResources(savedResourcesResponse.data || []);
+            setToast({ message: 'Resource saved! View in dashboard saved resources section', type: 'success' });
         } catch (error) {
             console.error('Error saving resource:', error);
+            setToast({ message: 'Failed to save resource', type: 'error' });
         }
     };
 
@@ -111,8 +115,10 @@ const LecturerDashboard = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setSavedResources(savedResourcesResponse.data || []);
+            setToast({ message: 'Resource removed from saved', type: 'error' });
         } catch (error) {
             console.error('Error unsaving resource:', error);
+            setToast({ message: 'Failed to remove resource', type: 'error' });
         }
     };
 
@@ -473,6 +479,14 @@ const LecturerDashboard = () => {
                         </div>
                     </div>
                 </div>
+            )}
+            {/* Toast Notification */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
             )}
         </div>
     );

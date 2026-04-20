@@ -411,6 +411,14 @@ public class TicketService {
                 .collect(Collectors.toList());
     }
 
+    // Get tickets by resource ID
+    public List<TicketResponseDTO> getTicketsByResourceId(String resourceId) {
+        List<TicketModel> tickets = ticketRepository.findByResourceId(resourceId);
+        return tickets.stream()
+                .map(this::mapToResponseDTO)
+                .collect(Collectors.toList());
+    }
+
     private TechnicianRecommendationDTO toTechnicianRecommendation(
             User technician,
             Set<String> desiredSkills,

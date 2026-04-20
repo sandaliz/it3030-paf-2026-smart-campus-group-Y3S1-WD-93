@@ -79,6 +79,14 @@ public class TicketController {
         return ResponseEntity.ok(tickets);
     }
 
+    @GetMapping("/by-resource/{resourceId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<TicketResponseDTO>> getTicketsByResourceId(
+            @PathVariable String resourceId) {
+        List<TicketResponseDTO> tickets = ticketService.getTicketsByResourceId(resourceId);
+        return ResponseEntity.ok(tickets);
+    }
+
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('ADMIN', 'TECHNICIAN')")
     public ResponseEntity<TicketResponseDTO> updateStatus(
