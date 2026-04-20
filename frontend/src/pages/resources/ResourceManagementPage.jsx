@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { resourceService } from '../../services/resourceService';
-import { ticketService } from '../../services/ticketService';
+import { bookingService } from '../../services/bookingService';
 import ResourceForm from '../../components/forms/ResourceForm';
 import { TableRowSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
@@ -28,6 +28,10 @@ const ResourceManagementPage = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assigningResource, setAssigningResource] = useState(null);
   const [viewMode, setViewMode] = useState('all'); // 'all', 'my', 'assigned'
+  const [showBookingsModal, setShowBookingsModal] = useState(false);
+  const [selectedResourceForBookings, setSelectedResourceForBookings] = useState(null);
+  const [resourceBookings, setResourceBookings] = useState([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
   const [filters, setFilters] = useState({
     type: '',
     status: '',
@@ -173,6 +177,21 @@ const ResourceManagementPage = () => {
     setShowAssignModal(true);
   };
 
+  const handleTrackBookings = async (resource) => {
+    setSelectedResourceForBookings(resource);
+    setShowBookingsModal(true);
+    setLoadingBookings(true);
+    try {
+      const bookings = await bookingService.getBookingsByResourceId(resource.id);
+      setResourceBookings(bookings || []);
+    } catch (err) {
+      console.error('Error fetching bookings:', err);
+      setResourceBookings([]);
+    } finally {
+      setLoadingBookings(false);
+    }
+  };
+
   const handleAssignStaffSubmit = async (staffIds, description) => {
     try {
       const formData = new FormData();
@@ -314,15 +333,13 @@ const ResourceManagementPage = () => {
   };
 
   const getStatusBadgeColor = (status) => {
+    if (!status) return 'badge-neutral';
     switch (status) {
-      case 'ACTIVE':
-        return 'badge-success';
-      case 'OUT_OF_SERVICE':
-        return 'badge-error';
-      case 'UNDER_MAINTENANCE':
-        return 'badge-warning';
-      default:
-        return 'badge-neutral';
+      case 'ACTIVE': return 'badge-success';
+      case 'OUT_OF_SERVICE': return 'badge-error';
+      case 'UNDER_MAINTENANCE': return 'badge-warning';
+      case 'RESERVED': return 'badge-info';
+      default: return 'badge-neutral';
     }
   };
 
@@ -795,12 +812,20 @@ const ResourceManagementPage = () => {
                       <td>
                         <div className="flex gap-2">
                           {hasRole('ADMIN') && (
-                            <button
-                              className="btn btn-sm btn-info"
-                              onClick={() => handleAssignStaff(resource)}
-                            >
-                              Request
-                            </button>
+                            <>
+                              <button
+                                className="btn btn-sm btn-info"
+                                onClick={() => handleAssignStaff(resource)}
+                              >
+                                Request
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline"
+                                onClick={() => handleTrackBookings(resource)}
+                              >
+                                Track Bookings
+                              </button>
+                            </>
                           )}
                           {canAddEditResources && (
                             <button
@@ -896,6 +921,55 @@ const ResourceManagementPage = () => {
         }}
         onAssign={handleAssignStaffSubmit}
       />
+
+      {/* Resource Bookings Modal */}
+      <div className={`modal ${showBookingsModal ? 'modal-open' : ''}`}>
+        <div className="modal-box max-w-4xl">
+          <h3 className="font-bold text-lg mb-4">
+            Bookings for {selectedResourceForBookings?.name}
+          </h3>
+          <p className="text-sm text-base-content/70 mb-4">
+            Total bookings: {resourceBookings.length}
+          </p>
+          {loadingBookings ? (
+            <div className="flex justify-center py-8">
+              <span className="loading loading-spinner loading-md"></span>
+            </div>
+          ) : resourceBookings.length > 0 ? (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {resourceBookings.map(booking => (
+                <div key={booking.id} className="border border-base-300 rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-semibold">
+                      {booking.date} ({booking.startTime} - {booking.endTime})
+                    </h4>
+                    <span className={`badge badge-sm ${booking.status === 'APPROVED' ? 'badge-success' : booking.status === 'PENDING' ? 'badge-warning' : booking.status === 'REJECTED' ? 'badge-error' : 'badge-neutral'}`}>
+                      {booking.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-base-content/70 mb-2">
+                    <span className="font-medium">Purpose:</span> {booking.purpose || 'N/A'}
+                  </p>
+                  <p className="text-sm text-base-content/70 mb-2">
+                    <span className="font-medium">Expected Attendees:</span> {booking.expectedAttendees || 'N/A'}
+                  </p>
+                  <p className="text-sm text-base-content/60 mb-2">
+                    Booked by: {booking.userName || 'Unknown'} ({booking.date})
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-base-content/70">No bookings found for this resource.</p>
+          )}
+          <div className="modal-action">
+            <button className="btn" onClick={() => setShowBookingsModal(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+        <div className="modal-backdrop" onClick={() => setShowBookingsModal(false)}></div>
+      </div>
     </div>
   );
 };

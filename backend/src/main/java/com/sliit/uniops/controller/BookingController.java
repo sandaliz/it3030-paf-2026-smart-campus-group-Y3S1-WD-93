@@ -273,6 +273,18 @@ public class BookingController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
+
+    // ===== NEW: Get all bookings for a specific resource (all dates) =====
+    @GetMapping("/resource/{resourceId}/all")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<BookingResponseDTO>> getAllResourceBookings(
+            @PathVariable String resourceId) {
+        List<Booking> bookings = bookingService.getBookingsByResourceId(resourceId);
+        List<BookingResponseDTO> response = bookings.stream()
+                .map(BookingResponseDTO::fromBooking)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
     
     // ===== NEW: Get available resources based on criteria =====
     @GetMapping("/available-resources")

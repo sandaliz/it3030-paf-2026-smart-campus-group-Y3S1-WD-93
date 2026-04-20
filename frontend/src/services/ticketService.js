@@ -82,6 +82,12 @@ export const ticketService = {
       params: { keyword, ...filters }
     });
     return response.data;
+  },
+
+  // Get tickets by resource ID
+  getTicketsByResourceId: async (resourceId) => {
+    const response = await api.get(`/api/tickets/by-resource/${resourceId}`);
+    return response.data;
   }
 };
 
