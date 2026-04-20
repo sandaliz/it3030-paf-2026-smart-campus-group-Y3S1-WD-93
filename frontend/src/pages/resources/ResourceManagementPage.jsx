@@ -38,7 +38,11 @@ const ResourceManagementPage = () => {
     location: '',
     minCapacity: ''
   });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchType, setSearchType] = useState('all'); // 'all', 'name', 'location', 'amenities'
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [debouncedLocation, setDebouncedLocation] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [selectedType, setSelectedType] = useState(null);
   const [pagination, setPagination] = useState({
@@ -50,7 +54,7 @@ const ResourceManagementPage = () => {
 
   useEffect(() => {
     fetchResources();
-  }, [viewMode, filters.type, filters.status, filters.minCapacity, debouncedLocation, pagination.page]);
+  }, [viewMode, filters.type, filters.status, filters.minCapacity, debouncedLocation, debouncedSearchTerm, pagination.page]);
 
   useEffect(() => {
     fetchAllResources();
@@ -74,10 +78,19 @@ const ResourceManagementPage = () => {
     return () => clearTimeout(timer);
   }, [filters.location]);
 
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   const fetchResources = async () => {
     try {
       // Use searching state for filter operations, loading for initial load
-      const hasFilters = Object.values(filters).some(value => value !== '');
+      const hasFilters = Object.values(filters).some(value => value !== '') || debouncedSearchTerm.trim() !== '';
       if (hasFilters) {
         setSearching(true);
       } else {
@@ -114,6 +127,21 @@ const ResourceManagementPage = () => {
           ...filters,
           location: debouncedLocation
         };
+        
+        // Add search term based on search type
+        if (debouncedSearchTerm.trim() !== '') {
+          if (searchType === 'all') {
+            // Search all fields
+            searchFilters.search = debouncedSearchTerm;
+          } else if (searchType === 'name') {
+            searchFilters.name = debouncedSearchTerm;
+          } else if (searchType === 'location') {
+            searchFilters.location = debouncedSearchTerm;
+          } else if (searchType === 'amenities') {
+            searchFilters.amenities = debouncedSearchTerm;
+          }
+        }
+        
         data = await resourceService.searchResources(searchFilters);
         // Convert to paginated format
         data = {
@@ -291,6 +319,8 @@ const ResourceManagementPage = () => {
 
   const handleClearFilters = () => {
     setFilters({ type: '', status: '', location: '', minCapacity: '' });
+    setSearchTerm('');
+    setSearchType('all');
     setSearching(true);
   };
 
@@ -616,7 +646,49 @@ const ResourceManagementPage = () => {
       <div className="card bg-base-100 shadow-lg mb-0">
         <div className="card-body">
           <h3 className="card-title text-lg">Filters</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          {/* Search Bar */}
+          <div className="flex gap-4 mb-4">
+            <input
+              type="text"
+              placeholder="Search by name, location, or amenities..."
+              className="input input-bordered flex-1"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <select
+              className="select select-bordered w-48"
+              value={searchType}
+              onChange={(e) => setSearchType(e.target.value)}
+            >
+              <option value="all">All Fields</option>
+              <option value="name">Name</option>
+              <option value="location">Location</option>
+              <option value="amenities">Amenities</option>
+            </select>
+            <button
+              className="btn btn-outline btn-circle btn-sm"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              title={showAdvancedFilters ? 'Hide Filters' : 'Show Filters'}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {showAdvancedFilters ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                )}
+              </svg>
+            </button>
+            <button
+              className="btn btn-error btn-outline btn-sm"
+              onClick={handleClearFilters}
+            >
+              Clear Filters
+            </button>
+          </div>
+
+          {showAdvancedFilters && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="form-control">
               <label className="label">
                 <span className="label-text">Type</span>
@@ -678,15 +750,7 @@ const ResourceManagementPage = () => {
               />
             </div>
           </div>
-
-          <div className="flex justify-end mt-4">
-            <button 
-              className="btn btn-outline btn-sm"
-              onClick={handleClearFilters}
-            >
-              Clear Filters
-            </button>
-          </div>
+          )}
         </div>
       </div>
 
