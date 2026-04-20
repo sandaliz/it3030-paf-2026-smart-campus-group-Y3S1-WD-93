@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { resourceService } from '../../services/resourceService';
-import { userService } from '../../services/userService';
+import { ticketService } from '../../services/ticketService';
 import ResourceForm from '../../components/forms/ResourceForm';
 import { TableRowSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
@@ -28,7 +28,6 @@ const ResourceManagementPage = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assigningResource, setAssigningResource] = useState(null);
   const [viewMode, setViewMode] = useState('all'); // 'all', 'my', 'assigned'
-  const [staffUsers, setStaffUsers] = useState({});
   const [filters, setFilters] = useState({
     type: '',
     status: '',
@@ -52,24 +51,6 @@ const ResourceManagementPage = () => {
   useEffect(() => {
     fetchAllResources();
   }, []);
-
-  useEffect(() => {
-    const fetchStaffUsers = async () => {
-      if (hasRole('ADMIN')) {
-        try {
-          const staff = await userService.getStaff();
-          const staffMap = {};
-          staff.forEach(s => {
-            staffMap[s.id] = { name: s.name, email: s.email };
-          });
-          setStaffUsers(staffMap);
-        } catch (err) {
-          console.error('Error fetching staff users:', err);
-        }
-      }
-    };
-    fetchStaffUsers();
-  }, [hasRole]);
 
   const fetchAllResources = async () => {
     try {
@@ -192,24 +173,46 @@ const ResourceManagementPage = () => {
     setShowAssignModal(true);
   };
 
-  const handleAssignStaffSubmit = async (staffIds) => {
+  const handleAssignStaffSubmit = async (staffIds, description) => {
     try {
-      await resourceService.assignStaffToResource(assigningResource.id, staffIds);
-      setSuccess('Staff assigned successfully');
+      const formData = new FormData();
+      formData.append('title', `Resource Assignment: ${assigningResource.name}`);
+      
+      // Ensure description is at least 10 characters
+      const defaultDesc = `Staff assignment request for resource: ${assigningResource.name} at ${assigningResource.location || 'campus'}`;
+      const finalDesc = description && description.length >= 10 ? description : defaultDesc;
+      formData.append('description', finalDesc);
+      
+      formData.append('category', 'RESOURCE_MANAGEMENT');
+      formData.append('priority', 'MEDIUM');
+      formData.append('location', assigningResource.location || 'Campus');
+      formData.append('resourceId', assigningResource.id);
+      formData.append('preferredContactMethod', 'EMAIL');
+      formData.append('contactDetails', user?.email || 'admin@uniops.com');
+
+      console.log('Creating ticket with data:', {
+        title: formData.get('title'),
+        description: formData.get('description'),
+        category: formData.get('category'),
+        priority: formData.get('priority'),
+        location: formData.get('location'),
+        resourceId: formData.get('resourceId')
+      });
+
+      await ticketService.createTicket(formData);
+
+      setSuccess('Resource management ticket created successfully');
       setError(null);
       setShowAssignModal(false);
       setAssigningResource(null);
-      await fetchResources();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError('Failed to assign staff');
+      setError('Failed to create resource management ticket');
       setSuccess(null);
-      console.error('Error assigning staff:', err);
+      console.error('Error creating ticket:', err);
+      console.error('Error response:', err.response?.data);
+      console.error('Error status:', err.response?.status);
     }
-  };
-
-  const handleUnassignStaff = async () => {
-    await fetchResources();
   };
 
   const handleDeleteResource = async (resourceId) => {
@@ -723,7 +726,6 @@ const ResourceManagementPage = () => {
                   <th>Location</th>
                   <th>Capacity</th>
                   <th className="w-48">Status</th>
-                  <th>Assigned Staff</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -791,29 +793,13 @@ const ResourceManagementPage = () => {
                         </span>
                       </td>
                       <td>
-                        {resource.assignedStaff && resource.assignedStaff.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {resource.assignedStaff.map((staffId) => {
-                              const staff = staffUsers[staffId];
-                              return (
-                                <span key={staffId} className="badge badge-outline badge-xs" title={staff?.email || staffId}>
-                                  {staff?.name || staffId}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-base-content/50">Unassigned</span>
-                        )}
-                      </td>
-                      <td>
                         <div className="flex gap-2">
                           {hasRole('ADMIN') && (
                             <button
                               className="btn btn-sm btn-info"
                               onClick={() => handleAssignStaff(resource)}
                             >
-                              Assign
+                              Request
                             </button>
                           )}
                           {canAddEditResources && (
@@ -898,8 +884,9 @@ const ResourceManagementPage = () => {
         isOpen={showAnalyticsModal}
         onClose={() => setShowAnalyticsModal(false)}
       />
+        </div>
+      </div>
 
-      {/* Assign Staff Modal */}
       <AssignResourceStaffModal
         isOpen={showAssignModal}
         resource={assigningResource}
@@ -908,10 +895,7 @@ const ResourceManagementPage = () => {
           setAssigningResource(null);
         }}
         onAssign={handleAssignStaffSubmit}
-        onUnassign={handleUnassignStaff}
       />
-        </div>
-      </div>
     </div>
   );
 };
