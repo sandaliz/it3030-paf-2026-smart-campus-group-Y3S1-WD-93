@@ -50,13 +50,19 @@ const TicketListPage = () => {
     }
     setLoading(true);
     try {
-      const results = await ticketService.searchTickets(searchTerm);
-      setTickets(results);
+      const results = await ticketService.searchTickets(searchTerm.trim());
+      setTickets(Array.isArray(results) ? results : []);
     } catch (error) {
       console.error('Search failed:', error);
+      setTickets([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
+    fetchTickets();
   };
 
   const getTimeAgo = (dateString) => {
@@ -107,6 +113,17 @@ const TicketListPage = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
             />
+            {searchTerm && (
+              <button 
+                className="btn btn-outline join-item" 
+                onClick={clearSearch}
+                title="Clear search"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
             <button className="btn btn-primary join-item" onClick={handleSearch}>
               Search
             </button>
@@ -146,7 +163,7 @@ const TicketListPage = () => {
               <div className="flex gap-2">
                 <button className="btn btn-outline flex-1" onClick={() => {
                   setFilters({ status: '', priority: '' });
-                  setSearchTerm('');
+                  clearSearch();
                 }}>
                   Clear
                 </button>

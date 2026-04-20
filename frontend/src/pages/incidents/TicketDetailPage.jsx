@@ -66,16 +66,18 @@ const TicketDetailPage = () => {
   const [error, setError]         = useState(null);
   const [comments, setComments]   = useState([]);
   const [newComment, setNewComment] = useState('');
-  const [updating, setUpdating]   = useState(false);
+  const [isInternalComment, setIsInternalComment] = useState(false);
   const [posting, setPosting]     = useState(false);
   const [resolutionModal, setResolutionModal] = useState(false);
   const [resolutionNote, setResolutionNote]   = useState('');
+  const [confirmModal, setConfirmModal] = useState(false);
+  const [confirmFeedback, setConfirmFeedback] = useState('');
+  const [updating, setUpdating] = useState(false);
   
   // Comment edit/delete state
   const [editingComment, setEditingComment] = useState(null);
   const [editContent, setEditContent] = useState('');
   const [updatingComment, setUpdatingComment] = useState(false);
-  const [isInternalComment, setIsInternalComment] = useState(false);
 
   const isAdmin      = hasRole('ADMIN');
   const isTechnician = hasRole('TECHNICIAN');
@@ -190,6 +192,20 @@ const TicketDetailPage = () => {
     }
   };
 
+  const handleConfirmResolution = async () => {
+    setUpdating(true);
+    try {
+      await ticketService.confirmResolution(id, confirmFeedback);
+      setConfirmModal(false);
+      setConfirmFeedback('');
+      fetchTicketData();
+    } catch (err) {
+      alert('Failed to confirm resolution: ' + (err.response?.data?.message || 'Unknown error'));
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   if (loading) return <PageLoader />;
   if (error)   return <div className="alert alert-error m-6">{error}</div>;
   if (!ticket) return <div className="alert alert-warning m-6">Ticket not found</div>;
@@ -278,6 +294,20 @@ const TicketDetailPage = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                   Mark Resolved
+                </button>
+              )}
+
+              {/* Confirmation button for ticket owners when ticket is resolved */}
+              {ticket.status === 'RESOLVED' && ticket.createdBy === user?.id && (
+                <button
+                  className="btn btn-primary btn-sm gap-1.5 rounded-lg"
+                  onClick={() => setConfirmModal(true)}
+                  disabled={updating}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Confirm Resolution
                 </button>
               )}
             </div>
@@ -576,6 +606,51 @@ const TicketDetailPage = () => {
             </div>
           </div>
           <div className="modal-backdrop bg-black/40" onClick={() => setResolutionModal(false)} />
+        </div>
+      )}
+
+      {/* ── Confirmation modal ──────────────────────────── */}
+      {confirmModal && (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-sm rounded-2xl">
+            <h3 className="font-bold text-lg mb-1">Confirm Resolution</h3>
+            <p className="text-sm text-base-content/60 mb-4">
+              Please confirm that this issue has been resolved to your satisfaction.
+            </p>
+            <textarea
+              className="textarea textarea-bordered w-full text-sm rounded-xl"
+              placeholder="Any additional feedback about the resolution... (optional)"
+              value={confirmFeedback}
+              onChange={(e) => setConfirmFeedback(e.target.value)}
+              rows={3}
+            />
+            <div className="modal-action mt-4 gap-2">
+              <button
+                className="btn btn-ghost flex-1 rounded-xl"
+                onClick={() => {
+                  setConfirmModal(false);
+                  setConfirmFeedback('');
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary flex-1 rounded-xl gap-1.5"
+                disabled={updating}
+                onClick={handleConfirmResolution}
+              >
+                {updating ? <span className="loading loading-spinner loading-sm" /> : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Confirm
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+          <div className="modal-backdrop bg-black/40" onClick={() => setConfirmModal(false)} />
         </div>
       )}
     </div>
