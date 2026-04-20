@@ -22,6 +22,12 @@ const UserManagement = () => {
     technicianSkills: ''
   });
 
+  // Validation state
+  const [errors, setErrors] = useState({
+    email: '',
+    password: ''
+  });
+
   // Available roles
   const availableRoles = ['USER', 'ADMIN', 'TECHNICIAN', 'LECTURER', 'NON_ACADEMIC', 'BOOKING_MANAGER', 'TICKET_MANAGER', 'RESOURCE_MANAGER'];
 
@@ -48,10 +54,65 @@ const UserManagement = () => {
     user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Validate email
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      return 'Email is required';
+    }
+    if (!emailRegex.test(email)) {
+      return 'Please enter a valid email address';
+    }
+    return '';
+  };
+
+  // Validate password
+  const validatePassword = (password) => {
+    if (!password) {
+      return 'Password is required';
+    }
+    if (password.length < 8) {
+      return 'Password must be at least 8 characters';
+    }
+    if (!/[A-Z]/.test(password)) {
+      return 'Password must contain at least one uppercase letter';
+    }
+    if (!/[a-z]/.test(password)) {
+      return 'Password must contain at least one lowercase letter';
+    }
+    if (!/\d/.test(password)) {
+      return 'Password must contain at least one number';
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      return 'Password must contain at least one special character';
+    }
+    return '';
+  };
+
+  // Handle input change with validation
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+
+    if (field === 'email') {
+      setErrors(prev => ({ ...prev, email: validateEmail(value) }));
+    } else if (field === 'password') {
+      setErrors(prev => ({ ...prev, password: validatePassword(value) }));
+    }
+  };
+
   // Create user
   const handleCreateUser = async () => {
-    if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim()) {
-      alert('Name, email, and password are required');
+    // Validate all fields
+    const emailError = validateEmail(formData.email);
+    const passwordError = validatePassword(formData.password);
+
+    setErrors({
+      email: emailError,
+      password: passwordError
+    });
+
+    if (emailError || passwordError || !formData.name.trim()) {
+      alert('Please fix all errors before creating user');
       return;
     }
 
@@ -74,6 +135,7 @@ const UserManagement = () => {
       await userService.createUser(payload);
       setShowCreateModal(false);
       setFormData({ email: '', name: '', password: '', roles: ['USER'], enabled: true, technicianSkills: '' });
+      setErrors({ email: '', password: '' });
       fetchUsers();
       alert('User created successfully');
     } catch (error) {
@@ -313,11 +375,16 @@ const UserManagement = () => {
                 </label>
                 <input
                   type="email"
-                  className="input input-bordered"
+                  className={`input input-bordered ${errors.email ? 'input-error' : ''}`}
                   value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
                   placeholder="Enter email address"
                 />
+                {errors.email && (
+                  <label className="label">
+                    <span className="label-text-alt text-error text-xs">{errors.email}</span>
+                  </label>
+                )}
               </div>
 
               <div className="form-control mb-4">
@@ -326,11 +393,16 @@ const UserManagement = () => {
                 </label>
                 <input
                   type="password"
-                  className="input input-bordered"
+                  className={`input input-bordered ${errors.password ? 'input-error' : ''}`}
                   value={formData.password}
-                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
                   placeholder="Enter a temporary password"
                 />
+                {errors.password && (
+                  <label className="label">
+                    <span className="label-text-alt text-error text-xs">{errors.password}</span>
+                  </label>
+                )}
               </div>
 
               <div className="form-control mb-4">

@@ -10,6 +10,7 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({});
+  const [passwordError, setPasswordError] = useState('');
   const [userBookings, setUserBookings] = useState([]);
   const [userTickets, setUserTickets] = useState([]);
   const [activeTab, setActiveTab] = useState('profile');
@@ -62,14 +63,22 @@ const UserProfile = () => {
   };
 
   const handleSave = async () => {
+    // Check password validation if password is being changed
+    if (editForm.password && passwordError) {
+      alert('Please fix password errors before saving');
+      return;
+    }
+
     try {
-      // Update profile logic - you may need to implement this endpoint
-      console.log('Saving profile:', editForm);
-      setProfileData(editForm);
-      updateUser(editForm);
+      const response = await userService.updateProfile(editForm);
+      setProfileData(response);
+      updateUser(response);
       setEditing(false);
+      setPasswordError('');
+      alert('Profile updated successfully');
     } catch (error) {
       console.error('Failed to update profile:', error);
+      alert('Failed to update profile: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -79,6 +88,25 @@ const UserProfile = () => {
       ...prev,
       [name]: value
     }));
+
+    // Validate password if it's being changed
+    if (name === 'password' && value) {
+      if (value.length < 8) {
+        setPasswordError('Password must be at least 8 characters');
+      } else if (!/[A-Z]/.test(value)) {
+        setPasswordError('Password must contain at least one uppercase letter');
+      } else if (!/[a-z]/.test(value)) {
+        setPasswordError('Password must contain at least one lowercase letter');
+      } else if (!/\d/.test(value)) {
+        setPasswordError('Password must contain at least one number');
+      } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+        setPasswordError('Password must contain at least one special character');
+      } else {
+        setPasswordError('');
+      }
+    } else if (name === 'password' && !value) {
+      setPasswordError('');
+    }
   };
 
   const getRoleBadgeColor = (role) => {
@@ -189,7 +217,7 @@ const UserProfile = () => {
 
               {/* Edit/Save Buttons */}
               <div className="flex justify-end mb-6">
-                {!editing ? (
+                {editing ? (
                   <div className="space-x-2">
                     <button className="btn btn-ghost" onClick={handleCancel}>
                       Cancel
@@ -234,6 +262,27 @@ const UserProfile = () => {
                     className="input input-bordered w-full"
                   />
                 </div>
+
+                {editing && (
+                  <div className="form-control">
+                    <label className="label">
+                      <span className="label-text font-medium">New Password (optional)</span>
+                    </label>
+                    <input
+                      type="password"
+                      name="password"
+                      value={editForm?.password || ''}
+                      onChange={handleInputChange}
+                      placeholder="Leave blank to keep current password"
+                      className={`input input-bordered w-full ${passwordError ? 'input-error' : ''}`}
+                    />
+                    {passwordError && (
+                      <label className="label">
+                        <span className="label-text-alt text-error text-xs">{passwordError}</span>
+                      </label>
+                    )}
+                  </div>
+                )}
 
                 <div className="form-control">
                   <label className="label">
