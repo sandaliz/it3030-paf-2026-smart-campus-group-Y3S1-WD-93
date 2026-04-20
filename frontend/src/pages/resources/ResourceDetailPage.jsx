@@ -104,7 +104,7 @@ const ResourceDetailPage = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSavedResources(response.data || []);
-      setToast({ message: 'Resource saved successfully', type: 'success' });
+      setToast({ message: 'Resource saved! View in dashboard saved resources section', type: 'success' });
     } catch (error) {
       console.error('Error saving resource:', error);
       setToast({ message: 'Failed to save resource', type: 'error' });
@@ -122,9 +122,10 @@ const ResourceDetailPage = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSavedResources(response.data || []);
-      setToast({ message: 'Resource removed from saved', type: 'success' });
+      setToast({ message: 'Resource removed from saved', type: 'error' });
     } catch (error) {
       console.error('Error unsaving resource:', error);
+      setToast({ message: 'Failed to remove resource', type: 'error' });
     }
   };
 
