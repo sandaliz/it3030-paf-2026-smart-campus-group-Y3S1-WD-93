@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 
 const ResourcesList = () => {
+  const navigate = useNavigate();
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -149,9 +151,9 @@ const ResourcesList = () => {
                 </div>
                 
                 <div className="card-actions justify-end mt-4">
-                  <button 
+                  <button
                     className="btn btn-primary btn-sm"
-                    onClick={() => window.location.href = `/bookings/new?resourceId=${resource.id}`}
+                    onClick={() => navigate(`/bookings/new?resourceId=${resource.id}`)}
                   >
                     📅 Book Now
                   </button>

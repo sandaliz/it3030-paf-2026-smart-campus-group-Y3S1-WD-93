@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../hooks/useNotifications';
+import Toast from '../components/ui/Toast';
 
 const StudentDashboard = () => {
+    const navigate = useNavigate();
     const [stats, setStats] = useState({
         activeBookings: 0,
         pendingBookings: 0,
@@ -20,6 +23,7 @@ const StudentDashboard = () => {
     const [noteModalOpen, setNoteModalOpen] = useState(false);
     const [selectedResource, setSelectedResource] = useState(null);
     const [noteText, setNoteText] = useState('');
+    const [toast, setToast] = useState(null);
     const { user } = useAuth();
     const { userBookings, userTickets, markAsRead, markAllAsRead, isNotificationRead, getTotalUnreadCount } = useNotifications();
 
@@ -144,8 +148,10 @@ const StudentDashboard = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             await refreshSavedResources();
+            setToast({ message: 'Resource saved successfully', type: 'success' });
         } catch (error) {
             console.error('Error saving resource:', error);
+            setToast({ message: 'Failed to save resource', type: 'error' });
         }
     };
 
@@ -156,8 +162,10 @@ const StudentDashboard = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             await refreshSavedResources();
+            setToast({ message: 'Resource removed from saved', type: 'success' });
         } catch (error) {
             console.error('Error unsaving resource:', error);
+            setToast({ message: 'Failed to remove resource', type: 'error' });
         }
     };
 
@@ -397,8 +405,8 @@ const StudentDashboard = () => {
                                 <div className="space-y-2">
                                     <h4 className="text-2xl font-black text-primary">📅 Book a Resource</h4>
                                     <p className="text-sm opacity-60 font-medium">Browse and book labs, halls, or equipment.</p>
-                                    <button 
-                                        onClick={() => window.location.href = 'http://localhost:5173/bookings'}
+                                    <button
+                                        onClick={() => navigate('/bookings')}
                                         className="badge badge-primary p-3 mt-4 text-white font-black group-hover:px-6 transition-all"
                                     >
                                         Book Now →
@@ -606,7 +614,7 @@ const StudentDashboard = () => {
                                             </div>
                                             <p className="text-sm font-bold opacity-70 mt-4 mb-6">Capacity: <span className="text-info">{f.capacity}</span> students</p>
                                             <button
-                                                onClick={() => window.location.href = 'http://localhost:5173/bookings'}
+                                                onClick={() => navigate('/bookings')}
                                                 className={`btn btn-sm ${f.status === 'ACTIVE' ? 'btn-info text-white' : 'btn-ghost border-base-300 text-base-content/40'} btn-block font-black`}
                                             >
                                                 {f.type === 'Equipment' ? 'Request' : 'Book Now'}
@@ -659,6 +667,14 @@ const StudentDashboard = () => {
                         </div>
                     </div>
                 </div>
+            )}
+            {/* Toast Notification */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
             )}
         </div>
     );

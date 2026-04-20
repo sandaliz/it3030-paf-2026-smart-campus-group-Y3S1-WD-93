@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { resourceService } from '../../services/resourceService';
 import { CardSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
+import Toast from '../../components/ui/Toast';
 import { useAuth } from '../../context/AuthContext';
 import lectureHallImage from '../../assets/images/lecture-hall.jpg';
 import laboratoryImage from '../../assets/images/laboratory.jpg';
@@ -12,6 +13,7 @@ import officeImage from '../../assets/images/office.jpg';
 import auditoriumImage from '../../assets/images/auditorium.jpg';
 
 const ResourceListPage = () => {
+  const navigate = useNavigate();
   const { user, hasRole, hasAnyRole } = useAuth();
   const [allFilteredResources, setAllFilteredResources] = useState([]);
   const [resources, setResources] = useState([]);
@@ -32,6 +34,7 @@ const ResourceListPage = () => {
   });
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [savedResources, setSavedResources] = useState([]);
+  const [toast, setToast] = useState(null);
 
   // Check if user can book resources
   const canBookResources = hasAnyRole(['STUDENT', 'LECTURER', 'STAFF', 'ADMIN']);
@@ -70,8 +73,10 @@ const ResourceListPage = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSavedResources(response.data || []);
+      setToast({ message: 'Resource saved successfully', type: 'success' });
     } catch (error) {
       console.error('Error saving resource:', error);
+      setToast({ message: 'Failed to save resource', type: 'error' });
     }
   };
 
@@ -86,8 +91,10 @@ const ResourceListPage = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSavedResources(response.data || []);
+      setToast({ message: 'Resource removed from saved', type: 'success' });
     } catch (error) {
       console.error('Error unsaving resource:', error);
+      setToast({ message: 'Failed to remove resource', type: 'error' });
     }
   };
 
@@ -123,10 +130,9 @@ const ResourceListPage = () => {
       alert('This resource is not available at the current time. Please check the availability schedule in the details.');
       return;
     }
-    
-    // For now, just navigate to resource details with booking intent
-    // In a full implementation, this would open a booking modal/form
-    window.location.href = `/resources/${resource.id}?booking=true`;
+
+    // Navigate to resource details with booking intent
+    navigate(`/resources/${resource.id}?booking=true`);
   };
 
   // State for filters
@@ -689,6 +695,15 @@ const ResourceListPage = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
           </svg>
         </button>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );
