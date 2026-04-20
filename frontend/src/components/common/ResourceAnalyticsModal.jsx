@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { resourceService } from '../../services/resourceService';
+import { bookingService } from '../../services/bookingService';
+import { ticketService } from '../../services/ticketService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -7,23 +9,85 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState(null);
   const [error, setError] = useState(null);
+  const [timePeriod, setTimePeriod] = useState('all'); // 'all', 'week', 'month', 'year'
+
+  // Helper function to extract timestamp from MongoDB ObjectId
+  const getDateFromObjectId = (id) => {
+    if (!id || id.length !== 24) return null;
+    const timestamp = parseInt(id.substring(0, 8), 16);
+    return new Date(timestamp * 1000);
+  };
 
   useEffect(() => {
     if (isOpen) {
       fetchAnalytics();
     }
-  }, [isOpen]);
+  }, [isOpen, timePeriod]);
 
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
       // Fetch all resources to calculate analytics
       const allResources = await resourceService.getAllResources();
+      
+      // Fetch all bookings for most booked resources
+      const allBookings = await bookingService.getAllBookings();
+      const bookingsArray = Array.isArray(allBookings) ? allBookings : (allBookings?.content || []);
+      
+      // Fetch all tickets for resources needing help
+      const allTickets = await ticketService.getAllTickets();
+      const ticketsArray = Array.isArray(allTickets) ? allTickets : (allTickets?.content || []);
 
       // Calculate analytics
       const totalShares = allResources.reduce((sum, r) => sum + (r.shareCount || 0), 0);
       const sharedResources = allResources.filter(r => r.shareCount > 0);
       const mostShared = [...allResources].sort((a, b) => (b.shareCount || 0) - (a.shareCount || 0)).slice(0, 5);
+      
+      // Newly created resources (using ObjectId timestamp)
+      let cutoffDate = null;
+      const now = new Date();
+      
+      if (timePeriod === 'week') {
+        cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      } else if (timePeriod === 'month') {
+        cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      } else if (timePeriod === 'year') {
+        cutoffDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+      }
+      
+      const newlyCreated = [...allResources]
+        .map(r => ({ ...r, createdAt: getDateFromObjectId(r.id) }))
+        .filter(r => !cutoffDate || (r.createdAt && r.createdAt >= cutoffDate))
+        .sort((a, b) => (b.createdAt || new Date(0)) - (a.createdAt || new Date(0)))
+        .slice(0, 5);
+      
+      // Most booked resources
+      const bookingCounts = {};
+      bookingsArray.forEach(booking => {
+        if (booking.resourceId) {
+          bookingCounts[booking.resourceId] = (bookingCounts[booking.resourceId] || 0) + 1;
+        }
+      });
+      const mostBooked = allResources
+        .map(r => ({ ...r, bookingCount: bookingCounts[r.id] || 0 }))
+        .sort((a, b) => b.bookingCount - a.bookingCount)
+        .slice(0, 5);
+      
+      // Resources with open tickets (need help)
+      const openTickets = ticketsArray.filter(t => 
+        t.status !== 'RESOLVED' && t.status !== 'CLOSED' && t.status !== 'REJECTED'
+      );
+      const ticketCounts = {};
+      openTickets.forEach(ticket => {
+        if (ticket.resourceId) {
+          ticketCounts[ticket.resourceId] = (ticketCounts[ticket.resourceId] || 0) + 1;
+        }
+      });
+      const resourcesNeedingHelp = allResources
+        .map(r => ({ ...r, openTicketCount: ticketCounts[r.id] || 0 }))
+        .filter(r => r.openTicketCount > 0)
+        .sort((a, b) => b.openTicketCount - a.openTicketCount)
+        .slice(0, 5);
       
       // Group by type
       const sharesByType = {};
@@ -62,6 +126,9 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
         totalShares,
         sharedResourcesCount: sharedResources.length,
         mostShared,
+        newlyCreated,
+        mostBooked,
+        resourcesNeedingHelp,
         sharesByType,
         sharesByStatus,
         resourceByStatus,
@@ -123,11 +190,12 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.text('Resources Analytics Report', pageWidth / 2, 12, { align: 'center' });
+      doc.text('Resource Analytics Report', pageWidth / 2, 12, { align: 'center' });
 
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth / 2, 19, { align: 'center' });
+      const periodLabel = timePeriod === 'all' ? 'All Time' : timePeriod === 'week' ? 'Last 7 Days' : timePeriod === 'month' ? 'Last 30 Days' : 'Last Year';
+      doc.text(`Generated: ${new Date().toLocaleDateString()} | Period: ${periodLabel}`, pageWidth / 2, 19, { align: 'center' });
 
       doc.setTextColor(0, 0, 0);
 
@@ -231,11 +299,11 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.text('Resource Share Analytics Report', pageWidth / 2, 12, { align: 'center' });
+      doc.text('Resource Analytics Report', pageWidth / 2, 12, { align: 'center' });
 
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.text('Page 2 of 2', pageWidth / 2, 19, { align: 'center' });
+      doc.text(`Page 2 of 3 | Period: ${periodLabel}`, pageWidth / 2, 19, { align: 'center' });
 
       doc.setTextColor(0, 0, 0);
 
@@ -289,11 +357,100 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
         columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 50 }, 2: { cellWidth: 30 } }
       });
 
+      // PAGE 3
+      doc.addPage();
+
+      // Header for Page 3
+      doc.setFillColor(59, 130, 246);
+      doc.rect(0, 0, pageWidth, 25, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Resource Analytics Report', pageWidth / 2, 12, { align: 'center' });
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Page 3 of 3 | Period: ${periodLabel}`, pageWidth / 2, 19, { align: 'center' });
+
+      doc.setTextColor(0, 0, 0);
+
+      // Newly Created Resources
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Newly Created Resources (${periodLabel})`, 14, 35);
+
+      const newlyCreatedData = analytics.newlyCreated.map((resource, index) => [
+        (index + 1).toString(),
+        resource.name,
+        resource.type.replace('_', ' '),
+        resource.location,
+        resource.status.replace('_', ' ')
+      ]);
+
+      autoTable(doc, {
+        startY: 40,
+        head: [['#', 'Name', 'Type', 'Location', 'Status']],
+        body: newlyCreatedData,
+        theme: 'plain',
+        headStyles: { fillColor: [240, 240, 240], fontSize: 8, fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 2 },
+        columnStyles: { 0: { cellWidth: 15 }, 1: { cellWidth: 50 }, 2: { cellWidth: 35 }, 3: { cellWidth: 45 }, 4: { cellWidth: 35 } }
+      });
+
+      // Most Booked Resources
+      const bookedY = doc.lastAutoTable.finalY + 10;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Most Booked Resources', 14, bookedY);
+
+      const mostBookedData = analytics.mostBooked.filter(r => r.bookingCount > 0).map((resource, index) => [
+        (index + 1).toString(),
+        resource.name,
+        resource.type.replace('_', ' '),
+        resource.location,
+        resource.bookingCount.toString()
+      ]);
+
+      autoTable(doc, {
+        startY: bookedY + 5,
+        head: [['#', 'Name', 'Type', 'Location', 'Bookings']],
+        body: mostBookedData,
+        theme: 'plain',
+        headStyles: { fillColor: [240, 240, 240], fontSize: 8, fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 2 },
+        columnStyles: { 0: { cellWidth: 15 }, 1: { cellWidth: 50 }, 2: { cellWidth: 35 }, 3: { cellWidth: 45 }, 4: { cellWidth: 25 } }
+      });
+
+      // Resources Needing Help
+      const helpY = doc.lastAutoTable.finalY + 10;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Resources Needing Help (Open Tickets)', 14, helpY);
+
+      const resourcesNeedingHelpData = analytics.resourcesNeedingHelp.map((resource, index) => [
+        (index + 1).toString(),
+        resource.name,
+        resource.type.replace('_', ' '),
+        resource.location,
+        resource.openTicketCount.toString()
+      ]);
+
+      autoTable(doc, {
+        startY: helpY + 5,
+        head: [['#', 'Name', 'Type', 'Location', 'Open Tickets']],
+        body: resourcesNeedingHelpData,
+        theme: 'plain',
+        headStyles: { fillColor: [240, 240, 240], fontSize: 8, fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 2 },
+        columnStyles: { 0: { cellWidth: 15 }, 1: { cellWidth: 50 }, 2: { cellWidth: 35 }, 3: { cellWidth: 45 }, 4: { cellWidth: 25 } }
+      });
+
       // Footer
       const footerY = doc.lastAutoTable.finalY + 20;
       doc.setFontSize(8);
       doc.setFont('helvetica', 'italic');
-      doc.text('Smart Campus Resource Management System', pageWidth / 2, footerY, { align: 'center' });
+      doc.text('Uniops - Smart Campus Resource Management System', pageWidth / 2, footerY, { align: 'center' });
 
       // Save the PDF
       doc.save(`resource-analytics-${new Date().toISOString().split('T')[0]}.pdf`);
@@ -308,19 +465,49 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
   return (
     <div className="modal modal-open">
       <div className="modal-box max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="font-bold text-lg">Resource Share Analytics</h3>
-          {!loading && analytics && (
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex justify-between items-center">
+            <h3 className="font-bold text-2xl">Resource Analytics</h3>
+            {!loading && analytics && (
+              <button
+                onClick={exportToPDF}
+                className="btn btn-sm btn-outline"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export PDF
+              </button>
+            )}
+          </div>
+          
+          {/* Time Period Selector */}
+          <div className="flex gap-2">
             <button
-              onClick={exportToPDF}
-              className="btn btn-sm btn-outline"
+              className={`btn btn-sm ${timePeriod === 'all' ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setTimePeriod('all')}
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Export PDF
+              All Time
             </button>
-          )}
+            <button
+              className={`btn btn-sm ${timePeriod === 'week' ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setTimePeriod('week')}
+            >
+              Last 7 Days
+            </button>
+            <button
+              className={`btn btn-sm ${timePeriod === 'month' ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setTimePeriod('month')}
+            >
+              Last 30 Days
+            </button>
+            <button
+              className={`btn btn-sm ${timePeriod === 'year' ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setTimePeriod('year')}
+            >
+              Last Year
+            </button>
+          </div>
         </div>
         
         {loading ? (
@@ -336,7 +523,26 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
           </div>
         ) : analytics ? (
           <div className="space-y-6">
+            {/* Resource Overview by Status */}
+            <div className="card bg-base-200">
+              <div className="card-body">
+                <h4 className="card-title">Resource Overview by Status</h4>
+                <div className="flex flex-wrap justify-between gap-4">
+                  {Object.entries(analytics.resourceByStatus).map(([status, count]) => (
+                    <div key={status} className="text-center flex-1 min-w-[120px]">
+                      <div className={`badge ${getStatusBadgeColor(status)} badge-lg mb-2`}>
+                        {status.replace('_', ' ')}
+                      </div>
+                      <div className="text-2xl font-bold">{count}</div>
+                      <div className="text-sm text-base-content/60">resources</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
             {/* Overview Stats */}
+            <h4 className="text-lg font-semibold">Resources Shares Overview</h4>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="stat bg-base-200 rounded-lg p-4">
                 <div className="stat-figure text-primary">
@@ -376,24 +582,6 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
                 </div>
                 <div className="stat-title">Avg Shares/Resource</div>
                 <div className="stat-value text-2xl">{analytics.avgSharesPerResource.toFixed(1)}</div>
-              </div>
-            </div>
-
-            {/* Resource Overview by Status */}
-            <div className="card bg-base-200">
-              <div className="card-body">
-                <h4 className="card-title">Resource Overview by Status</h4>
-                <div className="flex flex-wrap justify-between gap-4">
-                  {Object.entries(analytics.resourceByStatus).map(([status, count]) => (
-                    <div key={status} className="text-center flex-1 min-w-[120px]">
-                      <div className={`badge ${getStatusBadgeColor(status)} badge-lg mb-2`}>
-                        {status.replace('_', ' ')}
-                      </div>
-                      <div className="text-2xl font-bold">{count}</div>
-                      <div className="text-sm text-base-content/60">resources</div>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
 
@@ -475,6 +663,117 @@ const ResourceAnalyticsModal = ({ isOpen, onClose }) => {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            {/* Newly Created Resources */}
+            <div className="card bg-base-200">
+              <div className="card-body">
+                <h4 className="card-title">
+                  Newly Created Resources 
+                  {timePeriod === 'all' && '(All Time)'}
+                  {timePeriod === 'week' && '(Last 7 Days)'}
+                  {timePeriod === 'month' && '(Last 30 Days)'}
+                  {timePeriod === 'year' && '(Last Year)'}
+                </h4>
+                {analytics.newlyCreated.length > 0 ? (
+                  <div className="space-y-3">
+                    {analytics.newlyCreated.map((resource, index) => (
+                      <div key={resource.id} className="flex items-center gap-3 p-3 bg-base-100 rounded-lg">
+                        <span className="text-2xl">{getResourceIcon(resource.type)}</span>
+                        <div className="flex-1">
+                          <div className="font-semibold">{resource.name}</div>
+                          <div className="text-sm text-base-content/70">
+                            {resource.type.replace('_', ' ').toLowerCase()} • {resource.location}
+                          </div>
+                        </div>
+                        <div className={`badge ${getStatusBadgeColor(resource.status)} badge-sm`}>
+                          {resource.status.replace('_', ' ')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-base-content/60 py-4">
+                    No new resources created in the last 7 days
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Most Booked Resources */}
+            <div className="card bg-base-200">
+              <div className="card-body">
+                <h4 className="card-title">Most Booked Resources</h4>
+                {analytics.mostBooked.length > 0 && analytics.mostBooked[0].bookingCount > 0 ? (
+                  <div className="space-y-3">
+                    {analytics.mostBooked.map((resource, index) => (
+                      <div key={resource.id} className="flex items-center gap-3 p-3 bg-base-100 rounded-lg">
+                        <div className="text-2xl font-bold text-primary w-8">{index + 1}</div>
+                        <span className="text-2xl">{getResourceIcon(resource.type)}</span>
+                        <div className="flex-1">
+                          <div className="font-semibold">{resource.name}</div>
+                          <div className="text-sm text-base-content/70">
+                            {resource.type.replace('_', ' ').toLowerCase()} • {resource.location}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className={`badge ${getStatusBadgeColor(resource.status)} badge-sm`}>
+                            {resource.status.replace('_', ' ')}
+                          </div>
+                          <div className="text-lg font-bold text-primary">
+                            {resource.bookingCount}
+                          </div>
+                          <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-base-content/60 py-4">
+                    No bookings recorded yet
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Resources Needing Help (Open Tickets) */}
+            <div className="card bg-base-200">
+              <div className="card-body">
+                <h4 className="card-title">Resources Needing Help (Open Tickets)</h4>
+                {analytics.resourcesNeedingHelp.length > 0 ? (
+                  <div className="space-y-3">
+                    {analytics.resourcesNeedingHelp.map((resource, index) => (
+                      <div key={resource.id} className="flex items-center gap-3 p-3 bg-base-100 rounded-lg">
+                        <div className="text-2xl font-bold text-error w-8">{index + 1}</div>
+                        <span className="text-2xl">{getResourceIcon(resource.type)}</span>
+                        <div className="flex-1">
+                          <div className="font-semibold">{resource.name}</div>
+                          <div className="text-sm text-base-content/70">
+                            {resource.type.replace('_', ' ').toLowerCase()} • {resource.location}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className={`badge ${getStatusBadgeColor(resource.status)} badge-sm`}>
+                            {resource.status.replace('_', ' ')}
+                          </div>
+                          <div className="text-lg font-bold text-error">
+                            {resource.openTicketCount}
+                          </div>
+                          <svg className="w-5 h-5 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-base-content/60 py-4">
+                    No resources with open tickets
+                  </div>
+                )}
               </div>
             </div>
           </div>
