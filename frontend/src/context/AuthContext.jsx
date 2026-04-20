@@ -60,6 +60,13 @@ export const AuthProvider = ({ children }) => {
         clearSession();
     };
 
+    const updateUser = (updatedUserData) => {
+        setUser(prevUser => ({
+            ...prevUser,
+            ...updatedUserData
+        }));
+    };
+
     const getDashboardPath = () => {
         if (!user || !user.roles || user.roles.length === 0) {
             return '/login';
@@ -96,6 +103,7 @@ export const AuthProvider = ({ children }) => {
                 loading,
                 login,
                 logout,
+                updateUser,
                 hasRole,
                 hasAnyRole,
                 getDashboardPath

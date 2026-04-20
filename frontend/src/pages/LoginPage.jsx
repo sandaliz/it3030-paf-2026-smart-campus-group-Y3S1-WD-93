@@ -20,15 +20,53 @@ const LoginPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
     
-    const {
-        values: form,
-        errors,
-        touched,
-        handleChange,
-        handleBlur,
-        validateAll,
-        isFormValid
-    } = useRealTimeValidation({ email: '', password: '' });
+    const [form, setForm] = useState({ email: '', password: '' });
+    const [errors, setErrors] = useState({});
+    const [touched, setTouched] = useState({});
+
+    const handleChange = (name, value) => {
+        setForm(prev => ({ ...prev, [name]: value }));
+        setTouched(prev => ({ ...prev, [name]: true }));
+        
+        // Only validate email
+        if (name === 'email') {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!value) {
+                setErrors(prev => ({ ...prev, email: 'Email is required' }));
+            } else if (!emailRegex.test(value)) {
+                setErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
+            } else {
+                setErrors(prev => ({ ...prev, email: '' }));
+            }
+        }
+    };
+
+    const handleBlur = (name) => {
+        setTouched(prev => ({ ...prev, [name]: true }));
+        if (name === 'email') {
+            handleChange(name, form[name]);
+        }
+    };
+
+    const validateAll = () => {
+        const newErrors = {};
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        
+        if (!form.email) {
+            newErrors.email = 'Email is required';
+        } else if (!emailRegex.test(form.email)) {
+            newErrors.email = 'Please enter a valid email address';
+        }
+        
+        if (!form.password) {
+            newErrors.password = 'Password is required';
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const isFormValid = form.email && !errors.email && form.password && !errors.password;
     
     const [submitting, setSubmitting] = useState(false);
     const [serverError, setServerError] = useState('');
@@ -153,10 +191,7 @@ const LoginPage = () => {
                                         name="password"
                                         value={form.password}
                                         onChange={handleFieldChange}
-                                        onBlur={() => handleBlur('password')}
-                                        className={`input input-bordered bg-base-200/50 focus:bg-base-100 h-14 rounded-2xl w-full pr-12 transition-all ${
-                                            touched.password && errors.password ? 'input-error' : 'border-base-content/10'
-                                        }`}
+                                        className="input input-bordered bg-base-200/50 focus:bg-base-100 h-14 rounded-2xl w-full pr-12 transition-all border-base-content/10"
                                         placeholder="••••••••"
                                         required
                                     />
@@ -168,11 +203,6 @@ const LoginPage = () => {
                                         {showPassword ? <HiEyeOff className="w-5 h-5" /> : <HiEye className="w-5 h-5" />}
                                     </button>
                                 </div>
-                                {touched.password && errors.password && (
-                                    <label className="label">
-                                        <span className="label-text-alt text-error font-medium">{errors.password}</span>
-                                    </label>
-                                )}
                             </div>
 
                             {serverError && (

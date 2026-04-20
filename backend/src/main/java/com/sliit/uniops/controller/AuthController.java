@@ -5,6 +5,7 @@ import com.sliit.uniops.dto.request.auth.RegisterRequest;
 import com.sliit.uniops.dto.response.auth.AuthResponse;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sliit.uniops.model.User;
 import com.sliit.uniops.security.UserPrincipal;
 import com.sliit.uniops.service.AuthService;
 import jakarta.validation.Valid;
@@ -60,6 +61,34 @@ public class AuthController {
                 "name", user.getName(),
                 "role", user.getRole()
         ));
+    }
+
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestBody Map<String, Object> profileData
+    ) {
+        if (user == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "Not authenticated"));
+        }
+
+        try {
+            User updatedUser = authService.updateProfile(user.getId(), profileData);
+            return ResponseEntity.ok(Map.of(
+                    "id", updatedUser.getId(),
+                    "email", updatedUser.getEmail(),
+                    "name", updatedUser.getName(),
+                    "username", updatedUser.getUsername(),
+                    "authProvider", updatedUser.getAuthProvider(),
+                    "roles", updatedUser.getRoles(),
+                    "enabled", updatedUser.isEnabled(),
+                    "createdAt", updatedUser.getCreatedAt()
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("message", "Failed to update profile"));
+        }
     }
 
     @PostMapping("/logout")

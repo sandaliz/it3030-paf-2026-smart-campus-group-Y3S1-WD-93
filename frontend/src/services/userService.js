@@ -49,5 +49,11 @@ export const userService = {
   getCurrentUser: async () => {
     const response = await api.get('/api/auth/me');
     return response.data;
+  },
+
+  // Update current user profile
+  updateProfile: async (profileData) => {
+    const response = await api.put('/api/auth/profile', profileData);
+    return response.data;
   }
 };

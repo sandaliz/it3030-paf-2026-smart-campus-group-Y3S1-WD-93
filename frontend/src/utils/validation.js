@@ -254,8 +254,13 @@ export const useRealTimeValidation = (initialValues = {}) => {
       case 'purpose':
         validation = validateTextLength(value, 5, 500, 'Purpose');
         break;
+      case 'expectedAttendees':
+        validation = validateNumber(value, 1, undefined, 'Expected Attendees');
+        break;
       default:
         if (value && typeof value === 'string' && value.trim() !== '') {
+          validation = { isValid: true, message: '' };
+        } else if (value && typeof value === 'number') {
           validation = { isValid: true, message: '' };
         } else {
           validation = { isValid: false, message: 'This field is required' };

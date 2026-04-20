@@ -190,4 +190,28 @@ public class AuthService {
         Object value = user.getAttributes().get(key);
         return value == null ? null : value.toString();
     }
+
+    public User updateProfile(String userId, Map<String, Object> profileData) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (profileData.containsKey("name") && profileData.get("name") != null) {
+            user.setName(profileData.get("name").toString().trim());
+        }
+
+        if (profileData.containsKey("email") && profileData.get("email") != null) {
+            String newEmail = profileData.get("email").toString().trim().toLowerCase();
+            if (!newEmail.equals(user.getEmail()) && userRepository.existsByEmail(newEmail)) {
+                throw new IllegalArgumentException("Email is already registered");
+            }
+            user.setEmail(newEmail);
+        }
+
+        if (profileData.containsKey("password") && profileData.get("password") != null 
+                && !profileData.get("password").toString().isBlank()) {
+            user.setPassword(passwordEncoder.encode(profileData.get("password").toString()));
+        }
+
+        return userRepository.save(user);
+    }
 }
