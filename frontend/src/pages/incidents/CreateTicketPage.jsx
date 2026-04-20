@@ -252,7 +252,23 @@ const CreateTicketPage = () => {
       if (!form.location.trim()) errs.location = 'Location is required';
     }
     if (s === 3) {
-      if (!form.contactDetails.trim()) errs.contactDetails = 'Contact details are required';
+      if (!form.contactDetails.trim()) {
+        errs.contactDetails = 'Contact details are required';
+      } else if (form.preferredContactMethod === 'PHONE') {
+        // Phone validation: exactly 10 digits, allowing optional spaces, dashes, or parentheses
+        const phoneDigits = form.contactDetails.replace(/\D/g, '');
+        if (phoneDigits.length !== 10) {
+          errs.contactDetails = 'Phone number must be exactly 10 digits';
+        } else if (!/^\+?[\d\s\-\(\)]+$/.test(form.contactDetails.trim())) {
+          errs.contactDetails = 'Invalid phone number format';
+        }
+      } else if (form.preferredContactMethod === 'EMAIL') {
+        // Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(form.contactDetails.trim())) {
+          errs.contactDetails = 'Please enter a valid email address';
+        }
+      }
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -467,7 +483,7 @@ const CreateTicketPage = () => {
                   label={form.preferredContactMethod === 'PHONE' ? 'Phone Number' : 'Email Address'}
                   required
                   error={errors.contactDetails}
-                  hint={form.preferredContactMethod === 'PHONE' ? 'Include country code if international' : 'We\'ll send ticket updates to this address'}
+                  hint={form.preferredContactMethod === 'PHONE' ? 'Exactly 10 digits (e.g., 123-456-7890)' : 'We\'ll send ticket updates to this address'}
                 >
                   <label className="input input-bordered flex items-center gap-2">
                     <Icon
@@ -478,7 +494,7 @@ const CreateTicketPage = () => {
                     <input
                       type={form.preferredContactMethod === 'PHONE' ? 'tel' : 'email'}
                       className="grow bg-transparent outline-none text-sm"
-                      placeholder={form.preferredContactMethod === 'PHONE' ? '+1 (555) 000-0000' : 'you@example.com'}
+                      placeholder={form.preferredContactMethod === 'PHONE' ? '123-456-7890' : 'you@example.com'}
                       value={form.contactDetails}
                       onChange={e => set('contactDetails', e.target.value)}
                     />

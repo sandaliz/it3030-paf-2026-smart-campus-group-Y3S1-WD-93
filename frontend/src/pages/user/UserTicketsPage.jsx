@@ -24,6 +24,24 @@ const UserTicketsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize] = useState(10);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Handle search input with debouncing
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+  };
+
+  const handleSearchSubmit = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      fetchTickets();
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
+  };
 
   // Form state for new ticket
   const [newTicket, setNewTicket] = useState({
@@ -83,10 +101,20 @@ const UserTicketsPage = () => {
     
     try {
       setLoading(true);
-      const response = await ticketAPI.getUserTickets(user.id, currentPage, pageSize);
-      setTickets(response.data.content || response.data);
+      let response;
+      
+      if (searchTerm.trim()) {
+        // Use search API when there's a search term
+        response = await ticketService.searchTickets(searchTerm.trim());
+        setTickets(response);
+      } else {
+        // Use regular tickets API when no search term
+        response = await ticketAPI.getUserTickets(user.id, currentPage, pageSize);
+        setTickets(response.data.content || response.data);
+      }
     } catch (error) {
       console.error('Error fetching tickets:', error);
+      setTickets([]);
     } finally {
       setLoading(false);
     }
@@ -245,13 +273,13 @@ const UserTicketsPage = () => {
       fetchStats();
       fetchResources();
     }
-  }, [user]);
+  }, [user, currentPage, pageSize]);
 
-  const filteredTickets = tickets.filter(ticket =>
-    ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ticket.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ticket.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    if (user?.id) {
+      fetchTickets();
+    }
+  }, [searchTerm]);
 
   if (loading) {
     return (
@@ -301,13 +329,27 @@ const UserTicketsPage = () => {
         <div className="card-body">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
-              <input
-                type="text"
-                placeholder="Search tickets..."
-                className="input input-bordered w-full"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+              <div className="join w-full">
+                <input
+                  type="text"
+                  placeholder="Search by title, description, or ID..."
+                  className="input input-bordered join-item flex-1"
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  onKeyDown={handleSearchSubmit}
+                />
+                {searchTerm && (
+                  <button 
+                    className="btn btn-outline join-item" 
+                    onClick={clearSearch}
+                    title="Clear search"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
             </div>
             <div className="flex gap-2">
               <Link to="/resources" className="btn btn-outline">
@@ -339,7 +381,7 @@ const UserTicketsPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredTickets.map((ticket) => (
+                {tickets.map((ticket) => (
                   <tr key={ticket.id} className="hover">
                     <td className="font-mono text-sm">#{ticket.id}</td>
                     <td>
