@@ -80,7 +80,7 @@ const AssignResourceStaffModal = ({ isOpen, resource, onClose, onAssign }) => {
                     <span className="text-base-content/60">{new Date(ticket.createdAt).toLocaleDateString()}</span>
                   </div>
                   <Link
-                    to={`/incidents/${ticket.id}`}
+                    to={`/tickets/${ticket.id}`}
                     className="btn btn-xs btn-primary"
                     onClick={() => onClose()}
                   >

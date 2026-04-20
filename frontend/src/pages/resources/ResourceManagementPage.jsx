@@ -728,7 +728,7 @@ const ResourceManagementPage = () => {
             <table className="table table-zebra">
               <thead>
                 <tr>
-                  <th>
+                  <th className="w-12">
                     <label>
                       <input
                         type="checkbox"
@@ -738,12 +738,12 @@ const ResourceManagementPage = () => {
                       />
                     </label>
                   </th>
-                  <th className="w-140">Resource</th>
-                  <th>Type</th>
-                  <th>Location</th>
-                  <th>Capacity</th>
-                  <th className="w-48">Status</th>
-                  <th>Actions</th>
+                  <th className="w-80 min-w-72">Resource</th>
+                  <th className="w-36 min-w-32">Type</th>
+                  <th className="w-40 min-w-36">Location</th>
+                  <th className="w-24 min-w-20 text-center">Capacity</th>
+                  <th className="w-40 min-w-36">Status</th>
+                  <th className="w-auto min-w-max">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -785,12 +785,12 @@ const ResourceManagementPage = () => {
                         </label>
                       </td>
                       <td>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xl">{resource.type ? getResourceIcon(resource.type) : '📦'}</span>
-                          <div className="flex-1">
-                            <div className="font-semibold">{resource.name || 'N/A'}</div>
+                        <div className="flex items-center gap-3 max-w-80">
+                          <span className="text-xl shrink-0">{resource.type ? getResourceIcon(resource.type) : '📦'}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold truncate">{resource.name || 'N/A'}</div>
                             {resource.description && (
-                              <div className="text-sm text-base-content/70 line-clamp-1">
+                              <div className="text-sm text-base-content/70 truncate" title={resource.description}>
                                 {resource.description}
                               </div>
                             )}
@@ -810,7 +810,7 @@ const ResourceManagementPage = () => {
                         </span>
                       </td>
                       <td>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           {hasRole('ADMIN') && (
                             <>
                               <button
