@@ -188,7 +188,7 @@ const TicketManagementPage = () => {
   const fetchTickets = async () => {
     try {
       setLoading(true);
-      const res = await ticketAPI.getAllTickets(0, 10);
+      const res = await ticketAPI.getAllTickets(0, 1000);
       setTickets(res.data.content || res.data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
