@@ -1,7 +1,45 @@
 # Smart Campus Operations Hub - IT3030 PAF Assignment 2026
 
+**Group**: Y3S1-WD-93
+
 ## Project Overview
 A complete web system for university facility management including resource booking, incident ticketing, and real-time notifications.
+
+## Core Features
+
+### Module A - Facilities & Assets Catalogue
+- Maintain catalogue of bookable resources (lecture halls, labs, meeting rooms, equipment)
+- Resource metadata (type, capacity, location, availability windows, status)
+- Search and filtering by type, capacity, location
+- Admin resource management with audit logging
+
+### Module B - Booking Management
+- Request bookings with date, time range, purpose, and attendees
+- Booking workflow: PENDING → APPROVED/REJECTED → CANCELLED
+- Conflict detection for overlapping time ranges
+- Admin approval/rejection with reasons
+- User booking history and calendar view
+
+### Module C - Maintenance & Incident Ticketing
+- Create incident tickets with category, description, priority
+- Up to 3 image attachments per ticket
+- Ticket workflow: OPEN → IN_PROGRESS → RESOLVED → CLOSED
+- Technician assignment and status updates
+- Comment system with ownership rules
+- Resolution notes and audit trail
+
+### Module D - Notifications
+- Real-time notifications via WebSocket
+- Notification types: booking approval/rejection, ticket status changes, new comments
+- Notification panel in UI with unread count
+- User notification preferences (enable/disable categories)
+
+### Module E - Authentication & Authorization
+- OAuth 2.0 Google sign-in integration
+- Role-based access control: USER, ADMIN, TECHNICIAN
+- JWT token authentication
+- Protected routes and endpoint security
+- User profile management
 
 ## Team Members
 - Member 1: Facilities & Assets Catalogue
@@ -21,13 +59,28 @@ A complete web system for university facility management including resource book
 ```
 project-root/
 ├── backend/                 # Spring Boot application
+│   ├── src/main/java/       # Java source code
+│   │   ├── controller/      # REST controllers
+│   │   ├── service/         # Business logic
+│   │   ├── repository/      # Data access layer
+│   │   ├── model/           # Data models
+│   │   ├── security/        # OAuth2 & JWT configuration
+│   │   └── config/          # Application configuration
+│   └── pom.xml              # Maven dependencies
 ├── frontend/               # React application
-├── .github/                # GitHub Actions workflows
-├── database/               # Database scripts
+│   ├── src/
+│   │   ├── components/      # Reusable components
+│   │   ├── pages/           # Page components
+│   │   ├── services/        # API service calls
+│   │   ├── context/         # React context (auth)
+│   │   └── hooks/           # Custom hooks
+│   └── package.json         # Node dependencies
 ├── docs/                   # Documentation
+│   ├── architecture-diagrams/  # Architecture diagrams
+│   └── testing/               # Postman collections & screenshots
+├── .github/                # GitHub Actions workflows
 └── README.md
 ```
-
 
 ## Setup Instructions
 
@@ -78,7 +131,7 @@ project-root/
 3. Run: `npm run dev`
 
 ## API Documentation
-[Link to API docs]
+Swagger/OpenAPI documentation is available at: `http://localhost:8080/swagger-ui.html` when the backend is running.
 
 ## Contributing Guidelines
 - Create feature branches from `develop`
