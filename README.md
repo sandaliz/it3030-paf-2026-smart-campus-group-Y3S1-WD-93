@@ -1,53 +1,22 @@
-# Smart Campus Operations Hub - IT3030 PAF Assignment 2026
+# Smart Campus Operations Hub
 
-**Group**: Y3S1-WD-93
+IT3030 PAF Assignment 2026 | Group Y3S1-WD-93
 
-## Project Overview
-A complete web system for university facility management including resource booking, incident ticketing, and real-time notifications.
+## Overview
+University facility management system with resource booking, incident ticketing, and real-time notifications.
 
-## Core Features
+![Overall Architecture](docs/architecture-diagrams/01_overall_architecture.png)
 
-### Module A - Facilities & Assets Catalogue
-- Maintain catalogue of bookable resources (lecture halls, labs, meeting rooms, equipment)
-- Resource metadata (type, capacity, location, availability windows, status)
-- Search and filtering by type, capacity, location
-- Admin resource management with audit logging
+## Features
 
-### Module B - Booking Management
-- Request bookings with date, time range, purpose, and attendees
-- Booking workflow: PENDING → APPROVED/REJECTED → CANCELLED
-- Conflict detection for overlapping time ranges
-- Admin approval/rejection with reasons
-- User booking history and calendar view
-
-### Module C - Maintenance & Incident Ticketing
-- Create incident tickets with category, description, priority
-- Up to 3 image attachments per ticket
-- Ticket workflow: OPEN → IN_PROGRESS → RESOLVED → CLOSED
-- Technician assignment and status updates
-- Comment system with ownership rules
-- Resolution notes and audit trail
-
-### Module D - Notifications
-- Real-time notifications via WebSocket
-- Notification types: booking approval/rejection, ticket status changes, new comments
-- Notification panel in UI with unread count
-- User notification preferences (enable/disable categories)
-
-### Module E - Authentication & Authorization
-- OAuth 2.0 Google sign-in integration
-- Role-based access control: USER, ADMIN, TECHNICIAN
-- JWT token authentication
-- Protected routes and endpoint security
-- User profile management
-
-## Team Members
-- Member 1: Facilities & Assets Catalogue
-- Member 2: Booking Management
-- Member 3: Incident Ticketing
-- Member 4: Notifications & Authentication
+- **Facilities Catalogue** - Manage bookable resources (halls, labs, equipment) with search/filter
+- **Booking Management** - Request bookings with approval workflow and conflict detection
+- **Incident Ticketing** - Create tickets with attachments, assign technicians, track resolution
+- **Notifications** - Real-time updates via WebSocket for bookings, tickets, and comments
+- **Authentication** - OAuth 2.0 Google sign-in with role-based access control
 
 ## Tech Stack
+
 - **Backend**: Spring Boot 3.x, MongoDB, Spring Security OAuth2
 - **Frontend**: React 18, DaisyUI, Tailwind CSS
 - **Build Tools**: Maven, Vite
@@ -91,6 +60,9 @@ project-root/
 - Google OAuth credentials
 
 ### Backend Setup
+
+![Backend Architecture](docs/architecture-diagrams/02_backend_architecture.png)
+
 1. Navigate to backend: `cd backend`
 2. Run: `./mvnw spring-boot:run`
 
