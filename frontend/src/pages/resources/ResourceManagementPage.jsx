@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { resourceService } from '../../services/resourceService';
 import { bookingService } from '../../services/bookingService';
+import { ticketService } from '../../services/ticketService';
 import ResourceForm from '../../components/forms/ResourceForm';
 import { TableRowSkeleton, PageLoader } from '../../components/ui/LoadingSkeleton';
 import { useAuth } from '../../context/AuthContext';
